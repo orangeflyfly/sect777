@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>仙俠宗門 V7.9.0 - 終極整合版</title>
+    <style>
+        :root { --p: #a29bfe; --bg: #0d1117; --card: #1c2128; --text: #adbac7; --gold: #f1c40f; --danger: #f85149; --border: #30363d; --rare: #a55eea; --hp: #2ea043; }
+        * { box-sizing: border-box; }
+        body { background: var(--bg); color: var(--text); margin: 0; font-family: sans-serif; display: flex; justify-content: center; height: 100vh; overflow: hidden; }
+        #game { width: 100%; max-width: 450px; display: flex; flex-direction: column; border: 1px solid var(--border); position: relative; }
+        
+        .sister { position: absolute; top: 15px; right: 15px; width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--p); background: rgba(162,155,254,0.1); display: flex; align-items: center; justify-content: center; font-size: 28px; cursor: pointer; z-index: 100; box-shadow: 0 0 10px var(--p); }
+        .sister-pop { position: absolute; top: 70px; right: 15px; background: #fff; color: #333; padding: 10px; border-radius: 8px; font-size: 11px; display: none; width: 140px; z-index: 101; border: 2px solid var(--p); }
+
+        .header { padding: 15px; background: #161b22; border-bottom: 2px solid var(--p); }
+        .main { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 100px; }
+        .page { display: none; } .page.active { display: block; }
+        .card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 12px; border: 1px solid var(--border); position: relative; }
+        
+        .btn { background: #30363d; color: #fff; border: 1px solid #444; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; }
+        .btn-p { background: var(--p); border: none; font-weight: bold; width: 100%; padding: 15px; margin-top: 5px; color: white; border-radius: 8px; cursor: pointer; font-size: 16px; box-shadow: 0 4px 0 #6c5ce7; }
+        .btn-p:active { transform: translateY(2px); box-shadow: 0 2px 0 #6c5ce7; }
+        .prog { position: absolute; bottom: 0; left: 0; height: 3px; background: var(--p); width: 0%; }
+
+        /* 怪物血條 */
+        .hp-outer { height: 14px; background: #000; border-radius: 7px; margin: 10px 0; overflow: hidden; border: 1px solid #444; position: relative; }
+        .hp-inner { height: 100%; background: linear-gradient(90deg, #f85149, #ff7675); width: 0%; transition: width 0.2s; }
+        .hp-text { position: absolute; width: 100%; text-align: center; font-size: 10px; line-height: 12px; color: #fff; font-weight: bold; }
+
+        /* 地圖分頁 */
+        .map-container { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px; padding: 5px 0; }
+        .map-card { min-width: 95px; padding: 8px; background: #21262d; border: 1px solid var(--border); border-radius: 8px; font-size: 10px; text-align: center; cursor: pointer; }
+        .map-card.active { border-color: var(--p); color: var(--p); background: rgba(162,155,254,0.1); }
+        .map-card.locked { opacity: 0.4; }
+
+        .nav { position: absolute; bottom: 15px; left: 10px; right: 10px; display: grid; grid-template-columns: repeat(4, 1fr); background: #161b22; padding: 10px; border-radius: 15px; border: 1px solid var(--border); }
+        .nav-item { text-align: center; font-size: 12px; cursor: pointer; color: #8b949e; }
+        .nav-item.active { color: var(--p); font-weight: bold; }
+        #log { height: 95px; overflow-y: auto; background: rgba(0,0,0,0.4); padding: 8px; font-size: 11px; border-radius: 8px; border: 1px solid var(--border); margin-top: 10px; color: #ccc; line-height: 1.4; }
+    </style>
+</head>
+<body>
+
+<div id="game">
+    <div class="sister" onclick="toggleSister()">👩‍⚖️</div>
+    <div id="sister-pop" class="sister-pop">宗主，劍氣橫掃，特色掉落已就位！</div>
+
+    <div class="header">
+        <div style="display:flex; justify-content:space-between; font-size:13px;">
+            <span>🌲 <b id="u-wood">0</b> | 💎 <b id="u-stone">0</b></span>
+            <span style="color:var(--gold)">練氣 <span id="u-lv">1</span> 層</span>
+        </div>
+    </div>
+
+    <div class="main">
+        <div id="p-sect" class="page active">
+            <div class="card" onclick="work('wood')">🪓 手動伐木<div id="w-wood" class="prog"></div></div>
+            <div class="card" onclick="work('stone')">⛏️ 手動採礦<div id="w-stone" class="prog"></div></div>
+            <div class="card">
+                <b>堂口建設與招募</b> <button class="btn" style="float:right" onclick="recruit()">招募弟子(10石)</button>
+                <div style="font-size:11px; margin-top:10px; line-height:1.8;">
+                    閒置弟子: <b id="u-idle">0</b><br>
+                    伐木堂 Lv.<span id="l-wood">1</span>: <b id="u-wW">0</b>/<span id="m-wood">5</span> 
+                    <button class="btn" onclick="assign('wW')">+</button> <button class="btn" onclick="lvUp('wood')">升級</button><br>
+                    採礦堂 Lv.<span id="l-stone">1</span>: <b id="u-wS">0</b>/<span id="m-stone">5</span> 
+                    <button class="btn" onclick="assign('wS')">+</button> <button class="btn" onclick="lvUp('stone')">升級</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="p-rpg" class="page">
+            <div class="map-container" id="map-list"></div>
+            <div class="card" style="text-align:center;">
+                <b id="m-name" style="color:var(--danger)">搜尋妖獸中...</b>
+                <div class="hp-outer">
+                    <div id="m-hp" class="hp-inner"></div>
+                    <div class="hp-text"><span id="m-hp-cur">0</span> / <span id="m-hp-max">0</span></div>
+                </div>
+                <button class="btn-p" onclick="atk()">⚔️ 揮劍砍擊</button>
+            </div>
+            <div id="log"></div>
+        </div>
+
+        <div id="p-stat" class="page">
+            <div class="card">
+                <b>本命法寶：<span style="color:var(--rare)">【九儀天誅劍】</span></b>
+                <div id="relic-ui" style="font-size:11px; color:var(--gold); margin:8px 0; line-height:1.5;"></div>
+                <button class="btn" style="width:100%" onclick="reforge()">🔮 消耗 5 獸魂重鑄詞條</button>
+            </div>
+            <div class="card">
+                <b>戰力詳細面板</b> (可用星點: <b id="u-pts">0</b>)
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px; font-size:11px; margin-bottom:10px;">
+                    <span>攻擊: <b id="v-atk">0</b></span> <span>爆擊: <b id="v-crit">0</b>%</span>
+                    <span>閃避: <b id="v-dex">0</b>%</span> <span>吸血: <b id="v-drain">0</b>%</span>
+                    <span>修為: <b id="v-exp">0</b>/50</span>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px;">
+                    <button class="btn" onclick="addS('str')">🔥朱雀:<span id="s-str">0</span></button>
+                    <button class="btn" onclick="addS('crit')">💥白虎:<span id="s-crit">0</span></button>
+                    <button class="btn" onclick="addS('dex')">💨青龍:<span id="s-dex">0</span></button>
+                    <button class="btn" onclick="addS('vit')">🛡️玄武:<span id="s-vit">0</span></button>
+                </div>
+            </div>
+        </div>
+
+        <div id="p-eq" class="page">
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <div class="btn" id="t-mat" onclick="setTab('mat')" style="flex:1; text-align:center;">素材倉</div>
+                <div class="btn" id="t-rare" onclick="setTab('rare')" style="flex:1; text-align:center;">珍寶閣</div>
+            </div>
+            <div class="card" id="inv-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:12px;"></div>
+        </div>
+    </div>
+
+    <div class="nav">
+        <div class="nav-item active" onclick="nav('sect')">🏠 宗門</div>
+        <div class="nav-item" onclick="nav('rpg')">⚔️ 歷練</div>
+        <div class="nav-item" onclick="nav('stat')">🧘 洞察</div>
+        <div class="nav-item" onclick="nav('eq')">🎒 儲物</div>
+    </div>
+</div>
+
+<script>
+let d = {
+    wood:0, stone:0, idle:1, lv:1, exp:0, pts:0,
+    wW:0, wS:0, lvW:1, lvS:1, maxW:5, maxS:5,
+    str:10, crit:5, dex:3, vit:0, hp:100, mHp:100,
+    curMap:0, invTab:'mat',
+    mats: {},
+    affix: [ {n:"吸血", v:0}, {n:"額外傷害", v:0} ],
+    workT: null, workP: 0
+};
+
+const maps = [
+    {n:"青翠山徑", req:1, mon:"野豬", hp:50, exp:5, drop:{id:'meat', n:'🥩 妖豬肉'}},
+    {n:"幽暗靈礦", req:5, mon:"石巨人", hp:150, exp:20, drop:{id:'iron', n:'⛓️ 百煉玄鐵'}},
+    {n:"幽冥森林", req:10, mon:"幻影豹", hp:400, exp:50, drop:{id:'claw', n:'🐾 幻影利爪'}},
+    {n:"埋骨之地", req:20, mon:"魔化骷髏", hp:1200, exp:120, drop:{id:'bone', n:'💀 枯竭靈骨'}},
+    {n:"萬妖谷", req:50, mon:"萬妖之王", hp:6000, exp:500, drop:{id:'orb', n:'🔮 萬妖內丹'}}
+];
+let curM = null, lastT = Date.now();
+
+function loop() {
+    let now = Date.now(), dt = (now - lastT)/1000; lastT = now;
+    d.wood += d.wW * (0.1 * d.lvW) * dt;
+    d.stone += d.wS * (0.05 * d.lvS) * dt;
+    if(d.workT) {
+        d.workP += dt * 100;
+        document.getElementById(`w-${d.workT}`).style.width = Math.min(100, d.workP) + "%";
+        if(d.workP >= 100) { d[d.workT]++; d.workT=null; d.workP=0; }
+    }
+    sync(); requestAnimationFrame(loop);
+}
+
+function sync() {
+    document.getElementById('u-wood').innerText = Math.floor(d.wood);
+    document.getElementById('u-stone').innerText = Math.floor(d.stone);
+    document.getElementById('u-lv').innerText = d.lv;
+    document.getElementById('u-idle').innerText = d.idle;
+    document.getElementById('u-wW').innerText = d.wW; document.getElementById('u-wS').innerText = d.wS;
+    document.getElementById('l-wood').innerText = d.lvW; document.getElementById('l-stone').innerText = d.lvS;
+    document.getElementById('m-wood').innerText = d.maxW; document.getElementById('m-stone').innerText = d.maxS;
+    document.getElementById('u-pts').innerText = d.pts;
+    
+    // 面板數據
+    document.getElementById('v-atk').innerText = d.str + (d.affix[1].n==="額外傷害"?d.affix[1].v:0);
+    document.getElementById('v-crit').innerText = d.crit;
+    document.getElementById('v-dex').innerText = d.dex;
+    document.getElementById('v-drain').innerText = (d.affix[0].n==="吸血"?d.affix[0].v:0);
+    document.getElementById('v-exp').innerText = d.exp;
+    ['str','crit','dex','vit'].forEach(k => document.getElementById('s-'+k).innerText = d[k]);
+
+    // 血條同步
+    if(curM) {
+        document.getElementById('m-hp').style.width = (curM.hp/curM.max)*100 + "%";
+        document.getElementById('m-hp-cur').innerText = Math.ceil(curM.hp);
+        document.getElementById('m-hp-max').innerText = curM.max;
+    }
+    
+    document.getElementById('relic-ui').innerHTML = d.affix.map(a => `💠 ${a.n}: +${a.v}${a.n==='吸血'?'%':''}`).join('<br>');
+    renderMaps(); renderInv();
+}
+
+function renderMaps() {
+    let h = "";
+    maps.forEach((m, i) => {
+        let isL = d.lv < m.req;
+        h += `<div class="map-card ${d.curMap==i?'active':''} ${isL?'locked':''}" onclick="setMap(${i})">
+            ${m.n}<br><small>${isL?'🔒 Lv.'+m.req:'可進入'}</small>
+        </div>`;
+    });
+    document.getElementById('map-list').innerHTML = h;
+}
+
+function renderInv() {
+    let h = "";
+    const items = d.mats;
+    if(d.invTab==='mat') {
+        const mats = {meat:'🥩 妖豬肉', iron:'⛓️ 百煉玄鐵', claw:'🐾 幻影利爪', bone:'💀 枯竭靈骨'};
+        Object.keys(mats).forEach(k => { if(items[k]) h += `<div>${mats[k]}: ${items[k]}</div>`; });
+    } else {
+        if(items.soul) h += `<div>👻 殘破獸魂: ${items.soul}</div>`;
+        if(items.orb) h += `<div>🔮 萬妖內丹: ${items.orb}</div>`;
+    }
+    document.getElementById('inv-grid').innerHTML = h || "<div style='color:#666'>空空如也</div>";
+}
+
+function atk() {
+    if(!curM) spawn();
+    let dmg = d.str + (d.affix[1].n==="額外傷害"?d.affix[1].v:0);
+    let isC = Math.random() < d.crit/100;
+    if(isC) dmg *= 2;
+    curM.hp -= dmg;
+    
+    addLog(`⚔️ 你揮劍砍擊，造成 ${dmg} 點傷害${isC?'(暴擊!)':''}`);
+    if(d.affix[0].n==="吸血") d.hp = Math.min(d.mHp, d.hp + dmg*(d.affix[0].v/100));
+    
+    if(curM.hp <= 0) {
+        let mData = maps[d.curMap];
+        addLog(`✅ 斬殺 ${curM.n}！修為 +${mData.exp}`);
+        d.exp += mData.exp;
+        
+        // 特色掉落判定
+        let drop = mData.drop;
+        d.mats[drop.id] = (d.mats[drop.id] || 0) + 1;
+        addLog(`🎁 獲得：${drop.n}`);
+        
+        if(Math.random()<0.4) { d.mats.soul = (d.mats.soul || 0) + 1; addLog("✨ 額外獲得獸魂"); }
+        if(d.exp>=50) { d.exp-=50; d.lv++; d.pts++; addLog("🌟 突破！當前修為練氣 " + d.lv + " 層"); }
+        spawn();
+    }
+}
+
+function spawn() { let m = maps[d.curMap]; curM = {n:m.mon, hp:m.hp, max:m.hp}; document.getElementById('m-name').innerText = curM.n; }
+function setMap(i) { if(d.lv >= maps[i].req) { d.curMap = i; spawn(); addLog("🚩 踏入 " + maps[i].n); } else addLog("❌ 修為不足！"); }
+function work(t) { if(!d.workT) d.workT = t; }
+function recruit() { if(d.stone >= 10) { d.stone -= 10; d.idle++; addLog("🤝 弟子投奔！"); } }
+function assign(t) { let m = (t==='wW')?d.maxW:d.maxS; if(d.idle>0 && d[t]<m) { d[t]++; d.idle--; } }
+function lvUp(t) {
+    let cost = (t==='wood')? d.lvW*50 : d.lvS*50;
+    if(d[t] >= cost) { d[t]-=cost; if(t==='wood')d.lvW++; else d.lvS++; d['max'+(t==='wood'?'W':'S')]+=5; addLog("🏰 堂口擴建成功！"); }
+}
+function setTab(t) { d.invTab = t; }
+function reforge() {
+    if(d.mats.soul>=5) { 
+        d.mats.soul-=5; 
+        const p=["吸血","額外傷害","爆擊率","閃避率"];
+        d.affix=d.affix.map(a=>({n:p[Math.floor(Math.random()*4)], v:Math.floor(Math.random()*15)+1})); 
+        addLog("🔮 法寶重鑄完成！"); 
+    } else addLog("❌ 獸魂不足");
+}
+function addS(k) { if(d.pts>0) { d[k]++; d.pts--; if(k==='vit'){d.mHp+=20;d.hp+=20;} addLog("🧘 星脈覺醒！"); } }
+function nav(p) { 
+    document.querySelectorAll('.page').forEach(e=>e.classList.remove('active')); 
+    document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
+    document.getElementById('p-'+p).classList.add('active'); 
+    event.currentTarget.classList.add('active');
+}
+function addLog(m) { let l = document.getElementById('log'); l.innerHTML = `<div>> ${m}</div>` + l.innerHTML; }
+function toggleSister() { let p = document.getElementById('sister-pop'); p.style.display = p.style.display==='block'?'none':'block'; }
+
+spawn(); loop();
+</script>
+</body>
+</html>
