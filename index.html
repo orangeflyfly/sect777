@@ -582,12 +582,21 @@ function initMaps() {
     });
 }
 
+// --- [ 姊姊修正後的啟動陣法 ] ---
 window.onload = () => {
-    initMaps();
-    spawnMonster();
-    updateUI();
-    log("🌌 萬世宗門系統 V1.6.6 加載完畢，請掌門定奪。");
+    initMaps();      // 1. 先初始化地圖按鈕
+    spawnMonster();  // 2. 緊接著召喚第一隻野豬
+    
+    // 3. 關鍵修正：強制讓它在頁面完全準備好後，再狠狠刷一次 UI
+    setTimeout(() => {
+        updateUI(); 
+        log("🌌 宗門根基已穩，血條陣法長明。", "gold");
+    }, 100); 
 };
+
+// --- [ 額外保險：如果血條還是不出來，請檢查這段 ] ---
+// 確保 doAttack 函數最後一行也有寫 updateUI();
+
 </script>
 </body>
 </html>
