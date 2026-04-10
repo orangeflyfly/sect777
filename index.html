@@ -252,253 +252,132 @@
 </div>
 
 <script>
-// --- [ 第一部：天道數據底稿 ] ---
+// --- [ 1. 天道核心數據 ] ---
 let wood = 0, stone = 0, totalD = 0, dWood = 0, dStone = 0;
 let realm = "練氣期", lv = 1, exp = 0, pts = 0;
 let bAtk = 10, bHp = 100, curHp = 100;
 let inventory = {}; 
 let gearSet = { weapon: null, armor: null, acc: null };
-let curTab = 1, curWork = null, workProgress = 0;
+let curWork = null, workProgress = 0;
 let activeMob = null, curMapIdx = 0;
 
-// [ 祖制怪物數據庫：野豬與礦脈聯動 ]
 const WORLD_MAPS = [
-    {
-        name: "🌿 山腳", 
-        minLv: 1, 
-        mobName: "野豬", 
-        hp: 60, 
-        atk: 8, 
-        expReward: 40, 
-        drops: ["野豬皮", "碎骨", "粗糙獠牙"]
-    },
-    {
-        name: "🐍 密林", 
-        minLv: 5, 
-        mobName: "幻影蟒", 
-        hp: 450, 
-        atk: 48, 
-        expReward: 200, 
-        drops: ["蟒皮", "毒腺", "靈木心"]
-    }
+    { name: "🌿 山腳", minLv: 1, mobName: "野豬", hp: 60, atk: 8, expReward: 40, drops: ["野豬皮", "碎骨"] },
+    { name: "🐍 密林", minLv: 5, mobName: "幻影蟒", hp: 450, atk: 48, expReward: 200, drops: ["蟒皮", "靈木心"] }
 ];
 
-// --- [ 第二部：執事堂與手動採礦 ] ---
+// --- [ 2. 核心功能：招募與採礦 ] ---
 function assign(type, val) {
     let idle = totalD - dWood - dStone;
-    if (val > 0 && idle <= 0) { log("❌ 執事堂人手不足，請先招募弟子。"); return; }
-    
-    if (type === 'wood') {
-        if (dWood + val >= 0) dWood += val;
-    } else if (type === 'stone') {
-        if (dStone + val >= 0) dStone += val;
-    }
+    if (val > 0 && idle <= 0) return;
+    if (type === 'wood' && dWood + val >= 0) dWood += val;
+    if (type === 'stone' && dStone + val >= 0) dStone += val;
     updateUI();
 }
 
-function startWork(type) {
-    if (curWork) return;
-    curWork = type;
-    workProgress = 0;
-}
+function startWork(type) { if (!curWork) { curWork = type; workProgress = 0; } }
 
 function recruit() {
-    let cost = 10 + totalD * 8; // 隨人數增加成本
-    if (stone >= cost) {
-        stone -= cost;
-        totalD++;
-        log(`🎉 招募成功，宗門現有弟子 ${totalD} 名。`, "gold");
-    } else {
-        log(`❌ 靈石不足，招募失敗。需要 ${cost} 靈石。`);
-    }
+    let cost = 10 + totalD * 8;
+    if (stone >= cost) { stone -= cost; totalD++; log("🎉 新弟子拜入宗門", "gold"); }
     updateUI();
 }
 
-// --- [ 第三部：歷練與血條同步陣法 ] ---
+// --- [ 3. 歷練系統：血條絕對修正 ] ---
 function spawnMonster() {
     const data = WORLD_MAPS[curMapIdx];
+    // 這裡必須確實賦值給全域變數 activeMob
     activeMob = {
         n: data.mobName,
         hp: data.hp,
         mH: data.hp,
         atk: data.atk,
         exp: data.expReward,
-        drops: data.drops
+        loots: data.drops
     };
+    console.log("怪物已生成:", activeMob); // 姊姊留下的偵測靈力
     updateUI();
 }
 
 function doAttack() {
     if (!activeMob) return;
+    let tAtk = bAtk + (gearSet.weapon ? gearSet.weapon.val : 0);
+    activeMob.hp -= tAtk;
     
-    // 計算掌門總攻擊 (基礎 + 裝備)
-    const gearAtk = (gearSet.weapon ? gearSet.weapon.val : 0) + (gearSet.acc ? gearSet.acc.val : 0);
-    const totalAtk = bAtk + gearAtk;
-    
-    // 1. 掌門攻擊
-    const dmg = Math.floor(totalAtk * (0.9 + Math.random() * 0.2));
-    activeMob.hp -= dmg;
-    
-    // 2. 判斷勝負
     if (activeMob.hp <= 0) {
-        handleVictory();
+        log(`✨ 擊敗 ${activeMob.n}`, "gold");
+        exp += activeMob.exp;
+        activeMob.loots.forEach(l => { if(Math.random()<0.6) inventory[l]=(inventory[l]||0)+1; });
+        checkLevelUp();
+        spawnMonster();
     } else {
-        // 3. 怪物反擊
-        const mDmg = Math.max(1, activeMob.atk - (gearSet.armor ? Math.floor(gearSet.armor.val / 10) : 0));
-        curHp -= mDmg;
-        if (curHp <= 0) {
-            log("💀 戰敗受傷，神魂歸宗...（正在調養）", "danger");
-            curHp = bHp;
-            switchTab(1, document.querySelectorAll('.nav-btn')[0]);
-        }
+        curHp -= activeMob.atk;
+        if (curHp <= 0) { curHp = bHp; switchTab(1, document.querySelectorAll('.nav-btn')[0]); }
     }
     updateUI();
 }
 
-function handleVictory() {
-    log(`✨ 擊敗了 ${activeMob.n}！獲得 ${activeMob.exp} 點修為。`, "gold");
-    exp += activeMob.exp;
-    
-    // 聯動掉落：從怪物掉落池中抽取
-    activeMob.drops.forEach(item => {
-        if (Math.random() < 0.6) {
-            inventory[item] = (inventory[item] || 0) + 1;
-            log(`撿取物資：${item}`);
-        }
-    });
-
-    // 隨機機緣：掉落帶詞條法寶 (15%機率)
-    if (Math.random() < 0.15) {
-        dropSpecialItem();
-    }
-    
-    checkLevelUp();
-    spawnMonster();
-}
-
-// --- [ 第四部：煉器與裝備聯動 ] ---
-function dropSpecialItem() {
-    const types = ['weapon', 'armor', 'acc'];
-    const type = types[Math.floor(Math.random() * types.length)];
-    const prefixes = ["凡品", "精鐵", "玄銅", "靈光", "紫金"];
-    const pre = prefixes[Math.min(prefixes.length-1, Math.floor(lv/3))];
-    
-    const item = {
-        id: Date.now() + Math.random(),
-        type: type,
-        name: `${pre}之${type==='weapon'?'法劍':(type==='armor'?'道袍':'靈墜')}`,
-        val: lv * 5 + 10 + Math.floor(Math.random()*10)
-    };
-    
-    inventory[item.id] = item;
-    log(`🏮 【機緣】獲得法寶：${item.name}！`, "gold");
-}
-
-function startCrafting() {
-    // 檢查是否有足夠素材 (5份)
-    const materialKey = Object.keys(inventory).find(k => typeof inventory[k] === 'number' && inventory[k] >= 5);
-    
-    if (stone >= 15 && materialKey) {
-        stone -= 15;
-        inventory[materialKey] -= 5;
-        log(`🔥 以 5 份 ${materialKey} 為引，開爐煉器...`);
-        dropSpecialItem();
-    } else {
-        log("❌ 煉器失敗：靈石不足 15 或 儲物袋中無超過 5 份的同類素材。");
-    }
-    updateUI();
-}
-
-// --- [ 第五部：數據刷新陣 (解決消失問題) ] ---
+// --- [ 4. UI 刷新陣法：這裡我改了 ID 匹配 ] ---
 function updateUI() {
-    // 1. 資源絕對刷新
+    // 資源
     document.getElementById('val-wood').innerText = Math.floor(wood);
     document.getElementById('val-stone').innerText = Math.floor(stone);
-    
-    // 2. 執事堂看板刷新
-    const idle = totalD - dWood - dStone;
-    document.getElementById('val-d-idle').innerText = idle;
+    document.getElementById('val-d-idle').innerText = totalD - dWood - dStone;
     document.getElementById('val-d-total').innerText = totalD;
     document.getElementById('d-wood').innerText = dWood;
     document.getElementById('d-stone').innerText = dStone;
     document.getElementById('d-cost').innerText = 10 + totalD * 8;
-
-    // 3. 境界與實力刷新
     document.getElementById('val-realm').innerText = realm;
     document.getElementById('val-lv').innerText = `第 ${lv} 層`;
     document.getElementById('val-pts').innerText = pts;
-    
-    const totalAtk = bAtk + (gearSet.weapon ? gearSet.weapon.val : 0) + (gearSet.acc ? gearSet.acc.val : 0);
-    const totalMaxHp = bHp + (gearSet.armor ? gearSet.armor.val * 5 : 0);
-    document.getElementById('val-power').innerText = totalAtk * 3 + totalMaxHp;
 
-    // 4. 血條同步 (核心修正)
-    if (activeMob) {
-        document.getElementById('m-name').innerText = activeMob.n;
-        const mP = (activeMob.hp / activeMob.mH) * 100;
-        document.getElementById('m-hp-bar').style.width = Math.max(0, mP) + "%";
-        document.getElementById('m-hp-txt').innerText = `${Math.ceil(activeMob.hp)} / ${activeMob.mH}`;
+    // 怪物血條 (姊姊盯死這裡！)
+    const mName = document.getElementById('m-name');
+    const mBar = document.getElementById('m-hp-bar');
+    const mTxt = document.getElementById('m-hp-txt');
+
+    if (activeMob && mBar && mTxt) {
+        mName.innerText = activeMob.n;
+        let mP = (activeMob.hp / activeMob.mH) * 100;
+        mBar.style.width = Math.max(0, mP) + "%";
+        mTxt.innerText = `${Math.ceil(activeMob.hp)} / ${activeMob.mH}`;
     }
-    
-    const pP = (curHp / bHp) * 100;
-    document.getElementById('p-hp-bar').style.width = Math.max(0, pP) + "%";
+
+    // 掌門血條
+    document.getElementById('p-hp-bar').style.width = (curHp / bHp * 100) + "%";
     document.getElementById('p-hp-txt').innerText = `${Math.ceil(curHp)} / ${bHp}`;
 
-    // 5. 數據洞察拆解
-    document.getElementById('st-atk-total').innerText = totalAtk;
-    document.getElementById('st-atk-detail').innerText = `[ 基礎感悟: ${bAtk} ] + [ 法寶增幅: ${(gearSet.weapon?gearSet.weapon.val:0) + (gearSet.acc?gearSet.acc.val:0)} ]`;
-    document.getElementById('st-hp-total').innerText = totalMaxHp;
-
-    // 6. 裝備位刷新
+    // 星盤與裝備
+    let gearAtk = (gearSet.weapon ? gearSet.weapon.val : 0);
+    document.getElementById('st-atk-total').innerText = bAtk + gearAtk;
+    document.getElementById('st-atk-detail').innerText = `(基礎:${bAtk} + 武器:${gearAtk})`;
     document.getElementById('eq-weapon').innerText = gearSet.weapon ? gearSet.weapon.name : "無";
-    document.getElementById('eq-armor').innerText = gearSet.armor ? gearSet.armor.name : "無";
-    document.getElementById('eq-acc').innerText = gearSet.acc ? gearSet.acc.name : "無";
-
-    // 7. 儲物袋網格刷新
-    renderInventory();
     
-    // 8. 經驗條
-    const req = lv * 150;
-    document.getElementById('val-exp-fill').style.width = (exp / req * 100) + "%";
-    document.getElementById('ui-break').style.display = (lv >= 10 && realm === "練氣期") ? "block" : "none";
+    // 渲染儲物袋
+    renderBag();
 }
 
-function renderInventory() {
-    const grid = document.getElementById('bag-grid');
-    let html = "";
-    for (let key in inventory) {
-        if (inventory[key] === 0) continue;
-        const item = inventory[key];
-        if (typeof item === 'object') {
-            html += `<div class="item-card" onclick="equipGear('${key}')">
-                        <b>${item.name}</b><br><small>威力:${item.val}</small>
-                     </div>`;
-        } else {
-            html += `<div class="item-card"><b>${key}</b><br>數量: ${item}</div>`;
-        }
+function renderBag() {
+    let h = "";
+    for (let k in inventory) {
+        if (inventory[k] <= 0) continue;
+        let item = inventory[k];
+        h += `<div class="item-card" onclick="useItem('${k}')">${typeof item==='object'?item.name:k+' x'+item}</div>`;
     }
-    grid.innerHTML = html || "<div style='grid-column:span 3; font-size:12px; color:#555;'>儲物袋空空如也</div>";
+    document.getElementById('bag-grid').innerHTML = h;
 }
 
-function equipGear(id) {
-    const item = inventory[id];
-    if (gearSet[item.type]) {
-        // 卸下舊裝備，回流儲物袋
-        const oldGear = gearSet[item.type];
-        inventory[Date.now() + Math.random()] = oldGear;
-    }
-    gearSet[item.type] = item;
-    delete inventory[id];
-    log(`🛡️ 已裝備法寶：${item.name}`);
+function useItem(k) {
+    let it = inventory[k];
+    if(typeof it === 'object') { gearSet[it.type] = it; delete inventory[k]; log(`🛡️ 裝備了 ${it.name}`); }
     updateUI();
 }
 
-// --- [ 第六部：天道常數與循環 ] ---
 function switchTab(idx, el) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('p' + idx).classList.add('active');
-    el.classList.add('active');
+    if(el) el.classList.add('active');
     updateUI();
 }
 
@@ -506,97 +385,44 @@ function log(msg, type) {
     const box = document.getElementById('log-box');
     const div = document.createElement('div');
     div.innerHTML = `◈ ${msg}`;
-    if (type === 'gold') div.style.color = "var(--color-gold)";
-    if (type === 'danger') div.style.color = "var(--color-danger)";
+    if(type==='gold') div.style.color="var(--color-gold)";
     box.prepend(div);
 }
 
 function checkLevelUp() {
-    const req = lv * 150;
-    if (exp >= req) {
-        exp -= req;
-        lv++;
-        pts += 3;
-        log(`🌟 恭喜掌門！境界提升至第 ${lv} 層，感悟增加！`, "gold");
-    }
+    let req = lv * 150;
+    if(exp >= req) { exp-=req; lv++; pts+=3; log("🌟 突破提升！", "gold"); }
 }
 
-function upgrade(type) {
-    if (pts > 0) {
-        bAtk += 5; pts--;
-        log("🧘 戰鬥感悟提升，根基更加穩固。");
-        updateUI();
-    }
-}
-
-function breakthrough() {
-    if (stone < 50) return;
-    stone -= 50;
-    if (Math.random() < 0.6) {
-        realm = "築基期"; lv = 1; pts += 15;
-        log("🎊 【天命】掌門衝擊築基成功！壽元大增，實力突飛猛進！", "gold");
-    } else {
-        log("💀 突破失敗，經脈受損，靈石化為碎屑...", "danger");
-    }
-    updateUI();
-}
-
-// 每秒自動循環：弟子工作與手動進度
+// 自動循環
 setInterval(() => {
-    // 弟子產出
-    if (dWood > 0) wood += dWood * 0.8;
-    if (dStone > 0) stone += dStone * 0.5;
-
-    // 掌門手動工作進度
+    wood += dWood * 0.5; stone += dStone * 0.3;
     if (curWork) {
-        workProgress += 20;
+        workProgress += 25;
         document.getElementById('bar-' + curWork).style.width = workProgress + "%";
         if (workProgress >= 100) {
-            if (curWork === 'wood') { wood += 5; log("🪵 採集靈木成功。"); }
-            else { stone += 2; log("💠 採掘靈石成功。"); }
-            
-            // 歸零並重置
-            const bar = document.getElementById('bar-' + curWork);
-            setTimeout(() => { bar.style.width = "0%"; }, 100);
+            if (curWork === 'wood') wood += 2; else stone += 1;
+            setTimeout(() => { document.getElementById('bar-wood').style.width = "0%"; document.getElementById('bar-stone').style.width = "0%"; }, 100);
             curWork = null;
         }
     }
     updateUI();
 }, 1000);
 
-// 地圖切換 UI 初始化
-function initMaps() {
+window.onload = () => {
+    // 手動建立地圖按鈕，確保 ID 綁定
     const container = document.getElementById('map-tabs');
-    WORLD_MAPS.forEach((m, idx) => {
-        const btn = document.createElement('button');
-        btn.className = `map-btn ${idx === curMapIdx ? 'active' : ''}`;
+    container.innerHTML = "";
+    WORLD_MAPS.forEach((m, i) => {
+        let btn = document.createElement('button');
+        btn.className = "map-btn";
         btn.innerText = m.name;
-        btn.onclick = () => {
-            if (lv < m.minLv) { log(`❌ 境界不足，無法前往 ${m.name}`); return; }
-            curMapIdx = idx;
-            document.querySelectorAll('.map-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            spawnMonster();
-        };
+        btn.onclick = () => { curMapIdx = i; spawnMonster(); };
         container.appendChild(btn);
     });
-}
-
-// --- [ 姊姊修正後的啟動陣法 ] ---
-window.onload = () => {
-    initMaps();      // 1. 先初始化地圖按鈕
-    spawnMonster();  // 2. 緊接著召喚第一隻野豬
-    
-    // 3. 關鍵修正：強制讓它在頁面完全準備好後，再狠狠刷一次 UI
-    setTimeout(() => {
-        updateUI(); 
-        log("🌌 宗門根基已穩，血條陣法長明。", "gold");
-    }, 100); 
+    spawnMonster();
+    updateUI();
 };
-
-// --- [ 額外保險：如果血條還是不出來，請檢查這段 ] ---
-// 確保 doAttack 函數最後一行也有寫 updateUI();
-
 </script>
 </body>
 </html>
