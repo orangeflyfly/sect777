@@ -6,132 +6,168 @@
     <title>仙俠宗門 V1.6.3 - 萬法歸一 · 靈魂補完版</title>
     <style>
         /* ==================================================
-           【守靈魂】核心視覺：補回 V1.6.1 的華麗與 V1.6.2 的厚重
-           ================================================== */
+           【守靈魂】核心視覺：復刻 V1.6.1 的華麗視覺，拒絕任何下意識簡化
+           ================================================== 
+        */
         :root {
             --color-primary: #a29bfe;
             --color-primary-dark: #6c5ce7;
             --color-bg-deep: #0b0e14;
-            --color-card-bg: rgba(28, 33, 40, 0.95);
+            --color-card-bg: rgba(28, 33, 40, 0.92);
             --color-text-main: #adbac7;
             --color-text-bright: #ffffff;
             --color-gold: #ffcf40;
             --color-danger: #f85149;
             --color-success: #3fb950;
             --color-border: #444c56;
-            --shadow-glaze: 0 0 15px rgba(162, 155, 254, 0.3);
-            --shadow-heavy: 0 10px 30px rgba(0,0,0,0.7);
+            --shadow-glaze: 0 0 20px rgba(162, 155, 254, 0.25);
+            --shadow-heavy: 0 15px 35px rgba(0,0,0,0.8);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; }
+        
         body { 
             background: radial-gradient(circle at center, #1a1c2c 0%, #0b0e14 100%); 
             color: var(--color-text-main); 
             height: 100vh; display: flex; justify-content: center; overflow: hidden;
+            user-select: none;
         }
 
         #main-app-container {
             width: 100%; max-width: 500px; height: 100%;
             border-left: 1px solid var(--color-border); border-right: 1px solid var(--color-border);
             display: flex; flex-direction: column; position: relative;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(15px); background: rgba(0,0,0,0.2);
         }
 
-        /* 補回 V1.6.1 的精緻 Header */
+        /* 復刻 V1.6.1 Header：極致層次感 */
         .sect-header-pro {
             padding: 25px; background: linear-gradient(180deg, rgba(28, 33, 40, 1) 0%, rgba(28, 33, 40, 0.8) 100%);
             border-bottom: 2px solid var(--color-primary); box-shadow: var(--shadow-heavy); z-index: 100;
         }
 
         .header-top-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; }
-        .res-container { display: flex; gap: 20px; }
+        .res-container { display: flex; gap: 12px; flex-wrap: wrap; }
         .res-pill { 
-            background: rgba(0,0,0,0.3); padding: 5px 12px; border-radius: 20px; border: 1px solid var(--color-border);
+            background: rgba(0,0,0,0.4); padding: 6px 14px; border-radius: 20px; border: 1px solid var(--color-border);
             font-size: 13px; font-weight: bold; color: var(--color-text-bright); box-shadow: var(--shadow-glaze);
+            display: flex; align-items: center; gap: 5px; transition: 0.3s;
         }
 
         .realm-info-box { text-align: right; }
-        .realm-text { color: var(--color-gold); font-size: 20px; font-weight: 900; letter-spacing: 1px; text-shadow: 0 0 10px rgba(255,207,64,0.5); }
-        .realm-sub { font-size: 11px; opacity: 0.7; letter-spacing: 3px; }
+        .realm-text { color: var(--color-gold); font-size: 22px; font-weight: 900; letter-spacing: 1px; text-shadow: 0 0 15px rgba(255,207,64,0.6); }
+        .realm-sub { font-size: 11px; opacity: 0.7; letter-spacing: 3px; text-transform: uppercase; }
 
-        .exp-track { height: 4px; background: rgba(0,0,0,0.6); border-radius: 2px; overflow: hidden; margin-top: 10px; }
-        .exp-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--color-primary), #fff); transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 0 8px var(--color-primary); }
+        .exp-track { height: 6px; background: rgba(0,0,0,0.6); border-radius: 3px; overflow: hidden; margin-top: 12px; border: 1px solid rgba(255,255,255,0.05); }
+        .exp-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--color-primary), #fff); transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 0 10px var(--color-primary); }
 
-        /* 主舞台 */
-        .stage-view { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 120px; scrollbar-width: none; }
+        /* 主舞台與分頁控制 */
+        .stage-view { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 130px; scrollbar-width: none; }
         .stage-view::-webkit-scrollbar { display: none; }
         .page-content { display: none; }
-        .page-content.active { display: block; animation: pageFadeIn 0.5s ease-out; }
-        @keyframes pageFadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+        .page-content.active { display: block; animation: pageFadeIn 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+        @keyframes pageFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* 補回 V1.6.1 的精美卡片 */
+        /* 復刻 V1.6.1 卡片：漣漪特效基礎 */
         .crystal-card {
-            background: var(--color-card-bg); border-radius: 24px; padding: 20px; margin-bottom: 25px;
-            border: 1px solid rgba(255,255,255,0.05); position: relative; overflow: hidden;
-            box-shadow: var(--shadow-heavy); transition: 0.3s;
+            background: var(--color-card-bg); border-radius: 24px; padding: 22px; margin-bottom: 25px;
+            border: 1px solid rgba(255,255,255,0.08); position: relative; overflow: hidden;
+            box-shadow: var(--shadow-heavy); transition: transform 0.2s, border-color 0.3s;
+            cursor: pointer;
         }
-        .crystal-card::before {
-            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-            background: radial-gradient(circle, rgba(162, 155, 254, 0.05) 0%, transparent 70%); pointer-events: none;
+        .crystal-card:active { transform: scale(0.98); }
+        .crystal-card::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(162, 155, 254, 0.1) 0%, transparent 70%);
+            opacity: 0; transition: opacity 0.3s;
         }
+        .crystal-card:hover::after { opacity: 1; }
 
-        .card-header { font-size: 16px; font-weight: bold; color: #fff; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
-        .card-header::before { content: ''; width: 4px; height: 16px; background: var(--color-primary); border-radius: 2px; }
+        /* 漣漪動畫特效 */
+        .ripple {
+            position: absolute; border-radius: 50%; background: rgba(162, 155, 254, 0.4);
+            transform: scale(0); animation: ripple-ani 0.6s linear; pointer-events: none;
+        }
+        @keyframes ripple-ani { to { transform: scale(4); opacity: 0; } }
 
-        /* 進度條組件：細緻版 */
-        .long-progress-wrap { height: 28px; background: rgba(0,0,0,0.5); border-radius: 14px; border: 1px solid #444; position: relative; overflow: hidden; margin: 10px 0; }
-        .long-progress-fill { height: 100%; width: 0%; transition: width 0.1s linear; }
-        .fill-wood { background: linear-gradient(90deg, #55efc4, #00b894); box-shadow: 0 0 15px rgba(85,239,196,0.4); }
-        .fill-stone { background: linear-gradient(90deg, #81ecec, #00cec9); box-shadow: 0 0 15px rgba(129,236,236,0.4); }
+        /* 飄字特效 */
+        .float-text {
+            position: fixed; pointer-events: none; font-weight: 900; font-size: 18px;
+            animation: float-up 0.8s ease-out forwards; z-index: 999; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        @keyframes float-up { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-50px); opacity: 0; } }
+
+        .card-header { font-size: 17px; font-weight: bold; color: #fff; margin-bottom: 18px; display: flex; align-items: center; gap: 12px; }
+        .card-header::before { content: ''; width: 4px; height: 18px; background: var(--color-primary); border-radius: 2px; box-shadow: 0 0 10px var(--color-primary); }
+
+        /* 進度條：高度復刻與光暈 */
+        .long-progress-wrap { height: 32px; background: rgba(0,0,0,0.5); border-radius: 16px; border: 1px solid #444; position: relative; overflow: hidden; margin: 12px 0; }
+        .long-progress-fill { height: 100%; width: 0%; transition: width 0.1s linear; position: relative; }
+        .fill-wood { background: linear-gradient(90deg, #55efc4, #00b894); box-shadow: inset 0 0 10px rgba(255,255,255,0.2); }
+        .fill-stone { background: linear-gradient(90deg, #81ecec, #00cec9); box-shadow: inset 0 0 10px rgba(255,255,255,0.2); }
         .fill-hp { background: linear-gradient(90deg, #ff7675, #d63031); }
         .fill-m-hp { background: linear-gradient(90deg, #fab1a0, #e17055); }
-        .progress-label { position: absolute; width: 100%; text-align: center; line-height: 28px; font-size: 11px; color: #fff; font-weight: 900; z-index: 5; text-shadow: 1px 1px 2px #000; }
+        
+        .progress-label { position: absolute; width: 100%; text-align: center; line-height: 32px; font-size: 12px; color: #fff; font-weight: 900; z-index: 5; text-shadow: 1px 1px 3px #000; letter-spacing: 1px; }
 
-        /* 屬性星盤：補回對帳細節與視覺 */
+        /* 屬性星盤：補回對帳細節 */
         .stat-stellar-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .stellar-item { 
-            background: rgba(255,255,255,0.03); padding: 15px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.05);
-            transition: 0.3s;
+            background: rgba(255,255,255,0.04); padding: 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.06);
+            transition: 0.3s; position: relative;
         }
-        .stellar-item:hover { border-color: var(--color-primary); background: rgba(162, 155, 254, 0.05); }
-        .stellar-label { font-size: 11px; color: #8b949e; display: block; }
-        .stellar-val { font-size: 22px; font-weight: 900; color: var(--color-primary); display: block; margin: 5px 0; }
-        .stellar-calc { font-size: 10px; color: #555; display: block; }
+        .stellar-item:hover { border-color: var(--color-primary); background: rgba(162, 155, 254, 0.08); transform: translateY(-3px); }
+        .stellar-label { font-size: 12px; color: #8b949e; display: block; margin-bottom: 5px; }
+        .stellar-val { font-size: 24px; font-weight: 900; color: var(--color-primary); display: block; text-shadow: 0 0 10px rgba(162, 155, 254, 0.3); }
+        .stellar-calc { font-size: 10px; color: #666; display: block; margin-top: 4px; font-family: monospace; }
 
-        /* 動作按鈕 */
+        /* 動作按鈕：補回 V1.6.1 的大氣感 */
         .btn-sect {
-            width: 100%; padding: 18px; border-radius: 18px; border: none; color: #fff; font-weight: bold;
-            font-size: 15px; cursor: pointer; transition: 0.3s;
+            width: 100%; padding: 20px; border-radius: 20px; border: none; color: #fff; font-weight: 900;
+            font-size: 16px; cursor: pointer; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
-            box-shadow: 0 5px 15px rgba(108, 92, 231, 0.4);
+            box-shadow: 0 8px 20px rgba(108, 92, 231, 0.3);
+            text-transform: uppercase; letter-spacing: 2px;
         }
-        .btn-sect:active { transform: scale(0.97); box-shadow: none; }
-        .btn-gold { background: linear-gradient(135deg, var(--color-gold), #e1b12c); color: #000; box-shadow: 0 5px 15px rgba(255,207,64,0.3); }
+        .btn-sect:hover { transform: translateY(-3px); box-shadow: 0 12px 25px rgba(108, 92, 231, 0.5); }
+        .btn-sect:active { transform: scale(0.95); }
+        .btn-gold { background: linear-gradient(135deg, var(--color-gold), #e1b12c); color: #2d3436; box-shadow: 0 8px 20px rgba(255,207,64,0.3); }
 
-        /* 底部導航：V1.6.1 的懸浮感 */
+        /* 底部導航：V1.6.1 經典懸浮感 */
         .nav-dock {
-            position: absolute; bottom: 25px; left: 20px; right: 20px;
-            background: var(--color-card-bg); height: 75px; border-radius: 40px;
+            position: absolute; bottom: 30px; left: 20px; right: 20px;
+            background: rgba(28, 33, 40, 0.95); height: 85px; border-radius: 45px;
             display: flex; justify-content: space-around; align-items: center;
             border: 1px solid var(--color-border); box-shadow: var(--shadow-heavy);
+            backdrop-filter: blur(20px); z-index: 200;
         }
-        .nav-link { display: flex; flex-direction: column; align-items: center; color: #8b949e; cursor: pointer; transition: 0.3s; }
-        .nav-link.active { color: var(--color-primary); transform: translateY(-8px); text-shadow: 0 0 10px var(--color-primary); }
-        .nav-icon { font-size: 22px; margin-bottom: 4px; }
-        .nav-tag { font-size: 10px; font-weight: bold; }
+        .nav-link { display: flex; flex-direction: column; align-items: center; color: #8b949e; cursor: pointer; transition: 0.4s; position: relative; width: 60px; }
+        .nav-link.active { color: var(--color-primary); }
+        .nav-link.active .nav-icon { transform: translateY(-15px); text-shadow: 0 0 20px var(--color-primary); font-size: 28px; }
+        .nav-icon { font-size: 24px; transition: 0.4s; }
+        .nav-tag { font-size: 11px; font-weight: 900; position: absolute; bottom: 8px; opacity: 0; transition: 0.4s; }
+        .nav-link.active .nav-tag { opacity: 1; transform: translateY(-2px); }
 
-        /* 日誌系統 */
+        /* 日誌系統：強化沉浸感 */
         #log-scroll {
-            height: 180px; overflow-y: auto; background: rgba(0,0,0,0.4); border-radius: 16px;
-            padding: 15px; font-size: 12px; color: #adbac7; border: 1px solid var(--color-border); line-height: 1.8;
+            height: 200px; overflow-y: auto; background: rgba(0,0,0,0.5); border-radius: 20px;
+            padding: 18px; font-size: 13px; color: #adbac7; border: 1px solid var(--color-border); line-height: 2;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
         }
-        .log-row { margin-bottom: 6px; animation: logSlide 0.3s ease-out; }
-        @keyframes logSlide { from { transform: translateX(-10px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        .log-crit { color: var(--color-gold); font-weight: bold; }
-        .log-dmg { color: var(--color-danger); }
+        .log-row { margin-bottom: 8px; border-left: 2px solid transparent; padding-left: 10px; animation: logSlide 0.4s ease-out; }
+        @keyframes logSlide { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .log-crit { color: var(--color-gold); font-weight: 900; border-left-color: var(--color-gold); }
+        .log-dmg { color: var(--log-danger); border-left-color: var(--color-danger); }
+        .log-sys { color: #55efc4; font-style: italic; }
+
+        /* 弟子招募樣式 */
+        .disciple-stats-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 15px; background: rgba(0,0,0,0.3); border-radius: 12px; margin-bottom: 15px;
+        }
     </style>
 </head>
-<body>
+<body onclick="createGlobalRipple(event)">
 
 <div id="main-app-container">
     <header class="sect-header-pro">
@@ -139,6 +175,7 @@
             <div class="res-container">
                 <div class="res-pill">🪵 <span id="ui-wood">0</span></div>
                 <div class="res-pill">💠 <span id="ui-stone">0</span></div>
+                <div id="ui-disciple-tag" class="res-pill" style="border-color:var(--color-gold); display:none;">👥 <span id="ui-disciple-count">0</span></div>
             </div>
             <div class="realm-info-box">
                 <div class="realm-text" id="ui-realm-name">練氣期</div>
@@ -148,9 +185,9 @@
         <div class="exp-track"><div id="ui-exp-fill" class="exp-fill"></div></div>
     </header>
 
-    <main class="stage-view">
+    <main class="stage-view" id="scroll-target">
         <section id="view-sect" class="page-content active">
-            <div class="crystal-card" onclick="startGathering('wood')">
+            <div class="crystal-card" onclick="startGathering('wood', event)">
                 <div class="card-header">⛩️ 靈木工坊</div>
                 <div class="long-progress-wrap">
                     <div id="prog-wood-fill" class="long-progress-fill fill-wood"></div>
@@ -158,7 +195,7 @@
                 </div>
             </div>
 
-            <div class="crystal-card" onclick="startGathering('stone')">
+            <div class="crystal-card" onclick="startGathering('stone', event)">
                 <div class="card-header">💎 地脈礦場</div>
                 <div class="long-progress-wrap">
                     <div id="prog-stone-fill" class="long-progress-fill fill-stone"></div>
@@ -166,27 +203,49 @@
                 </div>
             </div>
 
-            <div id="ui-break-box" class="crystal-card" style="display:none; border: 2px solid var(--color-gold);">
-                <div class="card-header" style="color:var(--color-gold)">⚡ 築基雷劫已至</div>
-                <p style="font-size:12px; margin-bottom:15px; color:#adbac7;">
-                    消耗 50 靈石，成功率 40%。<br><span style="color:var(--color-danger)">⚠ 失敗將遭遇天道反噬，修為跌落至 9 層！</span>
+            <div class="crystal-card" id="disciple-card">
+                <div class="card-header">👥 招賢館</div>
+                <div class="disciple-stats-bar">
+                    <span style="font-size:12px;">當前弟子：<b id="ui-d-num">0</b> / 10</span>
+                    <span id="ui-auto-rate" style="font-size:11px; color:var(--color-success)">產出：0/s</span>
+                </div>
+                <p style="font-size:12px; color:#8b949e; margin-bottom:15px;">招募一名弟子需消耗 <span id="ui-d-cost" style="color:var(--color-gold)">10</span> 靈石。弟子會持續產出靈木。</p>
+                <button class="btn-sect" onclick="recruitDisciple(event)">廣納賢才</button>
+            </div>
+
+            <div id="ui-break-box" class="crystal-card" style="display:none; border: 2px solid var(--color-gold); box-shadow: 0 0 25px rgba(255,207,64,0.2);">
+                <div class="card-header" style="color:var(--color-gold)">⚡ 築基大劫已至</div>
+                <p style="font-size:13px; margin-bottom:15px; line-height:1.6;">
+                    天道感應，雷劫將至！<br>
+                    消耗 50 靈石，成功率 40%。<br>
+                    <span style="color:var(--color-danger); font-weight:bold;">⚠ 失敗則神魂受挫，修為跌落回 9 層！</span>
                 </p>
-                <button class="btn-sect btn-gold" onclick="triggerBreakthrough()">逆天改命 · 衝擊築基</button>
+                <button class="btn-sect btn-gold" onclick="triggerBreakthrough(event)">逆天改命 · 衝擊築基</button>
             </div>
         </section>
 
         <section id="view-map" class="page-content">
-            <div id="map-node-list" style="display:flex; gap:12px; margin-bottom:20px; overflow-x:auto; padding:10px 0;"></div>
+            <div id="map-node-list" style="display:flex; gap:15px; margin-bottom:25px; overflow-x:auto; padding:10px 0; scrollbar-width:none;"></div>
 
             <div class="crystal-card">
                 <div class="card-header">⚔️ 鬥法對峙</div>
-                <div style="font-size:11px; margin-bottom:5px;">宗主神魂: <span id="ui-p-hp-text">0/0</span></div>
-                <div class="long-progress-wrap" style="height:12px;"><div id="ui-p-hp-bar" class="long-progress-fill fill-hp"></div></div>
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:8px;">
+                    <span>宗主神魂</span>
+                    <span id="ui-p-hp-text">0/0</span>
+                </div>
+                <div class="long-progress-wrap" style="height:15px; border-radius:8px;">
+                    <div id="ui-p-hp-bar" class="long-progress-fill fill-hp"></div>
+                </div>
 
-                <div style="font-size:11px; margin-bottom:5px; margin-top:15px;">妖獸: <span id="ui-m-name">...</span> (<span id="ui-m-hp-text">0/0</span>)</div>
-                <div class="long-progress-wrap" style="height:12px;"><div id="ui-m-hp-bar" class="long-progress-fill fill-m-hp"></div></div>
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:8px; margin-top:20px;">
+                    <span id="ui-m-name">載入中...</span>
+                    <span id="ui-m-hp-text">0/0</span>
+                </div>
+                <div class="long-progress-wrap" style="height:15px; border-radius:8px;">
+                    <div id="ui-m-hp-bar" class="long-progress-fill fill-m-hp"></div>
+                </div>
 
-                <button class="btn-sect" style="margin-top:20px;" onclick="performAttack()">運轉本命神通</button>
+                <button class="btn-sect" style="margin-top:25px;" onclick="performAttack(event)">運轉本命神通</button>
             </div>
 
             <div id="log-scroll"></div>
@@ -194,70 +253,73 @@
 
         <section id="view-stat" class="page-content">
             <div class="crystal-card">
-                <div class="card-header">🧘 修為星盤 <small style="margin-left:auto">潛能: <span id="ui-pts">0</span></small></div>
+                <div class="card-header">🧘 修為星盤 <small style="margin-left:auto; color:var(--color-gold);">潛能點: <span id="ui-pts">0</span></small></div>
                 <div class="stat-stellar-grid">
                     <div class="stellar-item">
-                        <span class="stellar-label">神威 (總攻擊)</span>
+                        <span class="stellar-label">萬象神威 (攻擊)</span>
                         <span class="stellar-val" id="ui-atk-val">0</span>
-                        <span class="stellar-calc" id="ui-atk-det"></span>
+                        <span class="stellar-calc" id="ui-atk-det">基礎 + 裝備</span>
                     </div>
                     <div class="stellar-item">
-                        <span class="stellar-label">聖體 (總血量)</span>
+                        <span class="stellar-label">混元聖體 (血量)</span>
                         <span class="stellar-val" id="ui-hp-val">0</span>
-                        <span class="stellar-calc" id="ui-hp-det"></span>
+                        <span class="stellar-calc" id="ui-hp-det">基礎 + 裝備</span>
                     </div>
                     <div class="stellar-item">
-                        <span class="stellar-label">天運 (暴擊率)</span>
+                        <span class="stellar-label">天運契機 (暴擊)</span>
                         <span class="stellar-val"><span id="ui-crit-val">0</span>%</span>
                     </div>
                     <div class="stellar-item">
-                        <span class="stellar-label">靈動 (閃避率)</span>
+                        <span class="stellar-label">踏雪無痕 (閃避)</span>
                         <span class="stellar-val"><span id="ui-dex-val">0</span>%</span>
                     </div>
                 </div>
-                <div id="ui-talent-tag" style="margin-top:15px; color:var(--color-gold); font-weight:bold;"></div>
-                <div style="display:flex; gap:12px; margin-top:20px;">
-                    <button class="btn-sect" onclick="upgradeStat('atk')">修煉神威</button>
-                    <button class="btn-sect" onclick="upgradeStat('hp')">淬煉聖體</button>
+                <div id="ui-talent-tag" style="margin-top:20px; text-align:center; color:var(--color-gold); font-weight:900; letter-spacing:2px; font-size:14px;"></div>
+                <div style="display:flex; gap:15px; margin-top:25px;">
+                    <button class="btn-sect" onclick="upgradeStat('atk', event)">修煉神威</button>
+                    <button class="btn-sect" onclick="upgradeStat('hp', event)">淬煉聖體</button>
                 </div>
             </div>
 
             <div class="crystal-card">
-                <div class="card-header">🛡️ 已裝備法寶</div>
-                <div id="ui-equip-list" style="font-size:13px; line-height:2;"></div>
+                <div class="card-header">🛡️ 當前配備法寶</div>
+                <div id="ui-equip-list" style="font-size:14px; line-height:2.2;"></div>
             </div>
         </section>
 
         <section id="view-bag" class="page-content">
             <div class="crystal-card">
                 <div class="card-header">🎒 儲物袋</div>
-                <div id="ui-bag-grid" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
+                <div id="ui-bag-grid" style="display:flex; flex-wrap:wrap; gap:12px;"></div>
             </div>
-            <div class="crystal-card">
+            <div class="crystal-card" style="border: 1px dashed var(--color-primary);">
                 <div class="card-header">🔥 乾坤煉器爐</div>
-                <p style="font-size:12px; color:#8b949e; margin-bottom:15px;">投入 15 靈石與 5 份素材，奪天地造化煉製法寶。</p>
-                <button class="btn-sect btn-gold" onclick="craftEquipment()">開始煉器</button>
+                <p style="font-size:13px; color:#8b949e; margin-bottom:20px; line-height:1.6;">投入 15 靈石與 5 份素材，藉地脈真火煉製法寶。有機率產出帶有「靈性描述」的高階裝備。</p>
+                <button class="btn-sect btn-gold" onclick="craftEquipment(event)">開啟煉器大陣</button>
             </div>
         </section>
     </main>
 
     <nav class="nav-dock">
-        <div class="nav-link active" onclick="tabTo(1, this)"><span class="nav-icon">⛩️</span><span class="nav-tag">宗門</span></div>
-        <div class="nav-link" onclick="tabTo(2, this)"><span class="nav-icon">⚔️</span><span class="nav-tag">歷練</span></div>
-        <div class="nav-link" onclick="tabTo(3, this)"><span class="nav-icon">🧘</span><span class="nav-tag">星盤</span></div>
-        <div class="nav-link" onclick="tabTo(4, this)"><span class="nav-icon">🎒</span><span class="nav-tag">儲物</span></div>
+        <div class="nav-link active" onclick="tabTo(1, this, event)"><span class="nav-icon">⛩️</span><span class="nav-tag">宗門</span></div>
+        <div class="nav-link" onclick="tabTo(2, this, event)"><span class="nav-icon">⚔️</span><span class="nav-tag">歷練</span></div>
+        <div class="nav-link" onclick="tabTo(3, this, event)"><span class="nav-icon">🧘</span><span class="nav-tag">星盤</span></div>
+        <div class="nav-link" onclick="tabTo(4, this, event)"><span class="nav-icon">🎒</span><span class="nav-tag">儲物</span></div>
     </nav>
 </div>
 
 <script>
 /**
  * ==================================================
- * 【守靈魂】核心驅動：V1.6.3 責任到行
+ * 【守靈魂】核心驅動 V1.6.3-Final
+ * 承諾：變數不縮寫、邏輯不合併、細節不消失
  * ==================================================
  */
 
+// --- 基礎屬性 (保持負責任的命名) ---
 let userWoodBalance = 0;
 let userStoneBalance = 0;
+let userDiscipleCount = 0;
 let userRealmTitle = "練氣期";
 let userCurrentLevel = 1;
 let userCurrentExp = 0;
@@ -266,52 +328,80 @@ let userPotentialPts = 0;
 let userBaseAttack = 10;
 let userBaseHealthMax = 100;
 let userCurrentHp = 100;
-let userCritRate = 5;
-let userDexterity = 5;
+let userCritRate = 5.0;
+let userDexterity = 5.0;
 
 let userActiveTalent = null;
 let userInventoryMap = {};
 let userEquipmentSet = {
-    weapon: { name: "鏽鐵長劍", atk: 5 },
-    armor: { name: "粗布道袍", hp: 0 }
+    weapon: { name: "鏽鐵長劍", atk: 5, desc: "一把飽經風霜的凡劍，幾乎感覺不到靈力。" },
+    armor: { name: "粗布道袍", hp: 0, desc: "入門弟子的統一著裝，僅能避塵。" }
 };
 
-let currentMapIdx = 0;
+// --- 弟子與自動化邏輯 ---
+let lastAutoTick = Date.now();
+const AUTO_TICK_INTERVAL = 10000; // 10秒產出一次
+
+// --- 歷練資料庫 ---
 const WORLD_DATABASE = [
-    { id:0, name:"百草秘境", lv:1, mob:"靈蝶", hp:85, atk:10, exp:40, drop:"蝶粉" },
-    { id:1, name:"萬妖谷口", lv:5, mob:"狡狐", hp:500, atk:45, exp:120, drop:"狐皮" },
-    { id:2, name:"埋骨之地", lv:10, mob:"骸骨戰將", hp:1600, atk:140, exp:300, drop:"古錢" }
+    { id:0, name:"百草秘境", lv:1, mob:"幻彩蝴蝶", hp:100, atk:12, exp:45, drop:"彩色粉塵" },
+    { id:1, name:"萬妖谷口", lv:5, mob:"嗜血狡狐", hp:550, atk:48, exp:135, drop:"狡狐尾巴" },
+    { id:2, name:"埋骨之地", lv:10, mob:"遺忘劍僕", hp:1800, atk:155, exp:320, drop:"殘破劍意" },
+    { id:3, name:"墜龍峽谷", lv:15, mob:"亞龍雛獸", hp:4500, atk:380, exp:800, drop:"亞龍之鱗" }
 ];
 
+let currentMapIdx = 0;
 let activeMob = null;
 let currentWorkType = null;
 let workProgressVal = 0;
-let lastTimestamp = Date.now();
+let lastHeartbeatTime = Date.now();
 
-// 初始化
-function initXianMaster() {
-    loadProfile();
+// --- 初始化大陣 ---
+function initGame() {
+    loadGameData();
     spawnNewMob();
     requestAnimationFrame(gameHeartbeat);
+    addGameLog("🌌 歡迎回來，宗主。仙山靈氣已重新匯聚。", "sys");
 }
 
 function gameHeartbeat() {
     let now = Date.now();
-    let dt = (now - lastTimestamp) / 1000;
-    lastTimestamp = now;
+    let deltaTime = (now - lastHeartbeatTime) / 1000;
+    lastHeartbeatTime = now;
 
+    // 手動採集邏輯 (不消失)
     if (currentWorkType) {
-        workProgressVal += dt * 100; // 約 1 秒
+        workProgressVal += deltaTime * 120; // 約 0.8 秒完成
         document.getElementById(`prog-${currentWorkType}-fill`).style.width = Math.min(100, workProgressVal) + "%";
         if (workProgressVal >= 100) {
-            if (currentWorkType === 'wood') { userWoodBalance += 5; addGameLog("🌲 獲得一份 [千年靈木]"); }
-            else { userStoneBalance += 2; addGameLog("💠 挖掘出一枚 [下品靈石]"); }
-            currentWorkType = null; workProgressVal = 0;
+            completeGathering();
         }
+    }
+
+    // 弟子自動產出 (新增)
+    if (now - lastAutoTick >= AUTO_TICK_INTERVAL) {
+        if (userDiscipleCount > 0) {
+            let gain = userDiscipleCount * 2;
+            userWoodBalance += gain;
+            addGameLog(`👥 宗門弟子勤奮修煉，帶回了 ${gain} 份靈木。`, "sys");
+        }
+        lastAutoTick = now;
     }
 
     refreshVisuals();
     requestAnimationFrame(gameHeartbeat);
+}
+
+function completeGathering() {
+    if (currentWorkType === 'wood') {
+        userWoodBalance += 5;
+        addGameLog("🌲 採集完畢，獲得 [千年靈木]");
+    } else {
+        userStoneBalance += 2;
+        addGameLog("💠 挖掘完畢，獲得 [下品靈石]");
+    }
+    currentWorkType = null;
+    workProgressVal = 0;
 }
 
 function refreshVisuals() {
@@ -321,21 +411,28 @@ function refreshVisuals() {
     document.getElementById('ui-realm-lv').innerText = userCurrentLevel;
     document.getElementById('ui-pts').innerText = userPotentialPts;
 
-    let nextExp = userCurrentLevel * 200;
-    document.getElementById('ui-exp-fill').style.width = (userCurrentExp / nextExp * 100) + "%";
+    // 弟子 UI
+    document.getElementById('ui-disciple-tag').style.display = userDiscipleCount > 0 ? "flex" : "none";
+    document.getElementById('ui-disciple-count').innerText = userDiscipleCount;
+    document.getElementById('ui-d-num').innerText = userDiscipleCount;
+    document.getElementById('ui-auto-rate').innerText = `產出: ${(userDiscipleCount * 2 / 10).toFixed(1)}/s`;
+    document.getElementById('ui-d-cost').innerText = 10 + (userDiscipleCount * 5);
 
-    // 補回：V1.6.2 的對帳細節
+    let nextExp = userCurrentLevel * 220;
+    document.getElementById('ui-exp-fill').style.width = Math.min(100, (userCurrentExp / nextExp * 100)) + "%";
+
+    // 星盤詳細對帳 (復刻)
     let finalAtk = userBaseAttack + userEquipmentSet.weapon.atk;
     let finalHp = userBaseHealthMax + userEquipmentSet.armor.hp;
-    let atkAddon = ""; let hpAddon = "";
+    let atkMult = 1.0; let hpMult = 1.0;
 
-    if (userActiveTalent === "劍道宗師") { finalAtk = Math.floor(finalAtk * 1.3); atkAddon = " (x1.3)"; }
-    if (userActiveTalent === "不滅金身") { finalHp = Math.floor(finalHp * 1.3); hpAddon = " (x1.3)"; }
+    if (userActiveTalent === "劍道宗師") { finalAtk = Math.floor(finalAtk * 1.35); atkMult = 1.35; }
+    if (userActiveTalent === "不滅金身") { finalHp = Math.floor(finalHp * 1.4); hpMult = 1.4; }
 
     document.getElementById('ui-atk-val').innerText = finalAtk;
-    document.getElementById('ui-atk-det').innerText = `[${userBaseAttack} + ${userEquipmentSet.weapon.atk}]${atkAddon}`;
+    document.getElementById('ui-atk-det').innerText = `[${userBaseAttack} + ${userEquipmentSet.weapon.atk}] x ${atkMult}`;
     document.getElementById('ui-hp-val').innerText = finalHp;
-    document.getElementById('ui-hp-det').innerText = `[${userBaseHealthMax} + ${userEquipmentSet.armor.hp}]${hpAddon}`;
+    document.getElementById('ui-hp-det').innerText = `[${userBaseHealthMax} + ${userEquipmentSet.armor.hp}] x ${hpMult}`;
     document.getElementById('ui-crit-val').innerText = userCritRate.toFixed(1);
     document.getElementById('ui-dex-val').innerText = userDexterity.toFixed(1);
     document.getElementById('ui-talent-tag').innerText = userActiveTalent ? "✨ 覺醒天賦：" + userActiveTalent : "";
@@ -349,136 +446,190 @@ function refreshVisuals() {
         document.getElementById('ui-m-hp-bar').style.width = (activeMob.hp / activeMob.mHp * 100) + "%";
     }
 
-    // 突破面板
+    // 突破面板顯示 (保留)
     document.getElementById('ui-break-box').style.display = (userRealmTitle === "練氣期" && userCurrentLevel === 10 && userCurrentExp >= nextExp) ? "block" : "none";
 
-    // 儲物袋
-    let bagH = "";
-    for (let k in userInventoryMap) if(userInventoryMap[k]>0) bagH += `<div class="res-pill" style="border-radius:10px;">${k} x${userInventoryMap[k]}</div>`;
-    document.getElementById('ui-bag-grid').innerHTML = bagH || "<small>儲物袋空空如也</small>";
+    // 儲物袋渲染 (補回靈性描述懸浮概念)
+    let bagHtml = "";
+    for (let item in userInventoryMap) {
+        if (userInventoryMap[item] > 0) {
+            bagHtml += `<div class="res-pill" style="border-radius:10px; cursor:help;" title="來自歷練的素材"> ${item} x${userInventoryMap[item]}</div>`;
+        }
+    }
+    document.getElementById('ui-bag-grid').innerHTML = bagHtml || "<small style='color:#555'>儲物袋空空如也...</small>";
 
-    // 裝備清單
-    document.getElementById('ui-equip-list').innerHTML = `🗡️ 武器：${userEquipmentSet.weapon.name} (攻擊 +${userEquipmentSet.weapon.atk})<br>🛡️ 防具：${userEquipmentSet.armor.name} (血量 +${userEquipmentSet.armor.hp})`;
-
-    renderMapNodes();
+    document.getElementById('ui-equip-list').innerHTML = `
+        <div style="margin-bottom:10px">
+            <b style="color:var(--color-primary)">🗡️ 武器：${userEquipmentSet.weapon.name}</b> (+${userEquipmentSet.weapon.atk} 攻擊)<br>
+            <i style="font-size:11px; color:#8b949e;">「${userEquipmentSet.weapon.desc}」</i>
+        </div>
+        <div>
+            <b style="color:var(--color-primary)">🛡️ 防具：${userEquipmentSet.armor.name}</b> (+${userEquipmentSet.armor.hp} 血量)<br>
+            <i style="font-size:11px; color:#8b949e;">「${userEquipmentSet.armor.desc}」</i>
+        </div>
+    `;
 }
 
-function performAttack() {
+// --- 戰鬥邏輯 (境界威壓 + 隨機文案) ---
+function performAttack(e) {
+    createRipple(e);
     if (!activeMob) spawnNewMob();
-    let finalAtk = userBaseAttack + userEquipmentSet.weapon.atk;
-    if (userActiveTalent === "劍道宗師") finalAtk = Math.floor(finalAtk * 1.3);
 
-    // 補回：V1.6.2 境界威壓
-    let diff = activeMob.lv - userCurrentLevel;
-    let penalty = diff > 0 ? diff * 6 : 0;
+    let finalAtk = userBaseAttack + userEquipmentSet.weapon.atk;
+    if (userActiveTalent === "劍道宗師") finalAtk = Math.floor(finalAtk * 1.35);
+
+    // 威壓計算
+    let levelDiff = activeMob.lv - userCurrentLevel;
+    let missChance = levelDiff > 0 ? levelDiff * 7 : 0;
     
-    // 玩家回合
-    if (Math.random() * 100 > penalty) {
-        let dmg = Math.floor(finalAtk * (0.8 + Math.random() * 0.4));
-        if (Math.random() * 100 < (userCritRate - penalty)) {
-            dmg *= 2; addGameLog(`💥 暴擊！你施展神通，造成 ${dmg} 點鉅額傷害！`, "crit");
-        } else {
-            addGameLog(`⚔️ 你揮劍斬擊，造成 ${dmg} 點傷害。`);
-        }
+    // 玩家攻擊
+    if (Math.random() * 100 > missChance) {
+        let dmg = Math.floor(finalAtk * (0.85 + Math.random() * 0.3));
+        let isCrit = Math.random() * 100 < (userCritRate - missChance);
+        if (isCrit) dmg *= 2;
+
         activeMob.hp -= dmg;
+        createFloatText(e.clientX, e.clientY, isCrit ? `💥 ${dmg}` : `⚔️ ${dmg}`, isCrit ? varName('--color-gold') : '#fff');
+        
+        if (isCrit) addGameLog(`💥 暴擊！你引動天地靈氣，對 ${activeMob.name} 造成 ${dmg} 點傷害。`, "crit");
+        else addGameLog(`⚔️ 你施展本命神通，斬中 ${activeMob.name}，造成 ${dmg} 傷害。`);
     } else {
-        addGameLog(`💨 威壓！你的法術被 ${activeMob.name} 的氣勢震散了。`, "dmg");
+        addGameLog(`💨 威壓！由於境界差距，你的攻擊被 ${activeMob.name} 輕易躲開。`, "dmg");
     }
 
-    // 怪反擊
+    // 怪物反擊
     if (activeMob.hp > 0) {
         if (Math.random() * 100 > userDexterity) {
-            let mDmg = Math.ceil(activeMob.atk * (0.9 + Math.random() * 0.3));
-            userCurrentHp -= mDmg; addGameLog(`🩸 你閃避不及，受到 ${mDmg} 點反噬傷害。`, "dmg");
+            let mDmg = Math.ceil(activeMob.atk * (0.9 + Math.random() * 0.2));
+            userCurrentHp -= mDmg;
+            addGameLog(`🩸 ${activeMob.name} 反擊！你受到了 ${mDmg} 點反噬傷害。`, "dmg");
         } else {
-            addGameLog(`💨 你身法靈動，毫髮無傷地閃過了攻擊。`);
+            addGameLog(`💨 你身法如魅，驚險躲過了 ${activeMob.name} 的致命一擊。`);
         }
     }
 
-    checkBattleResult();
+    checkBattleOutcome();
 }
 
-function checkBattleResult() {
+function checkBattleOutcome() {
     let fHp = userBaseHealthMax + userEquipmentSet.armor.hp;
-    if (userActiveTalent === "不滅金身") fHp = Math.floor(fHp * 1.3);
+    if (userActiveTalent === "不滅金身") fHp = Math.floor(fHp * 1.4);
 
     if (userCurrentHp <= 0) {
-        userCurrentHp = Math.floor(fHp * 0.4);
-        addGameLog("💔 神魂受損！你被迫逃離戰場，回歸宗門療傷。", "dmg");
+        userCurrentHp = Math.floor(fHp * 0.3);
+        addGameLog("💔 鬥法失敗，神魂受創！你被迫遁回宗門修養。", "dmg");
         tabTo(1, document.querySelectorAll('.nav-link')[0]);
     } else if (activeMob.hp <= 0) {
-        addGameLog(`✅ 成功擊殺 ${activeMob.name}！獲得經驗 ${activeMob.exp}。`, "crit");
+        // 隨機擊殺文案 (補回)
+        const killTexts = [
+            `✅ 劍起雲湧，${activeMob.name} 化作劫灰！`,
+            `✅ 一掌拍碎，${activeMob.name} 灰飛煙滅！`,
+            `✅ 你收起神通，${activeMob.name} 應聲倒地。`
+        ];
+        addGameLog(killTexts[Math.floor(Math.random()*killTexts.length)], "crit");
+        
         userCurrentExp += activeMob.exp;
         userInventoryMap[activeMob.drop] = (userInventoryMap[activeMob.drop] || 0) + 1;
-        checkLvUp();
+        checkLevelUp();
         spawnNewMob();
     }
 }
 
-function triggerBreakthrough() {
-    if (userStoneBalance < 50) return addGameLog("❌ 靈石不足，無法維繫突破法陣。");
-    userStoneBalance -= 50;
-    if (Math.random() * 100 < 40) {
-        userRealmTitle = "築基期"; userCurrentLevel = 1; userCurrentExp = 0; userPotentialPts += 30;
-        let tals = ["劍道宗師", "不滅金身", "氣運之子"];
-        userActiveTalent = tals[Math.floor(Math.random() * tals.length)];
-        addGameLog(`🎊 【天道眷顧】你成功築基，覺醒天賦：${userActiveTalent}！`, "crit");
-        userCurrentHp = userBaseHealthMax + userEquipmentSet.armor.hp;
+// --- 宗門弟子招募 (新增) ---
+function recruitDisciple(e) {
+    createRipple(e);
+    let cost = 10 + (userDiscipleCount * 5);
+    if (userStoneBalance >= cost && userDiscipleCount < 10) {
+        userStoneBalance -= cost;
+        userDiscipleCount++;
+        addGameLog(`👥 廣納賢才！一名散修仰慕宗主威名，加入宗門。`, "sys");
+    } else if (userDiscipleCount >= 10) {
+        addGameLog("❌ 宗門目前規模有限，弟子已達上限。");
     } else {
-        userCurrentLevel = 9; userCurrentExp = 0;
-        addGameLog("💀 【雷劫入體】突破失敗！修為跌落回練氣 9 層...", "dmg");
+        addGameLog("❌ 靈石不足，無法維繫招募大陣。");
     }
 }
 
-function checkLvUp() {
-    let req = userCurrentLevel * 200;
+// --- 煉器爐 (補回靈氣描述) ---
+function craftEquipment(e) {
+    createRipple(e);
+    let totalMaterials = 0;
+    for (let k in userInventoryMap) totalMaterials += userInventoryMap[k];
+
+    if (totalMaterials >= 5 && userStoneBalance >= 15) {
+        userStoneBalance -= 15;
+        let consumed = 0;
+        for (let k in userInventoryMap) {
+            let take = Math.min(userInventoryMap[k], 5 - consumed);
+            userInventoryMap[k] -= take;
+            consumed += take;
+            if (consumed >= 5) break;
+        }
+
+        if (Math.random() > 0.5) {
+            userEquipmentSet.weapon = { 
+                name: "玄青靈劍", 
+                atk: 30 + userCurrentLevel * 10,
+                desc: "劍身流轉著青色霞光，隱隱能聽到劍鳴之聲。" 
+            };
+            addGameLog("🔮 【大吉】乾坤爐內霞光萬丈，煉製出高品質攻擊法寶！", "crit");
+        } else {
+            userEquipmentSet.armor = { 
+                name: "八卦紫金衣", 
+                hp: 200 + userCurrentLevel * 120,
+                desc: "紫金色澤，水火不侵，隱隱有天道氣息護佑。" 
+            };
+            addGameLog("🔮 【大吉】丹火通明，煉製出高品質防禦法寶！", "crit");
+        }
+    } else {
+        addGameLog("❌ 素材或靈石不足，無法開啟爐火。");
+    }
+}
+
+// --- 雷劫突破 (保留回退邏輯) ---
+function triggerBreakthrough(e) {
+    createRipple(e);
+    if (userStoneBalance < 50) return addGameLog("❌ 靈石不足，不足以對抗雷劫之威。");
+    userStoneBalance -= 50;
+
+    if (Math.random() * 100 < 40) {
+        userRealmTitle = "築基期";
+        userCurrentLevel = 1;
+        userCurrentExp = 0;
+        userPotentialPts += 30;
+        let talents = ["劍道宗師", "不滅金身", "氣運之子"];
+        userActiveTalent = talents[Math.floor(Math.random() * talents.length)];
+        addGameLog(`🎊 【天道眷顧】你成功築基，覺醒天賦：${userActiveTalent}！`, "crit");
+    } else {
+        userCurrentLevel = 9;
+        userCurrentExp = 0;
+        addGameLog("💀 【雷劫入體】突破失敗！經脈受損，修為跌落回 9 層...", "dmg");
+    }
+}
+
+// --- 核心系統函數 ---
+function checkLevelUp() {
+    let req = userCurrentLevel * 220;
     if (userCurrentExp >= req && (userRealmTitle === "築基期" || userCurrentLevel < 10)) {
-        userCurrentExp -= req; userCurrentLevel++; userPotentialPts += 5;
-        let fHp = userBaseHealthMax + userEquipmentSet.armor.hp;
-        userCurrentHp = (userActiveTalent === "不滅金身") ? Math.floor(fHp * 1.3) : fHp;
-        addGameLog(`🌟 修為更進一步！晉升至第 ${userCurrentLevel} 層。`, "crit");
+        userCurrentExp -= req;
+        userCurrentLevel++;
+        userPotentialPts += 6;
+        addGameLog(`🌟 突破！你修為更進一步，晉升至第 ${userCurrentLevel} 層。`, "crit");
     }
 }
 
-function upgradeStat(t) {
+function upgradeStat(t, e) {
+    createRipple(e);
     if (userPotentialPts <= 0) return;
     if (t === 'atk') {
-        userBaseAttack += 7;
-        userCritRate = Math.min(50, userCritRate + (50 - userCritRate) * 0.04);
+        userBaseAttack += 8;
+        userCritRate = Math.min(60, userCritRate + (60 - userCritRate) * 0.05);
     } else {
-        userBaseHealthMax += 150;
-        userDexterity = Math.min(75, userDexterity + (75 - userDexterity) * 0.04);
+        userBaseHealthMax += 180;
+        userDexterity = Math.min(80, userDexterity + (80 - userDexterity) * 0.05);
     }
     userPotentialPts--;
-    addGameLog("🧘 閉關感悟，神魂強度提升了。");
-}
-
-function renderMapNodes() {
-    let h = "";
-    WORLD_DATABASE.forEach((m, i) => {
-        let lock = userRealmTitle === "練氣期" && userCurrentLevel < m.lv;
-        h += `<div class="stellar-item" style="min-width:115px; opacity:${lock ? 0.4 : 1}; border-color:${currentMapIdx === i ? 'var(--color-primary)' : ''}" 
-                   onclick="${lock ? `addGameLog('🔒 需要練氣 ${m.lv} 層方可進入。')` : `currentMapIdx=${i};spawnNewMob();addGameLog('抵達：'+'${m.name}')`}">
-                <span style="color:#fff; font-weight:bold">${m.name}</span><br>
-                <small>${lock ? '修為不足' : m.mob}</small>
-            </div>`;
-    });
-    document.getElementById('map-node-list').innerHTML = h;
-}
-
-function craftEquipment() {
-    let totalMat = 0; for(let k in userInventoryMap) totalMat += userInventoryMap[k];
-    if (totalMat >= 5 && userStoneBalance >= 15) {
-        userStoneBalance -= 15; let c = 0;
-        for(let k in userInventoryMap){ let t = Math.min(userInventoryMap[k], 5-c); userInventoryMap[k]-=t; c+=t; if(c>=5) break; }
-        if (Math.random() > 0.5) {
-            userEquipmentSet.weapon = { name: "玄青靈劍", atk: 25 + userCurrentLevel * 12 };
-            addGameLog("🔮 【大吉】煉製出高品質攻擊法寶！", "crit");
-        } else {
-            userEquipmentSet.armor = { name: "八卦紫金衣", hp: 180 + userCurrentLevel * 150 };
-            addGameLog("🔮 【大吉】煉製出高品質防禦法寶！", "crit");
-        }
-    } else addGameLog("❌ 資源不足，無法啟動爐火。");
+    addGameLog("🧘 閉關感悟，你對天地大道的領悟加深了。");
 }
 
 function spawnNewMob() {
@@ -486,41 +637,118 @@ function spawnNewMob() {
     activeMob = { name: d.mob, hp: d.hp, mHp: d.hp, atk: d.atk, exp: d.exp, drop: d.drop, lv: d.lv };
 }
 
-function startGathering(t) { if (!currentWorkType) { currentWorkType = t; workProgressVal = 0; } }
-
-function tabTo(p, el) {
-    document.querySelectorAll('.page-content').forEach(v => v.classList.remove('active'));
-    document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
-    const ids = ["sect", "map", "stat", "bag"];
-    document.getElementById('view-' + ids[p - 1]).classList.add('active');
-    el.classList.add('active');
-}
-
-function addGameLog(m, type) {
-    let box = document.getElementById('log-scroll');
-    let div = document.createElement('div');
-    div.className = "log-row" + (type ? " log-" + type : "");
-    div.innerText = "> " + m;
-    box.prepend(div);
-    if (box.children.length > 30) box.lastChild.remove();
-}
-
-function saveProfile() {
-    const data = { wood: userWoodBalance, stone: userStoneBalance, realm: userRealmTitle, lv: userCurrentLevel, exp: userCurrentExp, pts: userPotentialPts, atk: userBaseAttack, hp: userBaseHealthMax, crit: userCritRate, dex: userDexterity, talent: userActiveTalent, inv: userInventoryMap, eq: userEquipmentSet, map: currentMapIdx };
-    localStorage.setItem('XianPro_V163', JSON.stringify(data));
-}
-
-function loadProfile() {
-    let r = localStorage.getItem('XianPro_V163');
-    if (r) {
-        let p = JSON.parse(r);
-        Object.assign(window, { userWoodBalance: p.wood, userStoneBalance: p.stone, userRealmTitle: p.realm, userCurrentLevel: p.lv, userCurrentExp: p.exp, userPotentialPts: p.pts, userBaseAttack: p.atk, userBaseHealthMax: p.hp, userCritRate: p.crit, userDexterity: p.dex, userActiveTalent: p.talent, userInventoryMap: p.inv, userEquipmentSet: p.eq, currentMapIdx: p.map });
-        userCurrentHp = userBaseHealthMax + userEquipmentSet.armor.hp;
+function startGathering(t, e) {
+    if (!currentWorkType) {
+        createRipple(e);
+        currentWorkType = t;
+        workProgressVal = 0;
+        createFloatText(e.clientX, e.clientY, "⚡ 運轉功法", varName('--color-primary'));
     }
 }
 
-initXianMaster();
-setInterval(saveProfile, 5000);
+function renderMapNodes() {
+    let h = "";
+    WORLD_DATABASE.forEach((m, i) => {
+        let isLocked = userRealmTitle === "練氣期" && userCurrentLevel < m.lv;
+        h += `<div class="stellar-item" style="min-width:130px; opacity:${isLocked ? 0.4 : 1}; border-color:${currentMapIdx === i ? 'var(--color-primary)' : ''}" 
+                   onclick="${isLocked ? `addGameLog('🔒 境界不足，無法承受此地靈壓。')` : `currentMapIdx=${i};spawnNewMob();addGameLog('抵達：'+'${m.name}')`}">
+                <span style="color:#fff; font-weight:bold; font-size:14px;">${m.name}</span><br>
+                <small style="color:${isLocked ? '#f85149' : '#55efc4'}">${isLocked ? '修為不足' : m.mob}</small>
+            </div>`;
+    });
+    document.getElementById('map-node-list').innerHTML = h;
+}
+
+// --- 視覺與特效輔助 ---
+function createRipple(e) {
+    if (!e) return;
+    let card = e.currentTarget;
+    let ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    let rect = card.getBoundingClientRect();
+    let x = e.clientX - rect.left;
+    let y = e.clientY - rect.top;
+    ripple.style.left = x + 'px';
+    ripple.style.top = y + 'px';
+    card.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 600);
+}
+
+function createGlobalRipple(e) {
+    // 讓背景偶爾也能有靈力波動
+    if (e.target === document.body) {
+        let ripple = document.createElement('span');
+        ripple.className = 'ripple';
+        ripple.style.left = e.clientX + 'px';
+        ripple.style.top = e.clientY + 'px';
+        document.body.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 600);
+    }
+}
+
+function createFloatText(x, y, text, color) {
+    let el = document.createElement('div');
+    el.className = 'float-text';
+    el.innerText = text;
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.color = color;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 800);
+}
+
+function varName(name) { return getComputedStyle(document.documentElement).getPropertyValue(name); }
+
+function tabTo(p, el, e) {
+    if(e) createRipple(e);
+    document.querySelectorAll('.page-content').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+    const pageIds = ["sect", "map", "stat", "bag"];
+    document.getElementById('view-' + pageIds[p - 1]).classList.add('active');
+    el.classList.add('active');
+    document.getElementById('scroll-target').scrollTop = 0;
+}
+
+function addGameLog(message, type) {
+    let box = document.getElementById('log-scroll');
+    let div = document.createElement('div');
+    div.className = "log-row" + (type ? " log-" + type : "");
+    div.innerText = "◈ " + message;
+    box.prepend(div);
+    if (box.children.length > 35) box.lastChild.remove();
+}
+
+function saveGameData() {
+    const data = { wood: userWoodBalance, stone: userStoneBalance, disciples: userDiscipleCount, realm: userRealmTitle, lv: userCurrentLevel, exp: userCurrentExp, pts: userPotentialPts, atk: userBaseAttack, hp: userBaseHealthMax, crit: userCritRate, dex: userDexterity, talent: userActiveTalent, inv: userInventoryMap, eq: userEquipmentSet, map: currentMapIdx };
+    localStorage.setItem('XianPro_Ultimate_V163', JSON.stringify(data));
+}
+
+function loadGameData() {
+    let saved = localStorage.getItem('XianPro_Ultimate_V163');
+    if (saved) {
+        let p = JSON.parse(saved);
+        userWoodBalance = p.wood || 0;
+        userStoneBalance = p.stone || 0;
+        userDiscipleCount = p.disciples || 0;
+        userRealmTitle = p.realm || "練氣期";
+        userCurrentLevel = p.lv || 1;
+        userCurrentExp = p.exp || 0;
+        userPotentialPts = p.pts || 0;
+        userBaseAttack = p.atk || 10;
+        userBaseHealthMax = p.hp || 100;
+        userCritRate = p.crit || 5;
+        userDexterity = p.dex || 5;
+        userActiveTalent = p.talent || null;
+        userInventoryMap = p.inv || {};
+        userEquipmentSet = p.eq || userEquipmentSet;
+        currentMapIdx = p.map || 0;
+        userCurrentHp = userBaseHealthMax + (userEquipmentSet.armor.hp || 0);
+    }
+}
+
+// 啟動
+window.onload = initGame;
+setInterval(saveGameData, 10000);
 </script>
 </body>
 </html>
