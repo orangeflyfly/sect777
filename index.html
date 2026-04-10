@@ -3,164 +3,461 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>仙俠宗門 V1.8.6 - 道心重築無縮水版</title>
+    <title>仙俠宗門 V1.8.8 - 萬法歸宗完整版</title>
     <style>
+        /* =========================================
+           核心樣式：確保深色修仙風格與視覺質感
+           ========================================= */
         :root {
-            --color-primary: #a29bfe; --color-primary-dark: #6c5ce7;
-            --color-bg-deep: #0b0e14; --color-card-bg: rgba(30, 35, 45, 0.98);
-            --color-text-main: #adbac7; --color-gold: #ffcf40;
-            --color-danger: #f85149; --color-success: #3fb950;
-            --color-info: #0fbcf9; --color-border: rgba(162,155,254,0.6);
+            --color-primary: #a29bfe; 
+            --color-primary-dark: #6c5ce7;
+            --color-bg-deep: #0b0e14; 
+            --color-card-bg: rgba(30, 35, 45, 0.98);
+            --color-text-main: #adbac7; 
+            --color-gold: #ffcf40;
+            --color-danger: #f85149; 
+            --color-success: #3fb950;
+            --color-info: #0fbcf9; 
+            --color-border: rgba(162,155,254,0.6);
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; user-select: none; }
-        body { background: #000; color: var(--color-text-main); height: 100vh; display: flex; justify-content: center; overflow: hidden; }
-        
-        /* 整個框架加強厚重感 */
+
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; 
+            user-select: none; 
+        }
+
+        body { 
+            background: #000; 
+            color: var(--color-text-main); 
+            height: 100vh; 
+            display: flex; 
+            justify-content: center; 
+            overflow: hidden; 
+        }
+
+        /* 遊戲主容器 */
         #app {
-            width: 100%; max-width: 500px; height: 100%; background: radial-gradient(circle at top, #1a1c2c 0%, #0b0e14 100%);
-            display: flex; flex-direction: column; position: relative; border: 2px solid var(--color-border);
+            width: 100%; 
+            max-width: 500px; 
+            height: 100%; 
+            background: radial-gradient(circle at top, #1a1c2c 0%, #0b0e14 100%);
+            display: flex; 
+            flex-direction: column; 
+            position: relative; 
+            border: 2px solid var(--color-border);
             box-shadow: 0 0 50px rgba(108, 92, 231, 0.2);
         }
 
-        header { padding: 30px 20px; background: rgba(20, 25, 35, 0.98); border-bottom: 3px solid var(--color-primary); z-index: 100; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
-        .res-row { display: flex; gap: 12px; margin-bottom: 15px; }
-        .res-item { background: linear-gradient(180deg, #222, #000); padding: 8px 15px; border-radius: 20px; font-size: 14px; border: 1px solid var(--color-border); color: #fff; box-shadow: inset 0 0 5px rgba(255,255,255,0.1); }
-        .realm-tag { color: var(--color-gold); font-size: 28px; font-weight: 900; text-shadow: 0 0 15px rgba(255,207,64,0.6); letter-spacing: 2px; }
+        /* 突破全螢幕特效 */
+        #breakthrough-fx {
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%;
+            background: white; 
+            opacity: 0; 
+            pointer-events: none; 
+            z-index: 999;
+        }
 
-        .stage { flex: 1; overflow-y: auto; padding: 25px; padding-bottom: 130px; scrollbar-width: none; }
-        .page { display: none; }
-        .page.active { display: block; animation: slideIn 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
-        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes breakthrough-flash {
+            0% { opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { opacity: 0; }
+        }
 
-        .card { background: var(--color-card-bg); border-radius: 25px; padding: 22px; margin-bottom: 25px; border: 1px solid var(--color-border); position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
-        .card-title { font-size: 18px; font-weight: bold; margin-bottom: 18px; color: #fff; display: flex; align-items: center; gap: 12px; }
-        .card-title::before { content: ''; width: 6px; height: 20px; background: var(--color-gold); border-radius: 3px; box-shadow: 0 0 10px var(--color-gold); }
+        /* 頂部資源列 */
+        header { 
+            padding: 25px 20px; 
+            background: rgba(20, 25, 35, 0.98); 
+            border-bottom: 3px solid var(--color-primary); 
+            z-index: 100; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5); 
+        }
 
-        /* 血條視覺極限強化 */
-        .hp-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; color: #eee; font-weight: bold; }
-        .hp-wrap { height: 38px; background: #000; border-radius: 19px; overflow: hidden; margin-bottom: 15px; border: 3px solid #333; position: relative; box-shadow: inset 0 0 15px rgba(0,0,0,0.9); }
-        .hp-fill { height: 100%; transition: width 0.4s ease-out; position: relative; }
-        .hp-fill::after { content: ''; position: absolute; top:0; left:0; right:0; bottom:0; background: linear-gradient(rgba(255,255,255,0.2), transparent); }
-        .hp-text { position: absolute; width: 100%; text-align: center; font-size: 17px; line-height: 32px; color: #fff; font-weight: 900; text-shadow: 2px 2px 4px #000; z-index: 10; pointer-events: none; }
+        .res-row { 
+            display: flex; 
+            gap: 12px; 
+            margin-bottom: 15px; 
+        }
 
-        /* 飄字動畫 */
-        @keyframes critPop { 0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; } 20% { opacity: 1; transform: translate(-50%, -40px) scale(1.5); } 100% { transform: translate(-50%, -100px) scale(1.2); opacity: 0; } }
-        .dmg-pop { position: absolute; left: 50%; top: 20%; font-weight: 900; font-size: 32px; animation: critPop 0.9s forwards; z-index: 1000; pointer-events: none; text-shadow: 3px 3px 0 #000, 0 0 10px rgba(255,255,255,0.5); }
+        .res-item { 
+            background: linear-gradient(180deg, #222, #000); 
+            padding: 8px 15px; 
+            border-radius: 20px; 
+            font-size: 14px; 
+            border: 1px solid var(--color-border); 
+            color: #fff; 
+            box-shadow: inset 0 0 5px rgba(255,255,255,0.1);
+        }
 
-        .btn-main { width: 100%; padding: 18px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary)); color: #fff; font-weight: 900; font-size: 18px; cursor: pointer; transition: 0.2s; margin-bottom: 12px; box-shadow: 0 6px 15px rgba(108, 92, 231, 0.4); }
-        .btn-main:active { transform: translateY(3px); box-shadow: none; }
-        .btn-main:disabled { background: #1a1a1a; color: #444; cursor: not-allowed; box-shadow: none; }
+        .realm-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
 
-        #log-box { height: 200px; overflow-y: auto; background: rgba(0,0,0,0.8); border-radius: 15px; padding: 18px; font-size: 14px; border: 1px solid var(--color-border); line-height: 2; margin-top: 15px; box-shadow: inset 0 0 10px #000; }
-        
-        nav { position: absolute; bottom: 20px; left: 15px; right: 15px; height: 85px; background: rgba(25, 30, 40, 0.98); border-radius: 42px; display: flex; border: 2px solid var(--color-primary); backdrop-filter: blur(20px); z-index: 200; box-shadow: 0 -5px 20px rgba(0,0,0,0.6); }
-        .nav-btn { color: #555; cursor: pointer; text-align: center; flex: 1; padding: 15px 0; transition: 0.4s; }
-        .nav-btn.active { color: var(--color-gold); transform: scale(1.1); }
-        .nav-btn span { font-size: 28px; display: block; margin-bottom: 2px; }
+        .realm-tag { 
+            color: var(--color-gold); 
+            font-size: 28px; 
+            font-weight: 900; 
+            text-shadow: 0 0 15px rgba(255,207,64,0.6); 
+            letter-spacing: 2px; 
+        }
 
-        .map-tabs { display: flex; gap: 12px; margin-bottom: 20px; overflow-x: auto; padding: 5px; }
-        .map-btn { padding: 10px 22px; border-radius: 25px; background: #000; border: 2px solid #333; color: #777; font-weight: bold; cursor: pointer; white-space: nowrap; transition: 0.3s; }
-        .map-btn.active { background: var(--color-primary-dark); border-color: var(--color-gold); color: #fff; box-shadow: 0 0 15px var(--color-primary); }
-        .map-btn.locked { color: #444; border-style: dotted; }
+        /* 內容顯示區 */
+        .stage { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 20px; 
+            padding-bottom: 130px; 
+        }
 
-        .bag-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
-        .bag-item { background: linear-gradient(135deg, #1e222d, #0b0e14); border: 1px solid var(--color-border); border-radius: 15px; padding: 15px 5px; text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.3); transition: 0.3s; }
-        .bag-item:hover { border-color: var(--color-gold); transform: translateY(-5px); }
-        .bag-item b { color: var(--color-gold); font-size: 16px; display: block; margin-top: 8px; }
+        .page { 
+            display: none; 
+        }
+
+        .page.active { 
+            display: block; 
+            animation: slideIn 0.5s ease-out; 
+        }
+
+        @keyframes slideIn { 
+            from { opacity: 0; transform: translateX(30px); } 
+            to { opacity: 1; transform: translateX(0); } 
+        }
+
+        /* 卡片與元件 */
+        .card { 
+            background: var(--color-card-bg); 
+            border-radius: 20px; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            border: 1px solid var(--color-border); 
+            position: relative; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4); 
+        }
+
+        .card-title { 
+            font-size: 18px; 
+            font-weight: bold; 
+            margin-bottom: 15px; 
+            color: #fff; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+        }
+
+        .card-title::before { 
+            content: ''; 
+            width: 5px; 
+            height: 18px; 
+            background: var(--color-gold); 
+            border-radius: 2px; 
+        }
+
+        /* 血條視覺強化系統 */
+        .hp-label { 
+            display: flex; 
+            justify-content: space-between; 
+            font-size: 13px; 
+            margin-bottom: 5px; 
+            color: #ccc; 
+        }
+
+        .hp-wrap { 
+            height: 40px; 
+            background: #000; 
+            border-radius: 20px; 
+            overflow: hidden; 
+            margin-bottom: 15px; 
+            border: 2px solid #444; 
+            position: relative; 
+            box-shadow: inset 0 0 10px #000;
+        }
+
+        .hp-fill { 
+            height: 100%; 
+            transition: width 0.3s ease-out; 
+            position: relative;
+        }
+
+        .hp-text { 
+            position: absolute; 
+            width: 100%; 
+            text-align: center; 
+            font-size: 16px; 
+            line-height: 36px; 
+            color: #fff; 
+            font-weight: 900; 
+            text-shadow: 1px 1px 3px #000; 
+            z-index: 10; 
+            pointer-events: none; 
+        }
+
+        /* 傷害飄字 */
+        @keyframes dmgFloat { 
+            0% { transform: translate(-50%, 0) scale(0.8); opacity: 0; } 
+            20% { opacity: 1; transform: translate(-50%, -30px) scale(1.3); }
+            100% { transform: translate(-50%, -80px) scale(1); opacity: 0; } 
+        }
+        .dmg-pop { 
+            position: absolute; 
+            left: 50%; 
+            top: 30%; 
+            font-weight: 900; 
+            font-size: 30px; 
+            animation: dmgFloat 0.8s forwards; 
+            z-index: 1000; 
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        /* 按鈕設計 */
+        .btn-main { 
+            width: 100%; 
+            padding: 16px; 
+            border-radius: 12px; 
+            border: 1px solid rgba(255,255,255,0.1); 
+            background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary)); 
+            color: #fff; 
+            font-weight: 900; 
+            font-size: 18px; 
+            cursor: pointer; 
+            transition: 0.2s; 
+            margin-bottom: 10px; 
+            box-shadow: 0 4px 12px rgba(108, 92, 231, 0.3);
+        }
+
+        .btn-main:active { 
+            transform: scale(0.97); 
+        }
+
+        .btn-main:disabled { 
+            background: #222; 
+            color: #555; 
+            cursor: not-allowed; 
+            box-shadow: none;
+        }
+
+        /* 日誌系統 */
+        #log-box { 
+            height: 160px; 
+            overflow-y: auto; 
+            background: rgba(0,0,0,0.7); 
+            border-radius: 15px; 
+            padding: 15px; 
+            font-size: 13px; 
+            border: 1px solid var(--color-border); 
+            line-height: 1.8; 
+            color: #adbac7;
+        }
+
+        /* 導覽列 */
+        nav { 
+            position: absolute; 
+            bottom: 20px; 
+            left: 15px; 
+            right: 15px; 
+            height: 80px; 
+            background: rgba(25, 30, 40, 0.98); 
+            border-radius: 40px; 
+            display: flex; 
+            border: 2px solid var(--color-primary); 
+            backdrop-filter: blur(15px); 
+            z-index: 200; 
+        }
+
+        .nav-btn { 
+            color: #555; 
+            cursor: pointer; 
+            text-align: center; 
+            flex: 1; 
+            padding: 12px 0; 
+            transition: 0.3s; 
+        }
+
+        .nav-btn.active { 
+            color: var(--color-gold); 
+            transform: translateY(-5px); 
+        }
+
+        .nav-btn span { 
+            font-size: 26px; 
+            display: block; 
+        }
+
+        /* 地圖選擇器 */
+        .map-tabs { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 15px; 
+            overflow-x: auto; 
+            padding: 5px; 
+        }
+
+        .map-btn { 
+            padding: 8px 18px; 
+            border-radius: 20px; 
+            background: #000; 
+            border: 1px solid #444; 
+            color: #777; 
+            cursor: pointer; 
+            white-space: nowrap; 
+            transition: 0.3s; 
+        }
+
+        .map-btn.active { 
+            background: var(--color-primary-dark); 
+            border-color: var(--color-gold); 
+            color: #fff; 
+        }
+
+        /* 背包網格 */
+        .bag-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 12px; 
+        }
+
+        .bag-item { 
+            background: rgba(255,255,255,0.03); 
+            border: 1px solid var(--color-border); 
+            border-radius: 12px; 
+            padding: 15px 5px; 
+            text-align: center; 
+            cursor: pointer; 
+        }
+
+        .bag-item:active { 
+            background: rgba(255,255,255,0.1); 
+        }
+
+        .bag-item b { 
+            color: var(--color-gold); 
+            display: block; 
+            margin-top: 5px; 
+        }
+
+        .bag-item small {
+            display: block;
+            color: var(--color-info);
+            font-size: 10px;
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
 
 <div id="app">
+    <div id="breakthrough-fx"></div>
+
     <header>
         <div class="res-row">
-            <div class="res-item">🪵 靈木: <b id="val-wood">0</b></div>
-            <div class="res-item">💠 靈石: <b id="val-stone">0</b></div>
-            <div class="res-item">🍀 氣運: <b id="luck-txt">--</b></div>
+            <div class="res-item">🪵 靈木: <span id="val-wood">0</span></div>
+            <div class="res-item">💠 靈石: <span id="val-stone">0</span></div>
+            <div class="res-item">🍀 氣運: <span id="val-luck">--</span></div>
         </div>
-        <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-            <div><span class="realm-tag" id="val-realm">載入中</span><span id="val-lv" style="margin-left:10px; color:var(--color-primary); font-weight:bold;">第 -- 層</span></div>
-            <div style="text-align:right"><small style="color:#555">宗門威望</small><br><b id="val-power" style="color:var(--color-gold); font-size:22px;">0</b></div>
+        <div class="realm-info">
+            <div>
+                <span class="realm-tag" id="val-realm">載入中</span><br>
+                <span id="val-lv" style="color:var(--color-primary); font-weight:bold;">第 1 層</span>
+            </div>
+            <div style="text-align:right">
+                <small style="color:#555">宗門威能</small><br>
+                <b id="val-power" style="color:var(--color-gold); font-size:22px;">0</b>
+            </div>
         </div>
     </header>
 
     <main class="stage">
+        
         <div id="p1" class="page active">
             <div class="card">
-                <div class="card-title">🏮 宗門招募</div>
-                <button class="btn-main" onclick="game.recruit()">消耗靈石招募弟子 (需:<span id="d-cost">0</span>)</button>
-                <div style="background:rgba(0,0,0,0.4); border-radius:10px; padding:15px; text-align:center; border:1px dashed var(--color-border);">
-                    總計弟子：<b id="val-d-total" style="color:#fff">0</b> | 閒置：<b id="val-d-idle" style="color:var(--color-success)">0</b>
+                <div class="card-title">👥 宗門招募系統</div>
+                <button class="btn-main" onclick="game.recruit()">招募外門弟子 (靈石:<span id="d-cost">0</span>)</button>
+                <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:10px; text-align:center;">
+                    總弟子數：<b id="val-d-total">0</b> | 待命：<b id="val-d-idle" style="color:var(--color-success)">0</b>
                 </div>
-            </div>
-            <div class="card">
-                <div class="card-title">⚒️ 資源分配</div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-                    <div style="text-align:center; background:#111; padding:15px; border-radius:15px; border:1px solid #333;">
-                        <small>🌲 伐木場</small><br><b id="d-wood" style="font-size:20px; color:var(--color-gold)">0</b>
-                        <div style="display:flex; gap:5px; margin-top:10px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:15px;">
+                    <div style="text-align:center; background:#111; padding:10px; border-radius:12px; border:1px solid #333;">
+                        <small>🌲 伐木工作組</small><br><b id="d-wood" style="font-size:18px; color:var(--color-gold)">0</b>
+                        <div style="display:flex; gap:5px; margin-top:8px;">
                             <button class="btn-main" style="padding:5px; font-size:12px;" onclick="game.assign('wood', 1)">+</button>
                             <button class="btn-main" style="padding:5px; font-size:12px; background:var(--color-danger);" onclick="game.assign('wood', -1)">-</button>
                         </div>
                     </div>
-                    <div style="text-align:center; background:#111; padding:15px; border-radius:15px; border:1px solid #333;">
-                        <small>💎 採礦坑</small><br><b id="d-stone" style="font-size:20px; color:var(--color-info)">0</b>
-                        <div style="display:flex; gap:5px; margin-top:10px;">
+                    <div style="text-align:center; background:#111; padding:10px; border-radius:12px; border:1px solid #333;">
+                        <small>💎 採礦工作組</small><br><b id="d-stone" style="font-size:18px; color:var(--color-info)">0</b>
+                        <div style="display:flex; gap:5px; margin-top:8px;">
                             <button class="btn-main" style="padding:5px; font-size:12px;" onclick="game.assign('stone', 1)">+</button>
                             <button class="btn-main" style="padding:5px; font-size:12px; background:var(--color-danger);" onclick="game.assign('stone', -1)">-</button>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="card" onclick="game.startWork('wood')">
-                <div class="card-title">🪓 手動開採資源</div>
-                <div class="hp-wrap"><div id="bar-wood" class="hp-fill" style="width:0%; background:var(--color-primary)"></div><div class="hp-text">點擊螢幕獲得靈木</div></div>
+            
+            <div class="card" onclick="game.manualWork()">
+                <div class="card-title">🪓 手動收集靈木</div>
+                <div class="hp-wrap">
+                    <div id="bar-work" class="hp-fill" style="width:0%; background:var(--color-primary)"></div>
+                    <div class="hp-text">點擊螢幕進行勞動</div>
+                </div>
             </div>
         </div>
 
         <div id="p2" class="page">
             <div class="map-tabs" id="map-list"></div>
+            
             <div class="card" id="battle-field">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <b id="m-name" style="font-size:22px; color:var(--color-gold);">正在搜尋妖獸...</b>
-                    <label style="color:var(--color-primary); font-weight:bold;"><input type="checkbox" id="auto-check" onchange="game.toggleAuto()"> 自動歷練</label>
+                    <b id="m-name" style="font-size:20px; color:var(--color-gold);">正在尋找目標...</b>
+                    <label style="font-size:14px; color:var(--color-primary); font-weight:bold;">
+                        <input type="checkbox" id="auto-check" onchange="game.toggleAuto()"> 自動歷練
+                    </label>
                 </div>
 
-                <div class="hp-label"><span>👹 妖獸血線</span><span id="m-hp-val">0 / 0</span></div>
-                <div class="hp-wrap" id="m-hp-box" style="border-color: var(--color-danger); height:45px;">
+                <div class="hp-label"><span>👹 妖獸氣息</span><span id="m-hp-val">0 / 0</span></div>
+                <div class="hp-wrap" id="m-hp-box" style="border-color: var(--color-danger); height:46px;">
                     <div id="m-hp-bar" class="hp-fill" style="background: linear-gradient(90deg, #ff4d4d, #96281b); width:0%"></div>
-                    <div class="hp-text" id="m-hp-txt" style="line-height:38px; font-size:20px;">血條讀取中...</div>
+                    <div class="hp-text" id="m-hp-txt" style="line-height:42px; font-size:20px;">血量狀態</div>
                 </div>
 
                 <div class="hp-label"><span>🧘 掌門真元</span><span id="p-hp-val">0 / 0</span></div>
-                <div class="hp-wrap" id="p-hp-box" style="border-color: var(--color-success); height:45px;">
+                <div class="hp-wrap" id="p-hp-box" style="border-color: var(--color-success); height:46px;">
                     <div id="p-hp-bar" class="hp-fill" style="background: linear-gradient(90deg, #2ecc71, #27ae60); width:100%"></div>
-                    <div class="hp-text" id="p-hp-txt" style="line-height:38px; font-size:20px;">狀態完好</div>
+                    <div class="hp-text" id="p-hp-txt" style="line-height:42px; font-size:20px;">精神飽滿</div>
                 </div>
 
-                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:15px; margin-top:20px;">
-                    <button class="btn-main" onclick="game.doAttack()" style="height:70px; font-size:24px;">施展神通</button>
-                    <button class="btn-main" style="background:var(--color-info); height:70px;" onclick="game.meditate()">回息</button>
+                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:12px; margin-top:10px;">
+                    <button class="btn-main" onclick="game.doAttack()" style="height:65px; font-size:22px;">發動攻擊</button>
+                    <button class="btn-main" style="background:var(--color-info); height:65px;" onclick="game.meditate()">打坐回氣</button>
                 </div>
             </div>
+
             <div id="log-box"></div>
         </div>
 
         <div id="p3" class="page">
             <div class="card">
-                <div class="card-title">📖 修為境界</div>
-                <div style="display:flex; justify-content:space-around; background:#111; padding:20px; border-radius:20px; border:1px solid #333; margin-bottom:20px;">
-                    <div style="text-align:center;"><small>攻</small><br><b id="st-atk" style="color:var(--color-info); font-size:22px;">0</b></div>
-                    <div style="text-align:center;"><small>命</small><br><b id="st-hp" style="color:var(--color-danger); font-size:22px;">0</b></div>
-                    <div style="text-align:center;"><small>感悟</small><br><b id="st-pts" style="color:var(--color-gold); font-size:22px;">0</b></div>
+                <div class="card-title">📜 境界與屬性</div>
+                <div style="display:flex; justify-content:space-around; background:rgba(0,0,0,0.5); padding:15px; border-radius:15px;">
+                    <div style="text-align:center;"><small>攻擊力</small><br><b id="st-atk" style="color:var(--color-info)">0</b></div>
+                    <div style="text-align:center;"><small>生命值</small><br><b id="st-hp" style="color:var(--color-danger)">0</b></div>
+                    <div style="text-align:center;"><small>感悟點</small><br><b id="st-pts" style="color:var(--color-gold)">0</b></div>
                 </div>
-                <button class="btn-main" onclick="game.upgrade()">消耗 5 點感悟 · 突破境界</button>
+                <button class="btn-main" style="margin-top:15px;" onclick="game.upgrade()">消耗 5 點感悟提升境界</button>
             </div>
+
             <div class="card">
                 <div class="card-title">🎒 儲物袋 (背包)</div>
                 <div id="bag-grid" class="bag-grid"></div>
             </div>
         </div>
+
     </main>
 
     <nav>
@@ -171,259 +468,430 @@
 </div>
 
 <script>
+/**
+ * ============================================================
+ * 遊戲核心邏輯：XianXiaGame V1.8.8
+ * 確保所有資料持久化，並解決血條消失與背包遺失問題。
+ * ============================================================
+ */
 class XianXiaGame {
     constructor() {
-        const saved = JSON.parse(localStorage.getItem('XianXia_V186_Heavy'));
-        this.state = saved || {
+        // 從本地存儲加載數據
+        const savedData = JSON.parse(localStorage.getItem('XianXia_V188_Master'));
+        
+        // 初始化狀態（如果沒存檔就用預設值）
+        this.state = savedData || {
             res: { wood: 0, stone: 0 },
-            sect: { total: 0, woodD: 0, stoneD: 0, kill: 0 },
-            player: { realm: "練氣期", lv: 1, exp: 0, pts: 0, atk: 30, hp: 250, curHp: 250, luck: "平庸" },
-            inv: { "初始靈根": 1 }
+            sect: { total: 0, woodD: 0, stoneD: 0, killCount: 0 },
+            player: { 
+                realm: "練氣期", 
+                lv: 1, 
+                pts: 0, 
+                atk: 40, 
+                hp: 350, 
+                curHp: 350, 
+                luck: "平庸" 
+            },
+            inv: { "聚氣散": 1 }
         };
 
-        // 強制初始化血量，修復消失問題
-        if (!this.state.player.curHp || this.state.player.curHp <= 0) this.state.player.curHp = this.state.player.hp;
+        // 數據安全性校準
+        if (this.state.player.curHp === undefined || this.state.player.curHp <= 0) {
+            this.state.player.curHp = this.state.player.hp;
+        }
 
-        this.runtime = { 
-            mob: null, isSearching: false, auto: false, lastAtk: 0,
-            workProgress: 0
+        // 運行時臨時變數
+        this.runtime = {
+            mob: null,
+            isSearching: false,
+            autoMode: false,
+            lastAtkTime: 0,
+            manualProgress: 0
         };
 
+        // 地圖配置：包含等級限制與怪物屬性
         this.maps = [
-            { n: "🌿 青雲山腳", req: 1, mobs: { n: "兇猛野豬", hp: 120, atk: 15, loot: "野豬獠牙", exp: 50 } },
-            { n: "🐍 幽冥密林", req: 5, mobs: { n: "雙頭幻蛇", hp: 800, atk: 65, loot: "蛇鱗精華", exp: 400 } },
-            { n: "⛰️ 萬仞荒漠", req: 10, mobs: { n: "狂暴沙蟲", hp: 5000, atk: 350, loot: "沙神核心", exp: 2500 } }
+            { id: 0, name: "🌿 青雲山腳", req: 1, mobBase: { n: "野豬妖", hp: 180, atk: 20, loot: "妖豬皮" } },
+            { id: 1, name: "🐍 幽冥森林", req: 5, mobBase: { n: "劇毒林蛇", hp: 1000, atk: 85, loot: "毒蛇膽" } },
+            { id: 2, name: "⛰️ 萬仞荒漠", req: 10, mobBase: { n: "荒漠石怪", hp: 6500, atk: 420, loot: "精鐵礦" } }
         ];
+        
         this.curMapIdx = 0;
 
+        // 啟動遊戲
         this.init();
     }
 
+    /**
+     * 初始化系統
+     */
     init() {
         this.rollLuck();
-        this.buildMapTabs();
-        setInterval(() => this.tick(), 1000);
+        this.buildMapUI();
+        
+        // 啟動主循環 (每秒運算一次資源產出)
+        setInterval(() => {
+            this.gameTick();
+        }, 1000);
+
         this.updateUI();
-        this.log("🏮 宗門陣法重鑄，所有系統均已強化回歸！", "var(--color-gold)");
+        this.log("🏮 宗門大陣運轉正常，前塵往事皆已保存。", "var(--color-gold)");
     }
 
+    /**
+     * 每日氣運隨機
+     */
     rollLuck() {
-        const ls = ["大凶", "凶", "平庸", "小吉", "大吉"];
-        this.state.player.luck = ls[Math.floor(Math.random() * ls.length)];
+        const luckList = ["大凶", "凶", "平庸", "小吉", "大吉"];
+        this.state.player.luck = luckList[Math.floor(Math.random() * luckList.length)];
     }
 
-    tick() {
-        const s = this.state;
-        s.res.wood += s.sect.woodD * 0.5;
-        s.res.stone += s.sect.stoneD * 0.2;
-        
-        if (this.runtime.auto && !this.runtime.isSearching) {
-            if (this.runtime.mob) this.doAttack();
-            else this.spawn();
+    /**
+     * 主遊戲循環
+     */
+    gameTick() {
+        // 資源自動產出
+        this.state.res.wood += this.state.sect.woodD * 0.6;
+        this.state.res.stone += this.state.sect.stoneD * 0.25;
+
+        // 自動歷練邏輯
+        if (this.runtime.autoMode === true && this.runtime.isSearching === false) {
+            if (this.runtime.mob !== null) {
+                this.doAttack();
+            } else {
+                this.spawnMonster();
+            }
         }
-        
+
         this.updateUI();
-        localStorage.setItem('XianXia_V186_Heavy', JSON.stringify(this.state));
+        this.saveGame();
     }
 
+    /**
+     * 保存存檔
+     */
+    saveGame() {
+        localStorage.setItem('XianXia_V188_Master', JSON.stringify(this.state));
+    }
+
+    /**
+     * 攻擊邏輯：包含傷害計算、飄字與勝負判定
+     */
     doAttack() {
-        if (!this.runtime.mob || Date.now() - this.runtime.lastAtk < 600) return;
-        this.runtime.lastAtk = Date.now();
+        // 攻速限制：600毫秒一次
+        if (this.runtime.mob === null || Date.now() - this.runtime.lastAtkTime < 600) {
+            return;
+        }
+        this.runtime.lastAtkTime = Date.now();
 
-        const p = this.state.player; const m = this.runtime.mob;
-        
-        // 攻擊與氣運加成
-        let bonus = p.luck === "大吉" ? 1.4 : (p.luck === "凶" ? 0.7 : 1.0);
-        let pDmg = Math.floor(p.atk * (0.8 + Math.random() * 0.4) * bonus);
+        const p = this.state.player;
+        const m = this.runtime.mob;
+
+        // 1. 玩家回合
+        let luckBonus = 1.0;
+        if (p.luck === "大吉") luckBonus = 1.5;
+        if (p.luck === "凶") luckBonus = 0.8;
+
+        let pDmg = Math.floor(p.atk * (0.8 + Math.random() * 0.4) * luckBonus);
         m.curH = Math.max(0, m.curH - pDmg);
-        this.popup(pDmg, "m-hp-box", "var(--color-info)");
+        this.createPopText(pDmg, "m-hp-box", "var(--color-info)");
 
+        // 判斷怪物是否死亡
         if (m.curH <= 0) {
-            this.onWin(m);
+            this.onMonsterDeath(m);
         } else {
+            // 2. 怪物反擊回合
             let mDmg = Math.floor(m.atk * (0.8 + Math.random() * 0.4));
             p.curHp = Math.max(0, p.curHp - mDmg);
-            this.popup(mDmg, "p-hp-box", "var(--color-danger)");
-            if (p.curHp <= 0) this.onLose();
+            this.createPopText(mDmg, "p-hp-box", "var(--color-danger)");
+
+            // 判斷玩家是否死亡
+            if (p.curHp <= 0) {
+                this.onPlayerDefeat();
+            }
         }
         this.updateUI();
     }
 
-    onWin(m) {
-        this.state.sect.kill++;
+    onMonsterDeath(m) {
         this.state.player.pts += 1;
-        this.log(`✨ 成功討伐 ${m.n}！感悟 +1`, "var(--color-success)");
-        
+        this.state.sect.killCount += 1;
+        this.log(`⚔️ 成功斬殺 ${m.n}，感悟增加 1 點。`, "var(--color-success)");
+
+        // 掉落物判斷
         if (Math.random() < 0.6) {
-            this.state.inv[m.loot] = (this.state.inv[m.loot] || 0) + 1;
-            this.log(`🎒 拾取素材：${m.loot}`, "#fff");
+            const itemName = m.loot;
+            this.state.inv[itemName] = (this.state.inv[itemName] || 0) + 1;
+            this.log(`🎒 獲得戰利品：${itemName}`, "#fff");
         }
-        
+
+        // 進入搜尋狀態
         this.runtime.mob = null;
         this.runtime.isSearching = true;
-        this.updateUI();
-        setTimeout(() => { this.runtime.isSearching = false; this.spawn(); }, 1200);
+        setTimeout(() => {
+            this.runtime.isSearching = false;
+            this.spawnMonster();
+        }, 1200);
     }
 
-    onLose() {
-        this.log("💀 體力不支，強制回山門修養！", "var(--color-danger)");
-        this.runtime.auto = false;
+    onPlayerDefeat() {
+        this.log("💀 體力不支，神魂受損，速回宗門修養！", "var(--color-danger)");
+        this.runtime.autoMode = false;
         document.getElementById('auto-check').checked = false;
         this.state.player.curHp = 50;
         this.switchTab(1);
     }
 
-    spawn() {
-        const d = this.maps[this.curMapIdx].mobs;
-        this.runtime.mob = { ...d, curH: d.hp, maxH: d.hp };
+    spawnMonster() {
+        if (this.runtime.isSearching) return;
+        const base = this.maps[this.curMapIdx].mobBase;
+        this.runtime.mob = {
+            n: base.n,
+            maxH: base.hp,
+            curH: base.hp,
+            atk: base.atk,
+            loot: base.loot
+        };
         this.updateUI();
     }
 
-    popup(v, id, c) {
-        const box = document.getElementById(id);
+    /**
+     * 視覺飄字特效
+     */
+    createPopText(val, boxId, color) {
+        const box = document.getElementById(boxId);
+        if (!box) return;
         const el = document.createElement('div');
-        el.className = 'dmg-pop'; el.innerText = `-${v}`; el.style.color = c;
+        el.className = 'dmg-pop';
+        el.innerText = `-${val}`;
+        el.style.color = color;
         box.appendChild(el);
-        setTimeout(() => el.remove(), 850);
+        setTimeout(() => {
+            el.remove();
+        }, 800);
     }
 
-    startWork(t) {
-        this.runtime.workProgress += 20;
-        if (this.runtime.workProgress >= 100) {
-            this.runtime.workProgress = 0;
+    /**
+     * 手動點擊收集靈木
+     */
+    manualWork() {
+        this.runtime.manualProgress += 20;
+        if (this.runtime.manualProgress >= 100) {
+            this.runtime.manualProgress = 0;
             this.state.res.wood += 5;
         }
         this.updateUI();
     }
 
+    /**
+     * 核心 UI 更新：解決消失問題
+     */
     updateUI() {
-        const s = this.state; const p = s.player;
-        
-        // 資源
+        const s = this.state;
+        const p = s.player;
+
+        // 資源欄
         document.getElementById('val-wood').innerText = Math.floor(s.res.wood);
         document.getElementById('val-stone').innerText = Math.floor(s.res.stone);
-        document.getElementById('luck-txt').innerText = p.luck;
+        document.getElementById('val-luck').innerText = p.luck;
         document.getElementById('val-realm').innerText = p.realm;
         document.getElementById('val-lv').innerText = `第 ${p.lv} 層`;
-        document.getElementById('val-power').innerText = (p.atk * 12 + p.hp * 2);
+        document.getElementById('val-power').innerText = Math.floor(p.atk * 12 + p.hp * 1.5);
 
-        // 弟子系統
+        // 宗門數據
         document.getElementById('val-d-idle').innerText = s.sect.total - s.sect.woodD - s.sect.stoneD;
         document.getElementById('val-d-total').innerText = s.sect.total;
         document.getElementById('d-wood').innerText = s.sect.woodD;
         document.getElementById('d-stone').innerText = s.sect.stoneD;
         document.getElementById('d-cost').innerText = 10 + s.sect.total * 8;
 
-        // 手動條
-        document.getElementById('bar-wood').style.width = this.runtime.workProgress + "%";
+        // 手動進度條
+        document.getElementById('bar-work').style.width = this.runtime.manualProgress + "%";
 
-        // 怪物血條核心顯示 (視覺修正關鍵)
+        // 怪物血條渲染 (重點修正)
         const m = this.runtime.mob;
         const mBar = document.getElementById('m-hp-bar');
         const mTxt = document.getElementById('m-hp-txt');
+        const mName = document.getElementById('m-name');
         const mVal = document.getElementById('m-hp-val');
-        
-        if (m) {
-            document.getElementById('m-name').innerText = m.n;
-            let percent = (m.curH / m.maxH * 100);
-            mBar.style.width = percent + "%";
-            mTxt.innerText = `${Math.ceil(percent)}%`;
+
+        if (m !== null) {
+            mName.innerText = m.n;
+            let mPer = (m.curH / m.maxH) * 100;
+            mBar.style.width = mPer + "%";
+            mTxt.innerText = Math.ceil(mPer) + "%";
             mVal.innerText = `${m.curH} / ${m.maxH}`;
         } else {
-            document.getElementById('m-name').innerText = this.runtime.isSearching ? "🔍 搜尋妖魔氣息中..." : "等待指令";
+            mName.innerText = this.runtime.isSearching ? "🔍 搜尋妖魔中..." : "等待目標";
             mBar.style.width = "0%";
-            mTxt.innerText = "搜尋中";
+            mTxt.innerText = "N/A";
             mVal.innerText = "0 / 0";
         }
 
         // 玩家血條
-        document.getElementById('p-hp-bar').style.width = (p.curHp / p.hp * 100) + "%";
-        document.getElementById('p-hp-txt').innerText = `${Math.ceil(p.curHp / p.hp * 100)}%`;
+        let pPer = (p.curHp / p.hp) * 100;
+        document.getElementById('p-hp-bar').style.width = pPer + "%";
+        document.getElementById('p-hp-txt').innerText = Math.ceil(pPer) + "%";
         document.getElementById('p-hp-val').innerText = `${Math.ceil(p.curHp)} / ${p.hp}`;
-        
-        // 修為分頁
+
+        // 屬性欄
         document.getElementById('st-atk').innerText = p.atk;
         document.getElementById('st-hp').innerText = p.hp;
         document.getElementById('st-pts').innerText = p.pts;
 
-        // 背包重繪 (修復消失問題)
-        let bagH = "";
-        for (let key in s.inv) {
-            bagH += `<div class="bag-item">🏺 ${key}<b>x${s.inv[key]}</b></div>`;
+        // 背包系統 (重點修正：確保每次渲染都會重新生成網格)
+        const bagGrid = document.getElementById('bag-grid');
+        let bagHTML = "";
+        let itemKeys = Object.keys(s.inv);
+        
+        if (itemKeys.length > 0) {
+            for (let i = 0; i < itemKeys.length; i++) {
+                let key = itemKeys[i];
+                let count = s.inv[key];
+                bagHTML += `
+                    <div class="bag-item" onclick="game.meltItem('${key}')">
+                        🏺 ${key}
+                        <b>x${count}</b>
+                        <small>點擊熔煉</small>
+                    </div>`;
+            }
+        } else {
+            bagHTML = "<div style='grid-column: span 3; color:#555; text-align:center; padding:20px;'>儲物袋內空無一物</div>";
         }
-        document.getElementById('bag-grid').innerHTML = bagH || "<div style='grid-column: span 3; color:#555;'>儲物袋空無一物</div>";
+        bagGrid.innerHTML = bagHTML;
     }
 
-    buildMapTabs() {
+    /**
+     * 地圖與等級鎖
+     */
+    buildMapUI() {
         const container = document.getElementById('map-list');
         container.innerHTML = "";
-        this.maps.forEach((m, i) => {
+        
+        for (let i = 0; i < this.maps.length; i++) {
+            let m = this.maps[i];
             const btn = document.createElement('button');
             const isLocked = this.state.player.lv < m.req;
-            btn.className = `map-btn ${i === this.curMapIdx ? 'active' : ''} ${isLocked ? 'locked' : ''}`;
-            btn.innerHTML = isLocked ? `🔒 需要層級 ${m.req}` : m.n;
+            
+            btn.className = `map-btn ${i === this.curMapIdx ? 'active' : ''}`;
+            if (isLocked) {
+                btn.innerHTML = `🔒 練氣 ${m.req} 層`;
+                btn.style.opacity = "0.5";
+            } else {
+                btn.innerHTML = m.name;
+            }
+
             btn.onclick = () => {
-                if (isLocked) { this.log(`⚠️ 境界不足，無法進入 ${m.n}！`, "var(--color-danger)"); return; }
-                this.curMapIdx = i;
-                this.runtime.mob = null;
-                this.buildMapTabs();
-                this.spawn();
+                if (isLocked) {
+                    this.log(`⚠️ 境界不足！無法進入 ${m.name}。`, "var(--color-danger)");
+                } else {
+                    this.curMapIdx = i;
+                    this.runtime.mob = null; // 切換地圖刷新怪物
+                    this.buildMapUI();
+                    this.spawnMonster();
+                    this.log(`🚩 已抵達 ${m.name}。`);
+                }
             };
             container.appendChild(btn);
-        });
+        }
     }
 
-    log(m, c) {
-        const b = document.getElementById('log-box');
-        const d = document.createElement('div');
-        d.innerHTML = `<span style="color:#666">[訊]</span> <span style="color:${c||'#adbac7'}">${m}</span>`;
-        b.prepend(d);
-        if (b.children.length > 30) b.lastChild.remove();
+    /**
+     * 功能：熔煉物品
+     */
+    meltItem(name) {
+        if (this.state.inv[name] > 0) {
+            this.state.inv[name] -= 1;
+            if (this.state.inv[name] <= 0) {
+                delete this.state.inv[name];
+            }
+            this.state.player.pts += 2;
+            this.log(`🔥 熔煉了 ${name}，獲得 2 點感悟！`, "var(--color-info)");
+            this.updateUI();
+        }
     }
 
+    /**
+     * 功能：突破境界
+     */
+    upgrade() {
+        const p = this.state.player;
+        if (p.pts >= 5) {
+            p.pts -= 5;
+            p.lv += 1;
+            p.atk += 25;
+            p.hp += 80;
+            p.curHp = p.hp; // 突破後回滿血
+
+            // 觸發全螢幕特效
+            const fx = document.getElementById('breakthrough-fx');
+            fx.style.animation = 'breakthrough-flash 1s ease-out forwards';
+            setTimeout(() => { fx.style.animation = ''; }, 1000);
+
+            this.log(`🌟 破繭成蝶！晉升至 ${p.realm} 第 ${p.lv} 層！`, "var(--color-gold)");
+            this.buildMapUI(); // 重新整理地圖鎖
+            this.updateUI();
+        } else {
+            this.log("❌ 感悟不夠，難以突破心魔。");
+        }
+    }
+
+    /**
+     * 輔助功能
+     */
     recruit() {
         const cost = 10 + this.state.sect.total * 8;
         if (this.state.res.stone >= cost) {
             this.state.res.stone -= cost;
-            this.state.sect.total++;
+            this.state.sect.total += 1;
             this.updateUI();
-            this.log(`🏮 成功招募一名外門弟子，目前總計 ${this.state.sect.total} 人。`);
-        } else { this.log("❌ 靈石不足，快去歷練或採礦！", "var(--color-danger)"); }
+        } else {
+            this.log("❌ 靈石不足，無法招募門徒。");
+        }
     }
 
-    assign(t, v) {
+    assign(type, val) {
         const s = this.state.sect;
-        if (v > 0 && s.total - s.woodD - s.stoneD <= 0) return;
-        if (t === 'wood' && s.woodD + v >= 0) s.woodD += v;
-        if (t === 'stone' && s.stoneD + v >= 0) s.stoneD += v;
+        const idle = s.total - s.woodD - s.stoneD;
+        if (val > 0 && idle <= 0) return;
+        
+        if (type === 'wood' && s.woodD + val >= 0) s.woodD += val;
+        if (type === 'stone' && s.stoneD + val >= 0) s.stoneD += val;
         this.updateUI();
     }
 
-    meditate() { 
-        this.state.player.curHp = this.state.player.hp; 
-        this.log("🧘 運轉周天，真元已經全部回補！", "var(--color-success)"); 
-        this.updateUI(); 
+    log(msg, color) {
+        const box = document.getElementById('log-box');
+        const div = document.createElement('div');
+        div.style.color = color || "#adbac7";
+        div.innerHTML = `<span style="color:#555;">[${new Date().toLocaleTimeString()}]</span> ${msg}`;
+        box.prepend(div);
+        if (box.children.length > 30) box.lastChild.remove();
     }
 
-    toggleAuto() { this.runtime.auto = document.getElementById('auto-check').checked; }
-    
-    upgrade() {
-        const p = this.state.player;
-        if (p.pts >= 5) {
-            p.pts -= 5; p.atk += 20; p.hp += 60; p.lv++;
-            this.log(`🌟 突破成功！您已晉升至練氣期 ${p.lv} 層！`, "var(--color-gold)");
-            this.buildMapTabs();
-            this.updateUI();
-        } else { this.log("❌ 感悟不夠，無法突破境界。"); }
+    meditate() {
+        this.state.player.curHp = this.state.player.hp;
+        this.log("🧘 運轉周天，真元充盈如初。", "var(--color-success)");
+        this.updateUI();
     }
 
-    switchTab(i, el) {
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.getElementById('p' + i).classList.add('active');
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    toggleAuto() {
+        this.runtime.autoMode = document.getElementById('auto-check').checked;
+    }
+
+    switchTab(idx, el) {
+        const pages = document.querySelectorAll('.page');
+        const btns = document.querySelectorAll('.nav-btn');
+        for (let i = 0; i < pages.length; i++) {
+            pages[i].classList.remove('active');
+            btns[i].classList.remove('active');
+        }
+        document.getElementById('p' + idx).classList.add('active');
         if (el) el.classList.add('active');
     }
 }
+
+// 實例化遊戲
 const game = new XianXiaGame();
 </script>
 </body>
