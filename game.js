@@ -1,13 +1,13 @@
 /**
- * 仙俠宗門 V0.7.2 - 核心穩定版
- * 優化：日誌精簡、擊殺回饋、裝備穿戴修復
+ * 仙俠宗門 V0.7.2 - 核心引擎
+ * 修正：裝備穿戴 ID 匹配、精簡日誌、擊殺提示、全域命名對接
  */
 
-// 🚀 第一步：立即掛載核心，防止按鈕失靈
-console.log("🚀 [系統] 核心啟動中...");
+console.log("🚀 [系統] 核心引擎 V0.7.2 啟動中...");
 
 class XianXiaGame {
     constructor() {
+        // 使用統一存檔 Key
         const saved = JSON.parse(localStorage.getItem('XX_SAVE_V071'));
         this.state = saved || {
             p: { lv: 1, xp: 0, nx: 100, pts: 0, str: 5, vit: 5, agi: 5, int: 5, job: null, money: 0, maxBag: 20, bagBuyCount: 0 },
@@ -23,7 +23,7 @@ class XianXiaGame {
         this.realms = ["凡人", "練氣期", "築基期", "金丹期", "元嬰期", "化神期", "煉虛期", "合體期", "大乘期", "渡劫期"];
         this.jobNames = { sword: "劍修", body: "體修", soul: "靈修" };
         
-        // 確保 DOM 載入後初始化
+        // 確保在頁面載入後初始化
         if (document.readyState === 'loading') {
             window.addEventListener('load', () => this.init());
         } else {
@@ -37,8 +37,9 @@ class XianXiaGame {
     }
 
     init() {
+        console.log("🛠️ [系統] 遊戲初始化...");
         if (typeof MAP_DATA === 'undefined') {
-            console.error("❌ 找不到 data.js，請檢查載入順序！");
+            console.error("❌ 找不到 data.js，請確認載入順序！");
             return;
         }
         this.calc();
@@ -98,6 +99,7 @@ class XianXiaGame {
         if (this.rt.isBoss) {
             const b = map.boss;
             this.m = { n: `【首領】${b.n}`, mx: Math.floor(100 * Math.pow(1.3, pLv - 1) * b.hpMult), exp: Math.floor((20 + pLv * 5) * b.expMult), money: Math.floor((10 + pLv * 2) * b.goldMult) };
+            this.log(`⚠️ 強大的氣息現身了：${this.m.n}！`, "var(--danger)");
         } else {
             this.m = { n: map.monsters[Math.floor(Math.random() * map.monsters.length)], mx: Math.floor(50 * Math.pow(1.25, pLv - 1)), exp: 20 + pLv * 5, money: 10 + pLv * 2 };
         }
@@ -113,7 +115,8 @@ class XianXiaGame {
         this.pop(dmg, isC, x, y);
 
         if (this.m.hp <= 0) {
-            this.log(`⚔️ 擊敗 ${this.m.n}，獲靈石 +${this.m.money}，修為 +${this.m.exp}`);
+            // ⚔️ 優化：顯示擊殺文字
+            this.log(`⚔️ 擊殺 ${this.m.n}，獲靈石 +${this.m.money}，修為 +${this.m.exp}`);
             this.state.p.money += this.m.money;
             this.gainXp(this.m.exp);
             this.state.mapProgress[this.state.curMap]++;
@@ -156,7 +159,7 @@ class XianXiaGame {
         };
         if (this.state.bag.length < this.state.p.maxBag) {
             this.state.bag.push(item);
-            this.log(`🎁 獲取寶物：${item.name}`, this.getQColor(q));
+            this.log(`🎁 掉落：${item.name}`, this.getQColor(q));
         }
     }
 
@@ -204,6 +207,7 @@ class XianXiaGame {
     useSkill() { if (this.rt.skillCD <= 0) { this.atk(true, 240, 300, 3.5); this.rt.skillCD = this.rt.skillMaxCD; } }
     toggleAuto() { this.rt.auto = !this.rt.auto; const btn = document.getElementById('btn-auto'); if (btn) btn.innerText = `自動歷練: ${this.rt.auto ? 'ON' : 'OFF'}`; }
     addStat(k) { if (this.state.p.pts > 0) { this.state.p.pts--; this.state.p[k]++; this.calc(); this.renderStats(); this.update(); this.save(); } }
+    
     switchTab(t, el) { 
         document.querySelectorAll('.stage').forEach(s => s.style.display = 'none'); 
         document.querySelectorAll('.tab').forEach(x => x.classList.remove('active')); 
@@ -213,15 +217,18 @@ class XianXiaGame {
         if (t === 'bag') this.renderBag(); 
         if (t === 'stats') this.renderStats(); 
     }
+
     renderStats() {
         const m = { str: '力量', vit: '體質', agi: '敏捷', int: '靈力' };
         const el = document.getElementById('stat-list');
-        if (el) el.innerHTML = Object.entries(m).map(([k, n]) => `<div class="stat-row"><span>${n}: <b>${this.state.p[k]}</b></span><button class="btn-plus" onclick="_X_CORE.addStat('${k}')">+</button></div>`).join('');
+        if (el) el.innerHTML = Object.entries(m).map(([k, n]) => `<div class="stat-row" style="display:flex; justify-content:space-between; margin-bottom:8px; background:rgba(255,255,255,0.03); padding:8px; border-radius:6px;"><span>${n}: <b>${this.state.p[k]}</b></span><button onclick="_X_CORE.addStat('${k}')" style="padding:2px 10px;">+</button></div>`).join('');
     }
+
     renderBag() {
         const el = document.getElementById('bag-list');
-        if (el) el.innerHTML = this.state.bag.map(i => `<div class="item-card quality-${i.q}"><b>${i.name}</b><div style="font-size:10px;color:var(--info);">${AFFIX_DATA[i.affixType].bonus} +${i.val}</div><button onclick="_X_CORE.equip(${i.id})">穿戴</button></div>`).join('');
+        if (el) el.innerHTML = this.state.bag.map(i => `<div class="item-card quality-${i.q}"><b>${i.name}</b><div style="font-size:10px;color:var(--info);margin:5px 0;">${AFFIX_DATA[i.affixType].bonus} +${i.val}</div><button onclick="_X_CORE.equip(${i.id})" style="width:100%;">穿戴</button></div>`).join('');
     }
+
     equip(id) {
         const targetId = Number(id);
         const idx = this.state.bag.findIndex(i => i.id === targetId);
@@ -230,10 +237,11 @@ class XianXiaGame {
             if (this.state.eq[item.type]) this.state.bag.push(this.state.eq[item.type]);
             this.state.eq[item.type] = item;
             this.state.bag.splice(idx, 1);
-            this.log(`✨ 已裝備：${item.name}`, "var(--success)");
+            this.log(`✨ 已穿戴：${item.name}`, "var(--success)");
             this.calc(); this.update(); this.renderBag(); this.save();
         }
     }
+
     unequip(type) {
         if (this.state.eq[type] && this.state.bag.length < this.state.p.maxBag) {
             this.state.bag.push(this.state.eq[type]);
@@ -241,23 +249,26 @@ class XianXiaGame {
             this.calc(); this.update(); this.renderBag(); this.save();
         }
     }
+
     quickMelt() {
         const fl = parseInt(document.getElementById('melt-filter').value);
         this.state.bag = this.state.bag.filter(i => { if (i.q <= fl) { this.state.p.xp += i.val; return false; } return true; });
         this.update(); this.renderBag(); this.save();
     }
+
     showMapModal() {
         const el = document.getElementById('map-list');
         if (el) el.innerHTML = Object.values(MAP_DATA).map(m => {
             const unlocked = this.state.unlockedMaps.includes(m.id);
             const current = this.state.curMap === m.id;
-            return `<div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; border:1px solid ${current?'var(--gold)':'#333'}; opacity:${unlocked?1:0.5}; margin-bottom:5px;">
+            return `<div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; border:1px solid ${current?'var(--gold)':'#333'}; opacity:${unlocked?1:0.5}; margin-bottom:10px;">
                 <div style="display:flex; justify-content:space-between;"><b>${m.name}</b><span>Lv.${m.reqLv}</span></div>
                 ${unlocked ? `<button onclick="_X_CORE.changeMap('${m.id}')" ${current?'disabled':''}>${current?'歷練中':'前往'}</button>` : `<span style="color:var(--danger);font-size:11px;">🔒 擊敗前地圖首領解鎖</span>`}
             </div>`;
         }).join('');
         document.getElementById('map-modal').style.display = 'flex';
     }
+
     changeMap(id) { this.state.curMap = id; document.getElementById('map-modal').style.display = 'none'; this.spawn(); this.save(); }
     unlockNext() {
         const ids = Object.keys(MAP_DATA);
@@ -268,12 +279,13 @@ class XianXiaGame {
         }
     }
     showClassModal() { document.getElementById('class-modal').style.display = 'flex'; }
-    chooseClass(j) { this.state.p.job = j; document.getElementById('class-modal').style.display = 'none'; this.calc(); this.update(); this.save(); }
+    chooseClass(j) { this.state.p.job = j; document.getElementById('class-modal').style.display = 'none'; this.calc(); this.update(); this.save(); this.log(`🎉 恭喜踏上 ${this.jobNames[j]} 之路！`, "var(--purple)"); }
     buyBag() {
         const price = 1000 * Math.pow(2, this.state.p.bagBuyCount);
         if (this.state.p.money >= price) { this.state.p.money -= price; this.state.p.maxBag += 5; this.state.p.bagBuyCount++; this.update(); this.save(); }
     }
-    respec() { if (confirm("重置所有屬性點？")) { const p = this.state.p; p.pts += (p.str-5)+(p.vit-5)+(p.agi-5)+(p.int-5); p.str=5; p.vit=5; p.agi=5; p.int=5; this.calc(); this.update(); this.renderStats(); this.save(); } }
+    respec() { if (confirm("確定洗髓閥毛（重置點數）？")) { const p = this.state.p; p.pts += (p.str-5)+(p.vit-5)+(p.agi-5)+(p.int-5); p.str=5; p.vit=5; p.agi=5; p.int=5; this.calc(); this.update(); this.renderStats(); this.save(); } }
+
     pop(d, c, x, y) {
         const e = document.createElement('div'); e.className = 'dmg';
         e.innerText = (c ? '💥 ' : '') + d; e.style.color = c ? 'var(--gold)' : '#fff';
@@ -285,13 +297,13 @@ class XianXiaGame {
         if (b) {
             const d = document.createElement('div'); d.style.color = c || "#fff";
             d.innerHTML = `<span style="color:#888;font-size:10px;">[${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}]</span> ${m}`;
-            b.prepend(d); if (b.children.length > 20) b.lastChild.remove();
+            b.prepend(d); if (b.children.length > 25) b.lastChild.remove();
         }
     }
     getQColor(q) { return ["#8b949e", "#3fb950", "#58a6ff", "#a371f7", "#f1e05a"][q]; }
     save() { localStorage.setItem('XX_SAVE_V071', JSON.stringify(this.state)); }
 }
 
-// 🚀 將實例掛載到 window，確保絕對能被 HTML 存取
+// 🚀 核心掛載
 window._X_CORE = new XianXiaGame();
-console.log("✅ [系統] 核心掛載完畢：window._X_CORE");
+console.log("✅ [系統] V0.7.2 核心掛載成功。");
