@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>仙俠宗門 V0.5.2 - 防災修復版</title>
+    <title>仙俠宗門 V0.5.3 - 核心修復版</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div id="app">
     <header>
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span class="realm-tag"><span id="val-realm">凡人</span><span id="val-class" style="font-size:14px; color:#a371f7; margin-left:5px;"></span></span>
+            <span class="realm-tag"><span id="val-realm">載入中</span><span id="val-class" style="font-size:14px; color:#a371f7; margin-left:5px;"></span></span>
             <span style="font-size: 12px;">LV <b id="val-lv">1</b></span>
         </div>
         <div class="bar-container"><div id="bar-xp" class="bar-fill" style="width: 0%; background: var(--info);"></div></div>
@@ -49,11 +49,10 @@
         </div>
         <div id="stat-list"></div>
         <div class="equip-box">
-            <div class="slot">⚔️ 武器<b id="eq-weapon">無</b><button class="btn-small" onclick="game.unequip('weapon')" id="btn-unequip-weapon" style="display:none; width:100%;">卸下</button></div>
-            <div class="slot">🛡️ 防具<b id="eq-body">無</b><button class="btn-small" onclick="game.unequip('body')" id="btn-unequip-body" style="display:none; width:100%;">卸下</button></div>
+            <div class="slot">⚔️ 武器<b id="eq-weapon">無</b><button class="btn-small" onclick="game.unequip('weapon')" id="btn-unequip-weapon" style="display:none; width:100%; margin-top:5px;">卸下</button></div>
+            <div class="slot">🛡️ 防具<b id="eq-body">無</b><button class="btn-small" onclick="game.unequip('body')" id="btn-unequip-body" style="display:none; width:100%; margin-top:5px;">卸下</button></div>
         </div>
         <div class="stats-panel">
-            <p style="font-size: 12px;">當前氣血: <b id="val-hp">0/0</b></p>
             <div class="stat-detail-grid">
                 <div class="stat-detail-item">秒回 <b id="val-regen">0</b></div>
                 <div class="stat-detail-item">閃避 <b id="val-evasion">0</b>%</div>
@@ -71,7 +70,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <h4>儲物袋 (<span id="bag-count">0</span>/20)</h4>
             <div style="display:flex; gap:5px;">
-                <select id="melt-filter" style="background:#0d1117; color:#c9d1d9; border:1px solid var(--border); border-radius:4px; font-size:11px;"><option value="1">熔(凡/良)</option><option value="2">熔(含精品)</option></select>
+                <select id="melt-filter" style="background:#0d1117; color:#c9d1d9; border:1px solid var(--border); border-radius:4px; font-size:11px;"><option value="1">熔(凡/良)</option><option value="2">熔(精品以下)</option></select>
                 <button onclick="game.quickMelt()" style="padding: 4px 8px; background: var(--danger); border: 0; color: #fff; border-radius: 4px; font-size: 11px;">一鍵熔煉</button>
             </div>
         </div>
@@ -87,9 +86,10 @@
     <div id="class-modal" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:999; justify-content:center; align-items:center;">
         <div style="background:var(--card-bg); padding:20px; border-radius:12px; border:2px solid var(--purple); width:85%; text-align:center;">
             <h3 style="color:var(--purple); margin-bottom:10px;">選擇修仙流派</h3>
-            <button class="btn-reset" style="color:var(--info); border-color:var(--info);" onclick="game.chooseClass('sword')">【劍修】</button>
-            <button class="btn-reset" style="color:var(--success); border-color:var(--success);" onclick="game.chooseClass('body')">【體修】</button>
-            <button class="btn-reset" style="color:var(--danger); border-color:var(--danger);" onclick="game.chooseClass('soul')">【靈修】</button>
+            <button class="btn-reset" style="color:var(--info); border-color:var(--info);" onclick="game.chooseClass('sword')">【劍修】敏捷系</button>
+            <button class="btn-reset" style="color:var(--success); border-color:var(--success);" onclick="game.chooseClass('body')">【體修】體質系</button>
+            <button class="btn-reset" style="color:var(--danger); border-color:var(--danger);" onclick="game.chooseClass('soul')">【靈修】靈力系</button>
+            <button onclick="document.getElementById('class-modal').style.display='none'" style="margin-top:10px; background:transparent; border:none; color:#8b949e; cursor:pointer;">取消</button>
         </div>
     </div>
 </div>
