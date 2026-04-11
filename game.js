@@ -1,9 +1,10 @@
 /**
- * 仙俠宗門 V0.7.2 - 戰鬥回饋強化版
- * 修正：裝備穿戴 ID 匹配、日誌內容精簡、擊殺提示
+ * 仙俠宗門 V0.7.2 - 核心穩定版
+ * 優化：日誌精簡、擊殺回饋、裝備穿戴修復
  */
 
-console.log("🚀 [系統] 載入 V0.7.2 核心引擎...");
+// 🚀 第一步：立即掛載核心，防止按鈕失靈
+console.log("🚀 [系統] 核心啟動中...");
 
 class XianXiaGame {
     constructor() {
@@ -22,7 +23,12 @@ class XianXiaGame {
         this.realms = ["凡人", "練氣期", "築基期", "金丹期", "元嬰期", "化神期", "煉虛期", "合體期", "大乘期", "渡劫期"];
         this.jobNames = { sword: "劍修", body: "體修", soul: "靈修" };
         
-        window.addEventListener('load', () => this.init());
+        // 確保 DOM 載入後初始化
+        if (document.readyState === 'loading') {
+            window.addEventListener('load', () => this.init());
+        } else {
+            this.init();
+        }
     }
 
     u(id, val, isStyle = false) {
@@ -31,7 +37,10 @@ class XianXiaGame {
     }
 
     init() {
-        if (typeof MAP_DATA === 'undefined') return console.error("❌ 找不到 data.js");
+        if (typeof MAP_DATA === 'undefined') {
+            console.error("❌ 找不到 data.js，請檢查載入順序！");
+            return;
+        }
         this.calc();
         this.curHp = this.finalHp;
         this.spawn();
@@ -104,9 +113,7 @@ class XianXiaGame {
         this.pop(dmg, isC, x, y);
 
         if (this.m.hp <= 0) {
-            // 🛠️ 優化：擊殺日誌
             this.log(`⚔️ 擊敗 ${this.m.n}，獲靈石 +${this.m.money}，修為 +${this.m.exp}`);
-            
             this.state.p.money += this.m.money;
             this.gainXp(this.m.exp);
             this.state.mapProgress[this.state.curMap]++;
@@ -149,50 +156,10 @@ class XianXiaGame {
         };
         if (this.state.bag.length < this.state.p.maxBag) {
             this.state.bag.push(item);
-            // 🛠️ 優化：掉寶顏色日誌
             this.log(`🎁 獲取寶物：${item.name}`, this.getQColor(q));
         }
     }
 
-    // --- 🛠️ 修正：裝備穿不上去的問題 ---
-    equip(id) {
-        // 強制轉換傳入的 id 為數字，避免字串匹配失敗
-        const targetId = Number(id);
-        const idx = this.state.bag.findIndex(i => i.id === targetId);
-        
-        if (idx === -1) {
-            console.error("找不到該物品，ID:", targetId);
-            return;
-        }
-
-        const item = this.state.bag[idx];
-        const oldItem = this.state.eq[item.type];
-
-        // 進行交換
-        if (oldItem) {
-            this.state.bag.push(oldItem);
-        }
-        this.state.eq[item.type] = item;
-        this.state.bag.splice(idx, 1);
-
-        this.log(`✨ 已裝備：${item.name}`, "var(--success)");
-        this.calc(); this.update(); this.renderBag(); this.save();
-    }
-
-    gainXp(a) { 
-        this.state.p.xp += a; 
-        while (this.state.p.xp >= this.state.p.nx) { 
-            this.state.p.lv++; 
-            this.state.p.xp -= this.state.p.nx; 
-            this.state.p.nx = Math.floor(this.state.p.nx * 1.5); 
-            this.state.p.pts += 5; 
-            this.calc(); 
-            // 🛠️ 優化：只顯示等級，不重複顯示境界
-            this.log(`✨ 突破！目前等級達到 LV.${this.state.p.lv}`, "var(--gold)");
-        } 
-    }
-
-    // --- 其餘系統邏輯保持不變 ---
     update() {
         const { p, eq } = this.state;
         const curMap = MAP_DATA[this.state.curMap];
@@ -221,8 +188,22 @@ class XianXiaGame {
         const bc = document.getElementById('btn-class'); if (bc) bc.style.display = (p.lv >= 11 && !p.job) ? 'block' : 'none';
     }
 
-    addStat(k) { if (this.state.p.pts > 0) { this.state.p.pts--; this.state.p[k]++; this.calc(); this.renderStats(); this.update(); this.save(); } }
+    gainXp(a) { 
+        this.state.p.xp += a; 
+        while (this.state.p.xp >= this.state.p.nx) { 
+            this.state.p.lv++; 
+            this.state.p.xp -= this.state.p.nx; 
+            this.state.p.nx = Math.floor(this.state.p.nx * 1.5); 
+            this.state.p.pts += 5; 
+            this.calc(); 
+            this.log(`✨ 突破！目前等級達到 LV.${this.state.p.lv}`, "var(--gold)");
+        } 
+    }
+
+    manualAtk(e) { this.atk(true, e.clientX, e.clientY); }
+    useSkill() { if (this.rt.skillCD <= 0) { this.atk(true, 240, 300, 3.5); this.rt.skillCD = this.rt.skillMaxCD; } }
     toggleAuto() { this.rt.auto = !this.rt.auto; const btn = document.getElementById('btn-auto'); if (btn) btn.innerText = `自動歷練: ${this.rt.auto ? 'ON' : 'OFF'}`; }
+    addStat(k) { if (this.state.p.pts > 0) { this.state.p.pts--; this.state.p[k]++; this.calc(); this.renderStats(); this.update(); this.save(); } }
     switchTab(t, el) { 
         document.querySelectorAll('.stage').forEach(s => s.style.display = 'none'); 
         document.querySelectorAll('.tab').forEach(x => x.classList.remove('active')); 
@@ -239,10 +220,19 @@ class XianXiaGame {
     }
     renderBag() {
         const el = document.getElementById('bag-list');
-        if (el) el.innerHTML = this.state.bag.map(i => {
-            const bonus = AFFIX_DATA[i.affixType].bonus;
-            return `<div class="item-card quality-${i.q}"><b>${i.name}</b><div style="font-size:10px;color:var(--info);">${bonus} +${i.val}</div><button onclick="_X_CORE.equip(${i.id})">穿戴</button></div>`;
-        }).join('');
+        if (el) el.innerHTML = this.state.bag.map(i => `<div class="item-card quality-${i.q}"><b>${i.name}</b><div style="font-size:10px;color:var(--info);">${AFFIX_DATA[i.affixType].bonus} +${i.val}</div><button onclick="_X_CORE.equip(${i.id})">穿戴</button></div>`).join('');
+    }
+    equip(id) {
+        const targetId = Number(id);
+        const idx = this.state.bag.findIndex(i => i.id === targetId);
+        if (idx !== -1) {
+            const item = this.state.bag[idx];
+            if (this.state.eq[item.type]) this.state.bag.push(this.state.eq[item.type]);
+            this.state.eq[item.type] = item;
+            this.state.bag.splice(idx, 1);
+            this.log(`✨ 已裝備：${item.name}`, "var(--success)");
+            this.calc(); this.update(); this.renderBag(); this.save();
+        }
     }
     unequip(type) {
         if (this.state.eq[type] && this.state.bag.length < this.state.p.maxBag) {
@@ -253,10 +243,7 @@ class XianXiaGame {
     }
     quickMelt() {
         const fl = parseInt(document.getElementById('melt-filter').value);
-        this.state.bag = this.state.bag.filter(i => {
-            if (i.q <= fl) { this.state.p.xp += i.val; return false; }
-            return true;
-        });
+        this.state.bag = this.state.bag.filter(i => { if (i.q <= fl) { this.state.p.xp += i.val; return false; } return true; });
         this.update(); this.renderBag(); this.save();
     }
     showMapModal() {
@@ -288,26 +275,23 @@ class XianXiaGame {
     }
     respec() { if (confirm("重置所有屬性點？")) { const p = this.state.p; p.pts += (p.str-5)+(p.vit-5)+(p.agi-5)+(p.int-5); p.str=5; p.vit=5; p.agi=5; p.int=5; this.calc(); this.update(); this.renderStats(); this.save(); } }
     pop(d, c, x, y) {
-        const e = document.createElement('div');
-        e.className = 'dmg';
-        e.innerText = (c ? '💥 ' : '') + d;
-        e.style.color = c ? 'var(--gold)' : '#fff';
+        const e = document.createElement('div'); e.className = 'dmg';
+        e.innerText = (c ? '💥 ' : '') + d; e.style.color = c ? 'var(--gold)' : '#fff';
         e.style.left = (x || 200) + 'px'; e.style.top = (y || 300) + 'px';
-        document.body.appendChild(e);
-        setTimeout(() => e.remove(), 600);
+        document.body.appendChild(e); setTimeout(() => e.remove(), 600);
     }
     log(m, c) {
         const b = document.getElementById('log');
         if (b) {
-            const d = document.createElement('div');
-            d.style.color = c || "#fff";
+            const d = document.createElement('div'); d.style.color = c || "#fff";
             d.innerHTML = `<span style="color:#888;font-size:10px;">[${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}]</span> ${m}`;
-            b.prepend(d);
-            if (b.children.length > 20) b.lastChild.remove();
+            b.prepend(d); if (b.children.length > 20) b.lastChild.remove();
         }
     }
     getQColor(q) { return ["#8b949e", "#3fb950", "#58a6ff", "#a371f7", "#f1e05a"][q]; }
     save() { localStorage.setItem('XX_SAVE_V071', JSON.stringify(this.state)); }
 }
 
+// 🚀 將實例掛載到 window，確保絕對能被 HTML 存取
 window._X_CORE = new XianXiaGame();
+console.log("✅ [系統] 核心掛載完畢：window._X_CORE");
