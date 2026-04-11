@@ -272,14 +272,20 @@ class XianXiaGame {
         if (tab === 'bag') this.renderBag();
     }
 
+    // 找到 log(m, c) 方法，確認它是這樣寫的：
     log(m, c) {
         const b = document.getElementById('log');
         const d = document.createElement('div');
-        d.style.color = c || 'inherit';
+    // 如果是擊殺，自動給綠色；如果是受傷，自動給紅色
+        if (m.includes("擊殺")) d.style.color = "var(--success)";
+        else if (m.includes("💀")) d.style.color = "var(--danger)";
+        else d.style.color = c || 'inherit';
+    
         d.innerHTML = `<span style="color:#555">[${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}]</span> ${m}`;
         b.prepend(d);
         if (b.children.length > 20) b.lastChild.remove();
     }
+
 
     getQColor(q) { return ["#8b949e", "#3fb950", "#58a6ff", "#a371f7", "#f1e05a"][q]; }
     save() { localStorage.setItem('XX_V040', JSON.stringify(this.state)); }
