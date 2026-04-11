@@ -46,3 +46,20 @@ button:active { transform: scale(0.95); }
 @keyframes fly { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-60px); } }
 
 .btn-unequip { background: #442d2d; color: var(--danger); font-size: 11px; margin-top: 5px; width: 100%; }
+/* 怪物受擊抖動動畫 */
+@keyframes monster-shake {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(10px) rotate(2deg); }
+    50% { transform: translateX(-10px) rotate(-2deg); }
+    75% { transform: translateX(5px); }
+    100% { transform: translateX(0); }
+}
+.shake { animation: monster-shake 0.2s ease-in-out; }
+
+/* 裝備卡片優化 */
+.item-card { position: relative; }
+.btn-single-melt { 
+    position: absolute; top: 5px; right: 5px; 
+    padding: 2px 6px !important; font-size: 10px !important; 
+    background: #442d2d !important; color: #ff7b72 !important; 
+}
