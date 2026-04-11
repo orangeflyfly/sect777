@@ -2,8 +2,7 @@
     --bg-dark: #0d1117; 
     --card-bg: #161b22; 
     --border: #444c56;
-    --text-main: #ffffff; /* 主文字：純白 */
-    --text-sub: #8b949e;  /* 次文字：灰白 */
+    --text-main: #ffffff;
     --gold: #f1e05a; 
     --danger: #f85149;
     --success: #3fb950; 
@@ -11,69 +10,39 @@
     --purple: #a371f7;
 }
 
-/* 基礎設定 */
-html, body { height: 100%; margin: 0; padding: 0; background: var(--bg-dark); overflow: hidden; color: var(--text-main); }
-* { box-sizing: border-box; font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; user-select: none; }
+html, body { height: 100%; margin: 0; padding: 0; background: var(--bg-dark); color: var(--text-main); font-family: sans-serif; overflow: hidden; }
+* { box-sizing: border-box; }
 
-#app { 
-    width: 100%; max-width: 480px; height: 100dvh; 
-    margin: 0 auto; border: 1px solid var(--border);
-    display: grid; grid-template-rows: auto 1fr auto; 
-    background: var(--bg-dark); position: relative;
-}
+#app { width: 100%; max-width: 480px; height: 100dvh; margin: 0 auto; display: grid; grid-template-rows: auto 1fr auto; border: 1px solid var(--border); }
 
-/* 🛠️ 文字與標題：強制亮色，解決「看不清」的問題 */
-.stage h4 { color: var(--gold); margin-bottom: 12px; border-left: 3px solid var(--gold); padding-left: 8px; }
-.stage span, .stage div, .stage p { color: #f0f0f0; } /* 強制所有文字接近純白 */
+header { padding: 15px; background: var(--card-bg); border-bottom: 2px solid var(--gold); }
+.stage { padding: 15px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
+.stage h4 { color: var(--gold); margin: 0 0 15px 0; width: 100%; text-align: left; }
+.stage span, .stage p, .stage div { color: #f0f0f0; } /* 解決看不清的問題 */
 
-/* 🛠️ 通用按鈕：強化對比度 */
-button {
-    background-color: #3d444d !important;
-    color: #ffffff !important;
-    border: 1px solid #6e7681 !important;
-    border-radius: 6px; padding: 8px 12px;
-    cursor: pointer; font-size: 13px; font-weight: bold;
-    transition: 0.2s;
-}
-button:hover { background-color: #484f58 !important; }
-
-/* 🛠️ 專屬按鈕樣式 */
-.btn-unequip { background-color: #442d2d !important; border-color: var(--danger) !important; color: var(--danger) !important; font-size: 11px; padding: 4px 8px; margin-top: 8px; width: 100%; }
-.btn-plus { background-color: var(--info) !important; width: 35px; height: 30px; padding: 0; }
-.btn-reset { border-color: var(--danger) !important; color: var(--danger) !important; background: transparent !important; width: 100%; margin-top: 15px; }
-
-/* 介面框架 */
-header { grid-row: 1; padding: 12px 15px; background: var(--card-bg); border-bottom: 2px solid var(--gold); z-index: 10; }
-.stage { grid-row: 2; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; }
-.stage::-webkit-scrollbar { display: none; }
-nav { grid-row: 3; display: flex; background: var(--card-bg); border-top: 1px solid var(--border); height: 75px; z-index: 10; }
+nav { display: flex; background: var(--card-bg); height: 70px; border-top: 1px solid var(--border); }
 .tab { flex: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #8b949e; font-weight: bold; }
-.tab.active { color: var(--gold); border-top: 3px solid var(--gold); background: rgba(241,224,90,0.05); }
+.tab.active { color: var(--gold); border-top: 3px solid var(--gold); }
+
+button { background: #3d444d; color: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; cursor: pointer; font-weight: bold; }
+button:active { transform: scale(0.95); }
 
 /* 進度條 */
-.bar-container { height: 12px; background: #000; border-radius: 6px; overflow: hidden; margin: 4px 0; border: 1px solid var(--border); position: relative; }
-.hp-bar-wrap { height: 20px; }
-.bar-fill { height: 100%; transition: width 0.3s ease-out; }
-.bar-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; font-size: 11px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; }
+.bar-container { width: 100%; height: 14px; background: #000; border-radius: 7px; overflow: hidden; margin: 5px 0; position: relative; border: 1px solid var(--border); }
+.bar-fill { height: 100%; transition: width 0.3s; }
+.bar-text { position: absolute; width: 100%; text-align: center; font-size: 10px; line-height: 14px; color: #fff; text-shadow: 1px 1px #000; }
 
 /* 戰鬥 */
-.monster-card { width: 140px; height: 140px; background: rgba(255,255,255,0.03); border: 4px solid var(--border); border-radius: 35px; display: flex; align-items: center; justify-content: center; font-size: 65px; margin: 15px 0; cursor: pointer; }
-#log { height: 130px; width: 100%; overflow-y: auto; font-size: 12px; background: #000; color: #fff; padding: 10px; border-radius: 8px; border: 1px solid var(--border); margin-top: 15px; }
+.monster-card { width: 120px; height: 120px; background: rgba(255,255,255,0.05); border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 60px; margin: 20px 0; border: 2px solid var(--border); cursor: pointer; }
+#log { width: 100%; height: 120px; background: #000; padding: 8px; font-size: 12px; overflow-y: auto; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border); }
 
-/* 背包與裝備 */
-.bag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-bottom: 30px; }
-.item-card { background: #1c2128; border: 1px solid var(--border); border-radius: 8px; padding: 10px; min-height: 100px; display: flex; flex-direction: column; justify-content: space-between; }
-.item-card b { color: var(--gold); font-size: 11px; }
-.quality-3 { border: 1.5px dashed var(--purple) !important; }
-.quality-4 { border: 1.5px solid var(--gold) !important; box-shadow: 0 0 10px rgba(241,224,90,0.3); }
-
-/* 下拉選單樣式優化 */
-select { background: #2d333b; color: #fff; border: 1px solid var(--border); border-radius: 4px; padding: 5px; }
-
-/* 彈窗 */
-#map-modal { display: flex; }
-.modal-content b { color: var(--gold); }
+/* 背包 */
+.bag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+.item-card { background: #1c2128; border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+.quality-4 { border-color: var(--gold); box-shadow: 0 0 8px rgba(241,224,90,0.3); }
 
 /* 傷害數字 */
-.dmg { position: absolute; font-weight: 900; font-size: 28px; animation: fly 0.6s ease-out forwards; pointer-events: none; text-shadow: 2px 2px #000; z-index: 100; }
-@keyframes fly { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-80px); } }
+.dmg { position: absolute; font-weight: bold; font-size: 24px; animation: fly 0.6s forwards; pointer-events: none; text-shadow: 2px 2px #000; z-index: 100; }
+@keyframes fly { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-60px); } }
+
+.btn-unequip { background: #442d2d; color: var(--danger); font-size: 11px; margin-top: 5px; width: 100%; }
