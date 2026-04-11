@@ -1,6 +1,9 @@
 /**
  * 仙俠宗門 V0.8.0 - 核心引擎
+ * 實裝：怪物受擊震動、暴擊彈跳、魚目混珠命名、單件熔煉
  */
+
+console.log("🚀 [系統] V0.8.0 核心引擎啟動中...");
 
 class XianXiaGame {
     constructor() {
@@ -27,7 +30,7 @@ class XianXiaGame {
         this.calc(); this.curHp = this.finalHp;
         this.spawn(); this.update();
         setInterval(() => this.loop(), 100);
-        this.log("⚔️ V0.8.0 戰鬥系統初始化成功", "var(--gold)");
+        this.log("⚔️ 恭喜道友，V0.8.0 修為大成！", "var(--gold)");
     }
 
     calc() {
@@ -86,11 +89,11 @@ class XianXiaGame {
     }
 
     atk(isM, x, y, multi = 1) {
-        // 戰鬥視覺：怪物受擊抖動
+        // --- 視覺特效：怪物抖動 ---
         const mCard = document.querySelector('.monster-card');
         if (mCard) {
             mCard.classList.remove('shake');
-            void mCard.offsetWidth; // 強制重繪
+            void mCard.offsetWidth; // 強制重繪以重啟動畫
             mCard.classList.add('shake');
         }
 
@@ -100,7 +103,7 @@ class XianXiaGame {
         this.pop(dmg, isC, x, y);
 
         if (this.m.hp <= 0) {
-            this.log(`⚔️ 擊敗 ${this.m.n}，獲靈石 +${this.m.money}，修為 +${this.m.exp}`);
+            this.log(`⚔️ 擊敗 ${this.m.n}，獲靈石 +${this.m.money}`);
             this.state.p.money += this.m.money;
             this.gainXp(this.m.exp);
             this.state.mapProgress[this.state.curMap]++;
@@ -119,11 +122,12 @@ class XianXiaGame {
         if (this.curHp <= 0) {
             this.curHp = Math.floor(this.finalHp * 0.2); this.rt.auto = false;
             this.log("💀 體力耗盡，暫停歷練。", "var(--danger)");
-            this.u('btn-auto', "自動歷練: OFF");
+            const btn = document.getElementById('btn-auto');
+            if (btn) btn.innerText = "自動歷練: OFF";
         }
     }
 
-    // --- 🛠️ 更新：中二命名與魚目混珠 ---
+    // --- 🛠️ 優化：魚目混珠命名邏輯 ---
     drop(isB) {
         const r = Math.random();
         let q = isB ? (r < 0.3 ? 4 : 3) : (r < 0.01 ? 4 : r < 0.05 ? 3 : r < 0.15 ? 2 : r < 0.4 ? 1 : 0);
@@ -133,7 +137,7 @@ class XianXiaGame {
         
         const qPrefixes = [
             ["凡塵的", "生鏽的", "斑駁的", "粗製的"], 
-            ["精鋼的", "鋒銳的", "斷裂的·", "殘缺的·"], // 良品混入帥名
+            ["精鋼的", "鋒銳的", "斷裂的·", "殘缺的·"], // 混入帥名魚目混珠
             ["赤霄", "沉淵", "聚靈", "寒光"], 
             ["九幽", "鎮岳", "斷罪", "戮仙"], 
             ["太初·", "荒古·", "無極·", "萬劫·"]
@@ -157,13 +161,13 @@ class XianXiaGame {
         }
     }
 
-    // --- 🛠️ 更新：單件熔煉 ---
+    // --- 🛠️ 優化：單件熔煉 ---
     meltItem(id) {
         const idx = this.state.bag.findIndex(i => i.id === Number(id));
         if (idx !== -1) {
             const item = this.state.bag[idx];
-            this.state.p.xp += item.val * 2;
-            this.log(`🔥 熔煉 ${item.name}，獲修為 ${item.val * 2}`);
+            this.state.p.xp += item.val * 2; // 單件給雙倍修為
+            this.log(`🔥 熔煉 ${item.name}，獲得修為 ${item.val * 2}`);
             this.state.bag.splice(idx, 1);
             this.gainXp(0); this.renderBag(); this.update(); this.save();
         }
