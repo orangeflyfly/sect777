@@ -229,10 +229,13 @@ class XianXiaGame {
         const list = document.getElementById('bag-list');
         list.innerHTML = this.state.bag.map(i => `
             <div class="item-card quality-${i.q}">
-                <div style="display:flex; justify-content:space-between;">
+                <div style="display:flex; justify-content:space-between; align-items:start;">
                     <b>${i.name}</b>
-                    <span>${i.type === 'weapon' ? 'ATK' : 'HP'} +${i.val}</span>
+                    <span style="font-size:10px; color:${this.state.p.lv >= i.lvReq ? 'var(--success)' : 'var(--danger)'}">
+                        Lv.${i.lvReq}
+                    </span>
                 </div>
+                <div style="font-size:11px; margin-top:4px;">${i.type === 'weapon' ? '攻擊' : '氣血'} +${i.val}</div>
                 <div class="btn-group">
                     <button class="btn-small" onclick="game.equip(${i.id})">穿戴</button>
                     <button class="btn-small" onclick="game.melt(${i.id})">熔煉</button>
