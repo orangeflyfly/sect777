@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>仙俠宗門 V0.3.1 - 模組化改版</title>
+    <title>仙俠宗門 V0.4.0 - 屬性飛升版</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,11 +11,13 @@
 <div id="app">
     <header>
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span class="realm-tag" id="val-realm">凡人</span>
+            <span class="realm-tag" id="val-realm">載入中</span>
             <span style="font-size: 14px;">等級 <b id="val-lv">1</b></span>
         </div>
         <div class="bar-container"><div id="bar-xp" class="bar-fill" style="width: 0%; background: var(--info);"></div></div>
-        <div style="display: flex; justify-content: space-between; font-size: 12px;">
+        <div class="bar-container" style="height: 6px; margin-top: 0;"><div id="bar-p-hp" class="bar-fill" style="width: 100%; background: var(--success);"></div></div>
+        
+        <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 4px;">
             <span>戰力: <b id="val-power" style="color: var(--gold);">0</b></span>
             <span>修為: <span id="val-xp">0</span> / <span id="val-next-xp">100</span></span>
         </div>
@@ -33,45 +35,37 @@
             </div>
             <div style="width: 100%; max-width: 280px; margin-top: 20px;">
                 <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 5px;">
-                    <b id="m-name">妖怪</b>
+                    <b id="m-name">載入中...</b>
                     <b id="m-hp-txt">0/0</b>
                 </div>
                 <div class="bar-container"><div id="bar-m-hp" class="bar-fill" style="width: 100%; background: var(--danger);"></div></div>
             </div>
-            <div id="log" style="width: 100%;"></div>
+            <div id="log"></div>
         </div>
     </div>
-    
-        <div class="bar-container"><div id="bar-p-hp" class="bar-fill" style="width: 100%; background: var(--success);"></div></div>
-
-    <div style="background: var(--card-bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border);">
-        <p>生命值: <b id="val-hp">0/0</b></p>
-        <div class="stat-detail-grid">
-            <div class="stat-detail-item">每秒回血 <b id="val-regen">0</b></div>
-            <div class="stat-detail-item">閃避機率 <b id="val-evasion">0</b>%</div>
-            <div class="stat-detail-item">暴擊倍率 <b id="val-crit-dmg">1.5</b>x</div>
-        </div>
-        <hr style="margin: 10px 0; border: 0; border-top: 1px solid #30363d;">
-        <p>基礎攻擊: <b id="val-atk">0</b></p>
-        <p>攻擊速度: <b id="val-spd">0</b> 次/秒</p>
-        <p>暴擊機率: <b id="val-crit">0</b>%</p>
-    
-        <button class="btn-reset" onclick="game.respec()">重置所有屬性點</button>
-    </div>
-
 
     <div id="p-stats" class="stage" style="display: none; padding: 20px;">
         <h3>修為面板 (潛能: <span id="val-pts" style="color:var(--gold)">0</span>)</h3>
         <div id="stat-list" style="margin: 15px 0;"></div>
+        
         <div class="equip-box">
             <div class="slot">⚔️ 武器<b id="eq-weapon">無</b></div>
             <div class="slot">🛡️ 防具<b id="eq-body">無</b></div>
         </div>
-        <div style="background: var(--card-bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border);">
-            <p>攻擊力: <b id="val-atk">0</b> <small id="val-atk-plus" style="color:var(--success)"></small></p>
-            <p>生命值: <b id="val-hp">0</b> <small id="val-hp-plus" style="color:var(--success)"></small></p>
-            <p>攻速: <b id="val-spd">0</b> 次/秒</p>
-            <p>暴擊率: <b id="val-crit">0</b>%</p>
+
+        <div class="stats-panel">
+            <p>當前氣血: <b id="val-hp">0/0</b></p>
+            <div class="stat-detail-grid">
+                <div class="stat-detail-item">每秒回血 <b id="val-regen">0</b></div>
+                <div class="stat-detail-item">閃避機率 <b id="val-evasion">0</b>%</div>
+                <div class="stat-detail-item">暴擊倍率 <b id="val-crit-dmg">1.5</b>x</div>
+            </div>
+            <hr style="margin: 12px 0; border: 0; border-top: 1px solid #30363d;">
+            <p>基礎攻擊: <b id="val-atk">0</b></p>
+            <p>攻擊速度: <b id="val-spd">0</b> 次/秒</p>
+            <p>暴擊機率: <b id="val-crit">0</b>%</p>
+            
+            <button class="btn-reset" onclick="game.respec()">重置所有屬性點 (洗點)</button>
         </div>
     </div>
 
