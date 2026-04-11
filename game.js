@@ -1,27 +1,22 @@
-// --- V0.6.0 核心數據：6 類 60 種炫炮詞條字典 ---
-const AFFIX_DICT = {
-    str: ["猛烈的", "狂暴的", "摧城的", "霸道的", "碎星的", "巨力的", "破軍的", "弒神的", "焚天的", "荒古的"],
-    vit: ["堅毅的", "厚重的", "如山的", "不朽的", "磐石的", "玄武的", "固本的", "龍鱗的", "混元的", "不滅的"],
-    agi: ["迅捷的", "殘影的", "流風的", "絕影的", "逐日的", "騰雲的", "幻影的", "驚雷的", "瞬身的", "極意的"],
-    int: ["聰慧的", "通靈的", "玄門的", "太極的", "星辰的", "混沌的", "乾坤的", "悟道的", "靈妙的", "歸一的"],
-    luk: ["幸運的", "招財的", "尋寶的", "富貴的", "玲瓏的", "掠奪的", "聚財的", "納福的", "錦鯉的", "天選的"],
-    spc: ["嗜血的", "穿心的", "致命的", "虛幻的", "狂熱的", "寂滅的", "破甲的", "幽冥的", "聖潔的", "災厄的"]
+/**
+ * V0.6.5 神兵圖鑑模組
+ * 6 大系別，每系 10 種詞條，總計 60 種
+ */
+const AFFIX_LIBRARY = {
+    str: { label: "破軍系", stat: "力量", list: ["猛烈的", "狂暴的", "摧城的", "霸道的", "碎星的", "巨力的", "萬鈞的", "震天的", "開山的", "荒古的"] },
+    vit: { label: "不動系", stat: "體質", list: ["結實的", "厚重的", "如山的", "不朽的", "磐石的", "玄武的", "固本的", "龍鱗的", "混元的", "不滅的"] },
+    agi: { label: "神行系", stat: "敏捷", list: ["迅捷的", "殘影的", "流風的", "絕影的", "逐日的", "騰雲的", "幻影的", "驚雷的", "瞬身的", "極意的"] },
+    int: { label: "天啟系", stat: "靈力", list: ["聰慧的", "通靈的", "玄門的", "太極的", "星辰的", "混沌的", "乾坤的", "悟道的", "靈妙的", "歸一的"] },
+    luk: { label: "貪狼系", stat: "打寶", list: ["幸運的", "招財的", "尋寶的", "富貴的", "玲瓏的", "掠奪的", "聚財的", "納福的", "錦鯉的", "天選的"] },
+    spc: { label: "禁忌系", stat: "特殊", list: ["嗜血的", "穿心的", "致命的", "虛幻的", "狂熱的", "寂滅的", "破甲的", "幽冥的", "聖潔的", "災厄的"] }
 };
 
 class XianXiaGame {
     constructor() {
-        const saved = JSON.parse(localStorage.getItem('XX_V060'));
+        const saved = JSON.parse(localStorage.getItem('XX_V065'));
         this.state = saved || {
-            p: { 
-                lv: 1, xp: 0, nx: 100, pts: 0, 
-                str: 5, vit: 5, agi: 5, int: 5, 
-                job: null, 
-                money: 0,       // 靈石
-                maxBag: 20,     // 初始背包
-                bagBuyCount: 0  // 擴充次數
-            },
-            bag: [], 
-            eq: { weapon: null, body: null }
+            p: { lv: 1, xp: 0, nx: 100, pts: 0, str: 5, vit: 5, agi: 5, int: 5, job: null, money: 0, maxBag: 20, bagBuyCount: 0 },
+            bag: [], eq: { weapon: null, body: null }
         };
 
         this.curHp = 0;
@@ -33,7 +28,6 @@ class XianXiaGame {
         window.onload = () => this.init();
     }
 
-    // --- 安全 UI 更新 ---
     u(id, val, isStyle = false) {
         const el = document.getElementById(id);
         if (!el) return;
@@ -48,36 +42,35 @@ class XianXiaGame {
         this.renderStats();
         this.update();
         setInterval(() => this.loop(), 100);
-        console.log("V0.6.0 黑市禁地引擎啟動");
     }
 
-    // --- 屬性計算 (含轉職加成與詞條) ---
+    // --- 核心計算：整合 60 種詞條收益 ---
     calc() {
         const { p, eq } = this.state;
         let m = { str: 1, vit: 1, agi: 1, int: 1 };
+        
+        // 職業基礎倍率
         if (p.job === 'sword') m.agi = 2.0;
         if (p.job === 'body') m.vit = 2.0;
         if (p.job === 'soul') m.int = 2.0;
 
-        // 基礎數值
-        this.baseAtk = (p.str * m.str) * 3 + (p.lv * 2);
-        this.baseHp = (p.vit * m.vit) * 20 + (p.lv * 10);
-        
-        // 裝備數值 (含詞條加成)
-        let eqAtk = 0, eqHp = 0, affixBonus = 1;
-        if (eq.weapon) { 
-            eqAtk += eq.weapon.val;
-            if (eq.weapon.affixType === 'str') affixBonus += 0.2; // 力量系詞條額外加成
-        }
-        if (eq.body) {
-            eqHp += eq.body.val;
-            if (eq.body.affixType === 'vit') affixBonus += 0.2;
-        }
+        // 計算裝備詞條加成
+        let extra = { str: 0, vit: 0, agi: 0, int: 0, atkPct: 1, hpPct: 1 };
+        [eq.weapon, eq.body].forEach(item => {
+            if (item && item.affixType) {
+                const type = item.affixType;
+                const bonus = 1 + (item.q * 0.05); // 品質越高，詞條加成越猛
+                if (type === 'str') extra.atkPct += 0.15 * bonus;
+                if (type === 'vit') extra.hpPct += 0.15 * bonus;
+                if (type === 'agi') m.agi += 0.2 * bonus;
+                if (type === 'int') m.int += 0.2 * bonus;
+                if (type === 'spc') { extra.atkPct += 0.1 * bonus; extra.hpPct += 0.1 * bonus; }
+            }
+        });
 
-        this.finalAtk = Math.floor((this.baseAtk + eqAtk) * affixBonus);
-        this.finalHp = Math.floor(this.baseHp + eqHp);
+        this.finalAtk = Math.floor(((p.str * m.str) * 3 + (p.lv * 2) + (eq.weapon?eq.weapon.val:0)) * extra.atkPct);
+        this.finalHp = Math.floor(((p.vit * m.vit) * 20 + (p.lv * 10) + (eq.body?eq.body.val:0)) * extra.hpPct);
         
-        // 衍生屬性
         this.hpRegen = (p.vit * m.vit) * 0.5 + (p.lv * 0.2);
         this.spd = 0.5 + ((p.agi * m.agi) * 0.04);
         this.evasion = Math.min(50, (p.agi * m.agi) * 0.4);
@@ -85,7 +78,6 @@ class XianXiaGame {
         this.critDmg = 1.5 + ((p.int * m.int) * 0.01);
     }
 
-    // --- 核心迴圈 ---
     loop() {
         const now = Date.now();
         if (now - this.rt.lastRegen >= 1000) {
@@ -99,55 +91,14 @@ class XianXiaGame {
         }
     }
 
-    // --- 戰鬥系統 ---
-    atk(isManual, x, y, multi = 1) {
-        let isCrit = Math.random() * 100 < this.crit;
-        let dmg = Math.floor(this.finalAtk * (isManual ? 1.2 : 1.0) * multi * (isCrit ? this.critDmg : 1));
-        this.m.hp -= dmg;
-        this.pop(dmg, isCrit, x, y);
-        if (this.m.hp <= 0) this.onDie(); 
-        else if (!isManual || Math.random() < 0.3) this.monsterCounterAtk();
-        this.update();
-    }
-
-    monsterCounterAtk() {
-        if (Math.random() * 100 < this.evasion) { this.pop("閃避", false, 120, 180); return; }
-        this.curHp -= Math.floor(this.m.mx * 0.08);
-        if (this.curHp <= 0) {
-            this.log("💀 傷重倒地，返回宗門...", "var(--danger)");
-            this.curHp = Math.floor(this.finalHp * 0.2);
-            this.rt.auto = false;
-        }
-        this.update();
-    }
-
-    onDie() {
-        this.log(`擊殺了 ${this.m.n}，修為 +${this.m.exp}，靈石 +${this.m.money}`);
-        this.state.p.money += this.m.money;
-        this.gainXp(this.m.exp);
-        if (Math.random() < (this.m.elite ? 0.8 : 0.25)) this.drop();
-        this.spawn();
-    }
-
-    spawn() {
-        const pLv = this.state.p.lv;
-        this.m.elite = Math.random() < 0.15;
-        this.m.mx = Math.floor(50 * Math.pow(1.25, pLv - 1)) * (this.m.elite ? 3 : 1);
-        this.m.hp = this.m.mx;
-        this.m.exp = Math.floor((20 + pLv * 5) * (this.m.elite ? 2.5 : 1));
-        this.m.money = Math.floor((10 + pLv * 3) * (this.m.elite ? 5 : 1));
-        const mc = document.getElementById('m-card');
-        if (mc) mc.className = `monster-card ${this.m.elite ? 'elite' : ''}`;
-    }
-
-    // --- 詞條引擎：從 6 類 60 種中隨機抽取 ---
+    // --- 詞條生成引擎 ---
     generateAffix(quality) {
-        if (quality < 2 && Math.random() > 0.3) return null; // 凡良裝機率無詞條
-        const keys = Object.keys(AFFIX_DICT);
-        const type = keys[Math.floor(Math.random() * keys.length)];
-        const list = AFFIX_DICT[type];
-        const name = list[Math.floor(Math.random() * list.length)];
-        return { name, type };
+        if (quality < 1 && Math.random() > 0.2) return null; 
+        const types = Object.keys(AFFIX_LIBRARY);
+        const type = types[Math.floor(Math.random() * types.length)];
+        const lib = AFFIX_LIBRARY[type];
+        const name = lib.list[Math.floor(Math.random() * lib.list.length)];
+        return { name, type, label: lib.label };
     }
 
     drop() {
@@ -159,15 +110,13 @@ class XianXiaGame {
         
         let baseVal = (5 + this.state.p.lv * 2.2) * [1, 1.5, 2.8, 4.5, 9][q];
         const affix = this.generateAffix(q);
-        const affixName = affix ? affix.name + " · " : "";
-        if (affix) baseVal *= 1.25; // 有詞條的裝備更強
+        const fullName = (affix ? `[${affix.label}] ${affix.name}` : "") + qNames[q] + "·" + tNames[Math.floor(Math.random()*4)];
 
         const item = { 
-            id: Date.now(), type, q, 
-            val: Math.floor(baseVal), 
+            id: Date.now(), type, q, val: Math.floor(baseVal), 
             lvReq: Math.max(1, this.state.p.lv + Math.floor(Math.random() * 3) - 1),
             affixType: affix ? affix.type : null,
-            name: affixName + qNames[q] + "·" + tNames[Math.floor(Math.random()*4)]
+            name: fullName
         };
         
         if (this.state.bag.length < this.state.p.maxBag) {
@@ -178,18 +127,14 @@ class XianXiaGame {
         }
     }
 
-    // --- 商店系統：越買越貴 ---
+    // --- 商店系統 ---
     buyBag() {
         const price = 1000 * Math.pow(2, this.state.p.bagBuyCount);
         if (this.state.p.money >= price) {
-            this.state.p.money -= price;
-            this.state.p.maxBag += 5;
-            this.state.p.bagBuyCount++;
-            this.log(`💰 成功擴充背包！目前容量：${this.state.p.maxBag}`, "var(--success)");
+            this.state.p.money -= price; this.state.p.maxBag += 5; this.state.p.bagBuyCount++;
+            this.log(`💰 擴充成功！目前容量：${this.state.p.maxBag}`, "var(--success)");
             this.update(); this.save();
-        } else {
-            alert("靈石不足！你需要 " + price + " 靈石");
-        }
+        } else alert("靈石不足！");
     }
 
     // --- 介面更新 ---
@@ -225,13 +170,49 @@ class XianXiaGame {
         const bc = document.getElementById('btn-class'); if (bc) bc.style.display = (p.lv >= 11 && !p.job) ? 'block' : 'none';
     }
 
-    // --- 其他邏輯 ---
+    atk(isManual, x, y, multi = 1) {
+        let isCrit = Math.random() * 100 < this.crit;
+        let dmg = Math.floor(this.finalAtk * (isManual ? 1.2 : 1.0) * multi * (isCrit ? this.critDmg : 1));
+        this.m.hp -= dmg;
+        this.pop(dmg, isCrit, x, y);
+        if (this.m.hp <= 0) this.onDie(); 
+        else if (!isManual || Math.random() < 0.3) this.monsterCounterAtk();
+        this.update();
+    }
+
+    monsterCounterAtk() {
+        if (Math.random() * 100 < this.evasion) { this.pop("閃避", false, 120, 180); return; }
+        this.curHp -= Math.floor(this.m.mx * 0.08);
+        if (this.curHp <= 0) { this.log("💀 傷重倒地，返回宗門...", "var(--danger)"); this.curHp = Math.floor(this.finalHp * 0.2); this.rt.auto = false; }
+        this.update();
+    }
+
+    onDie() {
+        this.log(`擊殺了 ${this.m.n}，修為 +${this.m.exp}，靈石 +${this.m.money}`);
+        this.state.p.money += this.m.money; this.gainXp(this.m.exp);
+        if (Math.random() < (this.m.elite ? 0.8 : 0.25)) this.drop();
+        this.spawn();
+    }
+
+    spawn() {
+        const pLv = this.state.p.lv;
+        this.m.elite = Math.random() < 0.15;
+        this.m.mx = Math.floor(50 * Math.pow(1.25, pLv - 1)) * (this.m.elite ? 3 : 1);
+        this.m.hp = this.m.mx;
+        this.m.exp = Math.floor((20 + pLv * 5) * (this.m.elite ? 2.5 : 1));
+        this.m.money = Math.floor((10 + pLv * 3) * (this.m.elite ? 5 : 1));
+        const mc = document.getElementById('m-card'); if (mc) mc.className = `monster-card ${this.m.elite ? 'elite' : ''}`;
+    }
+
     renderBag() {
         const list = document.getElementById('bag-list'); if (!list) return;
         list.innerHTML = this.state.bag.map(i => `
             <div class="item-card quality-${i.q}">
-                <div style="display:flex; justify-content:space-between;"><b>${i.name}</b><span style="font-size:10px;">Lv.${i.lvReq}</span></div>
-                <div style="margin:5px 0; color:#8b949e;">${i.type==='weapon'?'攻擊':'氣血'} +${i.val}</div>
+                <div style="display:flex; justify-content:space-between; align-items:start;">
+                    <b style="font-size:10px;">${i.name}</b>
+                    <span style="font-size:9px; color:#8b949e;">Lv.${i.lvReq}</span>
+                </div>
+                <div style="margin:5px 0; color:var(--info); font-size:10px;">${i.type==='weapon'?'攻擊':'氣血'} +${i.val}</div>
                 <button class="btn-small" onclick="game.equip(${i.id})">穿戴</button>
             </div>`).join('');
         this.u('bag-count', this.state.bag.length);
@@ -292,7 +273,7 @@ class XianXiaGame {
         b.prepend(d); if (b.children.length > 20) b.lastChild.remove();
     }
     getQColor(q) { return ["#8b949e", "#3fb950", "#58a6ff", "#a371f7", "#f1e05a"][q]; }
-    save() { localStorage.setItem('XX_V060', JSON.stringify(this.state)); }
+    save() { localStorage.setItem('XX_V065', JSON.stringify(this.state)); }
 }
 
 const game = new XianXiaGame();
