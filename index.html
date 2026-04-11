@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>仙俠宗門 V0.7.0 - 禁地大冒險</title>
+    <title>仙俠宗門 V0.7.1 - 細節修正版</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -32,7 +32,7 @@
     <div id="p-battle" class="stage" style="display: flex;">
         <div class="battle-view">
             <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 10px; background: rgba(255,255,255,0.05); padding: 5px 10px; border-radius: 6px;">
-                <span id="val-map-name" style="color: var(--info); font-weight: bold;">📍 載入地圖中...</span>
+                <span id="val-map-name" style="color: var(--info); font-weight: bold;">📍 載入中...</span>
                 <button onclick="game.showMapModal()" style="padding: 2px 8px; font-size: 10px; background: var(--info);">切換地圖</button>
             </div>
             
@@ -45,29 +45,35 @@
 
             <div style="width: 100%;">
                 <div style="display: flex; justify-content: space-between; font-size: 11px; color: #fff; margin-bottom: 2px;">
-                    <span id="m-name">小妖</span>
+                    <span id="m-name">怪物</span>
                     <span id="m-hp-txt">0 / 0</span>
                 </div>
                 <div class="bar-container hp-bar-wrap">
                     <div id="bar-m-hp" class="bar-fill" style="width: 100%; background: var(--danger);"></div>
                 </div>
             </div>
-            
             <div id="log"></div>
         </div>
     </div>
 
     <div id="p-stats" class="stage" style="display: none;">
         <h4>修為面板 (可用點數: <span id="val-pts">0</span>)</h4>
+        
+        <button id="btn-class" onclick="game.showClassModal()" style="display:none; width:100%; background:var(--purple) !important; margin-bottom:15px; border-color:white !important;">🌟 選擇修仙流派</button>
+        
         <div id="stat-list"></div>
-        <div style="display:flex; gap:10px; margin-top:15px;">
-            <div style="flex:1; background:var(--card-bg); border:1px solid var(--border); padding:10px; border-radius:8px; text-align:center;">
-                ⚔️ 武器<b id="eq-weapon" style="display:block; color:var(--gold); font-size:12px; margin-top:5px;">無</b>
+        
+        <div class="equip-box-v2">
+            <div class="slot-v2">
+                ⚔️ 武器<b id="eq-weapon">無</b>
+                <button id="btn-unequip-weapon" class="btn-unequip" style="display:none;" onclick="game.unequip('weapon')">卸下</button>
             </div>
-            <div style="flex:1; background:var(--card-bg); border:1px solid var(--border); padding:10px; border-radius:8px; text-align:center;">
-                🛡️ 防具<b id="eq-body" style="display:block; color:var(--gold); font-size:12px; margin-top:5px;">無</b>
+            <div class="slot-v2">
+                🛡️ 防具<b id="eq-body">無</b>
+                <button id="btn-unequip-body" class="btn-unequip" style="display:none;" onclick="game.unequip('body')">卸下</button>
             </div>
         </div>
+        
         <button class="btn-reset" onclick="game.respec()">使用「洗點丹」</button>
     </div>
 
@@ -75,11 +81,11 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h4>儲物袋 (<span id="bag-count">0</span>/<span id="val-bag-max">20</span>)</h4>
             <div style="display:flex; gap:5px;">
-                <select id="melt-filter" style="background:#333; color:#fff; border:1px solid #555;">
-                    <option value="0">凡品以下</option>
-                    <option value="1">良品以下</option>
-                </select>
-                <button onclick="game.quickMelt()" style="background:var(--danger) !important;">熔煉</button>
+                <select id="melt-filter">
+                    <option value="0">凡品(灰)</option>
+                    <option value="1">良品(綠)</option>
+                    <option value="2">精品(藍)</option> </select>
+                <button onclick="game.quickMelt()" style="background:var(--danger) !important; padding: 5px 10px;">熔煉</button>
             </div>
         </div>
         <div id="bag-list" class="bag-grid"></div>
@@ -104,11 +110,20 @@
     </nav>
 
     <div id="map-modal" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:999; justify-content:center; align-items:center;">
-        <div style="background:var(--card-bg); padding:20px; border-radius:12px; border:2px solid var(--info); width:85%; max-height:80%; overflow-y:auto;">
+        <div style="background:var(--card-bg); padding:20px; border-radius:12px; border:2px solid var(--info); width:85%;">
             <h3 style="color:var(--info); margin-bottom:15px; text-align:center;">選擇歷練禁地</h3>
-            <div id="map-list" style="display:grid; gap:10px;">
-                </div>
-            <button onclick="document.getElementById('map-modal').style.display='none'" style="margin-top:20px; width:100%; background:#555 !important;">返回</button>
+            <div id="map-list" style="display:grid; gap:10px;"></div>
+            <button onclick="document.getElementById('map-modal').style.display='none'" style="margin-top:20px; width:100%; background:#555 !important;">關閉</button>
+        </div>
+    </div>
+
+    <div id="class-modal" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:1000; justify-content:center; align-items:center;">
+        <div style="background:var(--card-bg); padding:25px; border-radius:15px; border:2px solid var(--purple); width:80%; text-align:center;">
+            <h3 style="color:var(--purple); margin-bottom:20px;">踏入仙途</h3>
+            <p style="font-size:12px; color:#aaa; margin-bottom:20px;">達到 11 級，請選擇你的修煉流派</p>
+            <button style="width:100%; margin-bottom:10px; background:var(--danger) !important;" onclick="game.chooseClass('sword')">【劍修】攻擊、敏捷翻倍</button>
+            <button style="width:100%; margin-bottom:10px; background:var(--success) !important;" onclick="game.chooseClass('body')">【體修】血量、體質翻倍</button>
+            <button style="width:100%; margin-bottom:10px; background:var(--info) !important;" onclick="game.chooseClass('soul')">【靈修】靈力、暴擊翻倍</button>
         </div>
     </div>
 </div>
