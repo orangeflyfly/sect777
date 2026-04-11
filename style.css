@@ -5,29 +5,46 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; user-select: none; }
-body { background: var(--bg-dark); color: var(--text); display: flex; justify-content: center; height: 100vh; overflow: hidden; }
 
-#app { width: 100%; max-width: 480px; height: 100%; background: var(--bg-dark); border: 1px solid var(--border); display: flex; flex-direction: column; position: relative; }
+/* 修正 100vh 在手機瀏覽器上的問題 */
+body { background: var(--bg-dark); color: var(--text); display: flex; justify-content: center; height: 100dvh; overflow: hidden; }
 
-header { padding: 12px 15px; background: var(--card-bg); border-bottom: 2px solid var(--gold); z-index: 10; }
+#app { 
+    width: 100%; max-width: 480px; height: 100%; 
+    background: var(--bg-dark); border: 1px solid var(--border); 
+    display: flex; flex-direction: column; /* 強制讓子元素排排坐 */
+    position: relative; 
+}
+
+/* 頂部不縮放 */
+header { flex-shrink: 0; padding: 12px 15px; background: var(--card-bg); border-bottom: 2px solid var(--gold); }
+
+/* 中間內容區：自動撐滿剩餘空間並滾動 */
+.stage { 
+    flex: 1; /* 這是關鍵：它會佔據剩下的所有空間 */
+    display: flex; flex-direction: column; 
+    overflow-y: auto; padding: 15px; 
+    scrollbar-width: none; 
+}
+.stage::-webkit-scrollbar { display: none; }
+
+/* 底部導覽列：不再浮動，而是老實待在最下面 */
+nav { 
+    flex-shrink: 0; /* 禁止縮放，保持高度 */
+    display: flex; 
+    background: var(--card-bg); 
+    border-top: 1px solid var(--border); 
+    height: 70px; 
+    padding-bottom: env(safe-area-inset-bottom); /* 手機安全區域 */
+}
+
+/* 剩下的戰鬥與背包樣式保持不變 */
 .realm-tag { color: var(--gold); font-weight: 900; font-size: 18px; text-shadow: 0 0 10px rgba(241,224,90,0.3); }
-
-/* 進度條 */
 .bar-container { height: 10px; background: #000; border-radius: 5px; overflow: hidden; margin: 6px 0; border: 1px solid var(--border); position: relative; }
 .hp-bar-wrap { height: 18px; border-radius: 9px; }
 .bar-fill { height: 100%; transition: width 0.3s ease-out; }
 .bar-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; font-size: 10px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; }
 
-/* 核心容器：優化滾動與底部遮擋 */
-.stage { 
-    flex: 1; display: flex; flex-direction: column; 
-    overflow-y: auto; padding: 15px; 
-    padding-bottom: 120px; /* 增加底部防護墊，防止導覽列遮擋 */
-    scrollbar-width: none; 
-}
-.stage::-webkit-scrollbar { display: none; }
-
-/* 戰鬥 */
 .battle-view { display: flex; flex-direction: column; align-items: center; }
 .monster-card { 
     width: 140px; height: 140px; background: rgba(255,255,255,0.03); border: 4px solid var(--border);
@@ -36,27 +53,17 @@ header { padding: 12px 15px; background: var(--card-bg); border-bottom: 2px soli
 }
 .monster-card.elite { border-color: var(--gold); box-shadow: 0 0 20px rgba(241,224,90,0.3); }
 
-/* 屬性與背包網格 */
 .stat-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding: 6px 10px; background: rgba(255,255,255,0.02); border-radius: 6px; }
-.bag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-bottom: 20px; }
-.item-card { background: #1c2128; border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 11px; display: flex; flex-direction: column; justify-content: space-between; min-height: 80px; }
+.bag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-bottom: 20px; } /* 底部留白 */
+.item-card { background: #1c2128; border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 11px; display: flex; flex-direction: column; justify-content: space-between; min-height: 85px; }
 
-/* 品質外框 */
-.quality-0 { border-left: 3px solid #8b949e; }
-.quality-1 { border-left: 3px solid #3fb950; }
-.quality-2 { border-left: 3px solid #58a6ff; }
-.quality-3 { border-left: 3px solid #a371f7; border-style: dashed; }
-.quality-4 { border: 1px solid var(--gold) !important; box-shadow: inset 0 0 10px rgba(241,224,90,0.1); }
+.quality-3 { border: 1px dashed var(--purple); }
+.quality-4 { border: 1px solid var(--gold) !important; box-shadow: 0 0 8px rgba(241,224,90,0.15); }
 
-/* 商店 */
-.shop-item { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; display: flex; align-items: center; }
-
-/* 按鈕與導覽 */
 .btn-small { padding: 5px 8px; background: #30363d; border: 0; color: #fff; border-radius: 4px; font-size: 11px; cursor: pointer; margin-top: 5px; }
 .btn-plus { width: 30px; height: 26px; background: var(--info); border: 0; border-radius: 4px; color: #fff; cursor: pointer; }
 .btn-reset { margin-top: 10px; padding: 10px; width: 100%; background: transparent; border: 1px solid var(--danger); color: var(--danger); border-radius: 6px; cursor: pointer; font-size: 12px; }
 
-nav { position: absolute; bottom: 0; width: 100%; display: flex; background: var(--card-bg); border-top: 1px solid var(--border); z-index: 100; height: 75px; padding-bottom: env(safe-area-inset-bottom); }
 .tab { flex: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #8b949e; font-weight: bold; font-size: 13px; }
 .tab.active { color: var(--gold); border-top: 3px solid var(--gold); background: rgba(241,224,90,0.05); }
 
