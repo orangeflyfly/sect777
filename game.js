@@ -1,6 +1,6 @@
 class XianXiaGame {
     constructor() {
-        const saved = JSON.parse(localStorage.getItem('XX_V040'));
+        const saved = JSON.parse(localStorage.getItem('XX_V043'));
         this.state = saved || {
             p: { lv: 1, xp: 0, nx: 100, pts: 0, str: 5, vit: 5, agi: 5, int: 5 },
             bag: [],
@@ -43,7 +43,7 @@ class XianXiaGame {
 
     loop() {
         const now = Date.now();
-        // 回血
+        // 每秒回血
         if (now - this.rt.lastRegen >= 1000) {
             if (this.curHp < this.finalHp) {
                 this.curHp = Math.min(this.finalHp, this.curHp + this.hpRegen);
@@ -60,7 +60,8 @@ class XianXiaGame {
         if (this.rt.skillCD > 0) {
             this.rt.skillCD -= 100;
             const per = Math.max(0, (this.rt.skillCD / this.rt.skillMaxCD) * 100);
-            document.getElementById('skill-cd').style.width = per + "%";
+            const cdEl = document.getElementById('skill-cd');
+            if (cdEl) cdEl.style.width = per + "%";
             document.getElementById('btn-skill').disabled = true;
         } else {
             document.getElementById('btn-skill').disabled = false;
@@ -91,7 +92,7 @@ class XianXiaGame {
         let mDmg = Math.floor(this.m.mx * 0.08); 
         this.curHp -= mDmg;
         if (this.curHp <= 0) {
-            this.log("💀 體力不支，先行撤退...", "var(--danger)");
+            this.log("💀 傷重倒地，只能先行撤退...", "var(--danger)");
             this.curHp = Math.floor(this.finalHp * 0.2);
             this.rt.auto = false;
             this.update();
@@ -99,19 +100,19 @@ class XianXiaGame {
     }
 
     respec() {
-        if (!confirm("確定要重置所有點數嗎？")) return;
+        if (!confirm("確定要重置所有點數嗎？這將會讓一切回到起點。")) return;
         const p = this.state.p;
         p.pts += (p.str - 5) + (p.vit - 5) + (p.agi - 5) + (p.int - 5);
         p.str = 5; p.vit = 5; p.agi = 5; p.int = 5;
         this.calc(); this.curHp = this.finalHp; this.renderStats(); this.update(); this.save();
-        this.log("🔮 屬性已重置。");
+        this.log("🔮 重置點數成功。");
     }
 
     useSkill() {
         if (this.rt.skillCD <= 0) {
             this.atk(true, 240, 300, 3.5);
             this.rt.skillCD = this.rt.skillMaxCD;
-            this.log("💥 御劍術！", "var(--info)");
+            this.log("💥 施展【御劍術】！", "var(--info)");
         }
     }
 
@@ -143,43 +144,45 @@ class XianXiaGame {
     drop() {
         const r = Math.random();
         let q = 0;
-        
-        // 大幅調低高階裝備機率
-        if (r < 0.005) q = 4;       // 仙品：0.5% (原本 3%)
-        else if (r < 0.03) q = 3;   // 極品：2.5% (原本 7%)
-        else if (r < 0.12) q = 2;   // 精品：9%   (原本 15%)
-        else if (r < 0.35) q = 1;   // 良品：23%  (原本 25%)
-        else q = 0;                 // 凡品：其餘
-    
+        if (r < 0.005) q = 4; // 仙品 0.5%
+        else if (r < 0.035) q = 3; // 極品 3%
+        else if (r < 0.15) q = 2; // 精品
+        else if (r < 0.4) q = 1; // 良品
+
         const type = Math.random() < 0.5 ? 'weapon' : 'body';
         const qNames = ["凡品", "良品", "精品", "極品", "仙品"];
-        const typeNames = type === 'weapon' ? ["長劍", "重錘", "靈珠", "唐刀"] : ["布袍", "輕甲", "重鎧", "法衣"];
+        const tNames = type === 'weapon' ? ["長劍", "重錘", "靈珠", "唐刀"] : ["布袍", "輕甲", "重鎧", "法衣"];
         
-        // 計算屬性：讓高品質裝備的成長性更高
         const baseVal = 5 + (this.state.p.lv * 2);
-        const qualityMult = [1, 1.5, 2.5, 4, 8][q]; // 仙品是凡品的 8 倍強
-        const val = Math.floor(baseVal * qualityMult * (0.8 + Math.random() * 0.4));
-        
-        // 設定等級需求 (當前等級 +/- 2級)
+        const qMult = [1, 1.5, 2.5, 4, 8][q];
+        const val = Math.floor(baseVal * qMult * (0.8 + Math.random() * 0.4));
         const lvReq = Math.max(1, this.state.p.lv + Math.floor(Math.random() * 5) - 2);
-    
-        const item = { 
-            id: Date.now(), 
-            type, 
-            q, 
-            val, 
-            lvReq,
-            name: `${qNames[q]}·${typeNames[Math.floor(Math.random()*4)]}` 
-        };
-    
+
+        const item = { id: Date.now(), type, q, val, lvReq, name: `${qNames[q]}·${tNames[Math.floor(Math.random()*4)]}` };
+        
         if (this.state.bag.length < 20) {
             this.state.bag.push(item);
-            if (q >= 3) {
-                this.log(`✨ 天降祥瑞！獲得【${item.name}】！`, this.getQColor(q));
-            } else {
-                this.log(`🎒 獲得：${item.name}`, this.getQColor(q));
-            }
+            this.log(`🎒 獲得：${item.name}`, this.getQColor(q));
         }
+    }
+
+    equip(id) {
+        const idx = this.state.bag.findIndex(i => i.id === id);
+        const item = this.state.bag[idx];
+        const req = item.lvReq || 1;
+
+        if (this.state.p.lv < req) {
+            this.log(`⚠️ 需要等級 LV.${req} 才能裝備 ${item.name}`, "var(--danger)");
+            alert(`修為不足！需要達到等級 ${req} 才能駕馭這件神兵。`);
+            return;
+        }
+
+        const old = this.state.eq[item.type];
+        if (old) this.state.bag.push(old);
+        this.state.eq[item.type] = item;
+        this.state.bag.splice(idx, 1);
+        this.log(`⚔️ 裝備了 ${item.name}`, "var(--gold)");
+        this.calc(); this.update(); this.renderBag(); this.save();
     }
 
     gainXp(amt) {
@@ -187,25 +190,9 @@ class XianXiaGame {
         p.xp += amt;
         while (p.xp >= p.nx) {
             p.lv++; p.xp -= p.nx; p.nx = Math.floor(p.nx * 1.5); p.pts += 5;
-            this.log(`🌟 境界提升：LV ${p.lv}`, "var(--gold)");
+            this.log(`🌟 境界突破：LV ${p.lv}`, "var(--gold)");
             this.calc();
         }
-    }
-
-    equip(id) {
-        const idx = this.state.bag.findIndex(i => i.id === id);
-        const item = this.state.bag[idx];
-        
-        if (this.state.p.lv < item.lvReq) {
-            alert(`等級不足！需要等級 ${item.lvReq} 才能裝備。`);
-            return;
-        }
-        
-        const old = this.state.eq[item.type];
-        if (old) this.state.bag.push(old);
-        this.state.eq[item.type] = item;
-        this.state.bag.splice(idx, 1);
-        this.calc(); this.update(); this.renderBag();
     }
 
     renderStats() {
@@ -227,28 +214,30 @@ class XianXiaGame {
 
     renderBag() {
         const list = document.getElementById('bag-list');
-        list.innerHTML = this.state.bag.map(i => `
-            <div class="item-card quality-${i.q}">
-                <div style="display:flex; justify-content:space-between; align-items:start;">
-                    <b>${i.name}</b>
-                    <span style="font-size:10px; color:${this.state.p.lv >= i.lvReq ? 'var(--success)' : 'var(--danger)'}">
-                        Lv.${i.lvReq}
-                    </span>
+        list.innerHTML = this.state.bag.map(i => {
+            const req = i.lvReq || 1;
+            const can = this.state.p.lv >= req;
+            return `
+                <div class="item-card quality-${i.q}">
+                    <div style="display:flex; justify-content:space-between; align-items:start;">
+                        <b>${i.name}</b>
+                        <span style="font-size:10px; color:${can?'var(--success)':'var(--danger)'}">Lv.${req}</span>
+                    </div>
+                    <div style="margin:5px 0; color:#8b949e;">${i.type==='weapon'?'ATK':'HP'} +${i.val}</div>
+                    <div class="btn-group">
+                        <button class="btn-small" onclick="game.equip(${i.id})">穿戴</button>
+                        <button class="btn-small" onclick="game.melt(${i.id})">熔煉</button>
+                    </div>
                 </div>
-                <div style="font-size:11px; margin-top:4px;">${i.type === 'weapon' ? '攻擊' : '氣血'} +${i.val}</div>
-                <div class="btn-group">
-                    <button class="btn-small" onclick="game.equip(${i.id})">穿戴</button>
-                    <button class="btn-small" onclick="game.melt(${i.id})">熔煉</button>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
         document.getElementById('bag-count').innerText = this.state.bag.length;
     }
 
     update() {
         const { p, eq } = this.state;
-        const realmIdx = Math.min(Math.floor((p.lv - 1) / 10), this.realms.length - 1);
-        document.getElementById('val-realm').innerText = this.realms[realmIdx];
+        const ridx = Math.min(Math.floor((p.lv - 1) / 10), this.realms.length - 1);
+        document.getElementById('val-realm').innerText = this.realms[ridx];
         document.getElementById('val-lv').innerText = p.lv;
         document.getElementById('val-xp').innerText = p.xp;
         document.getElementById('val-next-xp').innerText = p.nx;
@@ -271,34 +260,31 @@ class XianXiaGame {
     }
 
     pop(dmg, crit, x, y) {
-        const d = document.createElement('div');
-        d.className = 'dmg';
+        const d = document.createElement('div'); d.className = 'dmg';
         d.innerText = (crit ? '💥 ' : '') + dmg;
         d.style.color = crit ? 'var(--gold)' : (dmg === "閃避" ? 'var(--info)' : '#fff');
         d.style.left = (x || 200) + 'px'; d.style.top = (y || 300) + 'px';
-        document.body.appendChild(d);
-        setTimeout(() => d.remove(), 600);
+        document.body.appendChild(d); setTimeout(() => d.remove(), 600);
     }
 
     melt(id) {
         const idx = this.state.bag.findIndex(i => i.id === id);
         this.state.p.xp += Math.floor(this.state.bag[idx].val * 2);
-        this.state.bag.splice(idx, 1);
-        this.update(); this.renderBag();
+        this.state.bag.splice(idx, 1); this.update(); this.renderBag(); this.save();
     }
 
     quickMelt() {
         this.state.bag = this.state.bag.filter(i => {
             if (i.q <= 1) { this.state.p.xp += Math.floor(i.val * 2); return false; }
             return true;
-        });
-        this.update(); this.renderBag();
+        }); this.update(); this.renderBag(); this.save();
     }
 
     toggleAuto() {
         this.rt.auto = !this.rt.auto;
-        document.getElementById('btn-auto').innerText = `自動歷練: ${this.rt.auto ? 'ON' : 'OFF'}`;
-        document.getElementById('btn-auto').style.background = this.rt.auto ? "var(--success)" : "#30363d";
+        const btn = document.getElementById('btn-auto');
+        btn.innerText = `自動歷練: ${this.rt.auto ? 'ON' : 'OFF'}`;
+        btn.style.background = this.rt.auto ? "var(--success)" : "#30363d";
     }
 
     switchTab(tab, el) {
@@ -309,23 +295,16 @@ class XianXiaGame {
         if (tab === 'bag') this.renderBag();
     }
 
-    // 找到 log(m, c) 方法，確認它是這樣寫的：
     log(m, c) {
-        const b = document.getElementById('log');
+        const b = document.getElementById('log'); if (!b) return;
         const d = document.createElement('div');
-    // 如果是擊殺，自動給綠色；如果是受傷，自動給紅色
-        if (m.includes("擊殺")) d.style.color = "var(--success)";
-        else if (m.includes("💀")) d.style.color = "var(--danger)";
-        else d.style.color = c || 'inherit';
-    
+        d.style.color = m.includes("擊殺") ? "var(--success)" : (m.includes("💀") ? "var(--danger)" : (c || 'inherit'));
         d.innerHTML = `<span style="color:#555">[${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}]</span> ${m}`;
-        b.prepend(d);
-        if (b.children.length > 20) b.lastChild.remove();
+        b.prepend(d); if (b.children.length > 20) b.lastChild.remove();
     }
 
-
     getQColor(q) { return ["#8b949e", "#3fb950", "#58a6ff", "#a371f7", "#f1e05a"][q]; }
-    save() { localStorage.setItem('XX_V040', JSON.stringify(this.state)); }
+    save() { localStorage.setItem('XX_V043', JSON.stringify(this.state)); }
 }
 
 const game = new XianXiaGame();
