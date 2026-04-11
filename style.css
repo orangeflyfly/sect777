@@ -10,10 +10,20 @@
     --purple: #a371f7;
 }
 
-html, body { height: 100%; margin: 0; padding: 0; background: var(--bg-dark); color: var(--text-main); font-family: sans-serif; overflow: hidden; }
+html, body { 
+    height: 100%; margin: 0; padding: 0; 
+    background: var(--bg-dark); color: var(--text-main); 
+    font-family: sans-serif; overflow: hidden; 
+}
+
 * { box-sizing: border-box; }
 
-#app { width: 100%; max-width: 480px; height: 100dvh; margin: 0 auto; display: grid; grid-template-rows: auto 1fr auto; border: 1px solid var(--border); }
+#app { 
+    width: 100%; max-width: 480px; height: 100dvh; 
+    margin: 0 auto; display: grid; 
+    grid-template-rows: auto 1fr auto; 
+    border: 1px solid var(--border); 
+}
 
 header { padding: 15px; background: var(--card-bg); border-bottom: 2px solid var(--gold); }
 .stage { padding: 15px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
@@ -26,33 +36,38 @@ nav { display: flex; background: var(--card-bg); height: 70px; border-top: 1px s
 button { background: #3d444d; color: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; cursor: pointer; font-weight: bold; }
 button:active { transform: scale(0.95); }
 
-/* 進度條 */
-.bar-container { width: 100%; height: 14px; background: #000; border-radius: 7px; overflow: hidden; margin: 5px 0; position: relative; border: 1px solid var(--border); }
-.bar-fill { height: 100%; transition: width 0.3s; }
-.bar-text { position: absolute; width: 100%; text-align: center; font-size: 10px; line-height: 14px; color: #fff; text-shadow: 1px 1px #000; }
-
-/* 戰鬥視覺：怪物震動 */
+/* --- 戰鬥特效：怪物受擊震動 --- */
 @keyframes monster-shake {
     0% { transform: translateX(0); }
-    20% { transform: translateX(8px) rotate(2deg); }
-    40% { transform: translateX(-8px) rotate(-2deg); }
-    60% { transform: translateX(5px); }
-    80% { transform: translateX(-5px); }
+    25% { transform: translateX(8px) rotate(1deg); }
+    50% { transform: translateX(-8px) rotate(-1deg); }
+    75% { transform: translateX(4px); }
     100% { transform: translateX(0); }
 }
 .shake { animation: monster-shake 0.15s ease-in-out; }
 
-.monster-card { width: 120px; height: 120px; background: rgba(255,255,255,0.05); border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 60px; margin: 20px 0; border: 2px solid var(--border); cursor: pointer; transition: 0.1s; }
-.monster-card:active { transform: scale(0.9); }
+.monster-card { 
+    width: 120px; height: 120px; 
+    background: rgba(255,255,255,0.05); border-radius: 20px; 
+    display: flex; align-items: center; justify-content: center; 
+    font-size: 60px; margin: 20px 0; border: 2px solid var(--border); 
+    cursor: pointer; transition: 0.1s; 
+}
 
-#log { width: 100%; height: 120px; background: #000; padding: 8px; font-size: 11px; overflow-y: auto; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border); }
+#log { 
+    width: 100%; height: 120px; background: #000; 
+    padding: 8px; font-size: 11px; overflow-y: auto; 
+    border-radius: 8px; margin-top: 10px; border: 1px solid var(--border); 
+}
 
-/* 背包卡片優化 */
+/* --- 裝備卡片與單件熔煉按鈕 --- */
 .bag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
-.item-card { background: #1c2128; border: 1px solid var(--border); border-radius: 8px; padding: 10px; position: relative; }
+.item-card { 
+    background: #1c2128; border: 1px solid var(--border); 
+    border-radius: 8px; padding: 10px; position: relative; 
+}
 .quality-4 { border-color: var(--gold); box-shadow: 0 0 8px rgba(241,224,90,0.2); }
 
-/* 單件熔煉按鈕 */
 .btn-single-melt {
     position: absolute; top: 5px; right: 5px;
     padding: 2px 6px !important; font-size: 10px !important;
@@ -60,15 +75,21 @@ button:active { transform: scale(0.95); }
     border: 1px solid #6e3636 !important; border-radius: 4px;
 }
 
-/* 傷害數字與暴擊 */
+/* --- 傷害跳字 --- */
 .dmg { position: absolute; font-weight: bold; font-size: 22px; animation: fly 0.6s forwards; pointer-events: none; text-shadow: 2px 2px #000; z-index: 100; }
 @keyframes fly { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-60px); } }
 
+/* 暴擊特效 */
 @keyframes crit-pop {
     0% { transform: scale(0.5); opacity: 0; }
     50% { transform: scale(1.6); opacity: 1; }
     100% { transform: scale(1) translateY(-70px); opacity: 0; }
 }
 .dmg-crit { color: var(--gold) !important; font-size: 32px !important; animation: crit-pop 0.6s forwards !important; }
+
+/* 進度條 */
+.bar-container { width: 100%; height: 14px; background: #000; border-radius: 7px; overflow: hidden; margin: 5px 0; position: relative; border: 1px solid var(--border); }
+.bar-fill { height: 100%; transition: width 0.3s; }
+.bar-text { position: absolute; width: 100%; text-align: center; font-size: 10px; line-height: 14px; color: #fff; text-shadow: 1px 1px #000; }
 
 .btn-unequip { background: #442d2d; color: var(--danger); font-size: 11px; margin-top: 5px; width: 100%; }
