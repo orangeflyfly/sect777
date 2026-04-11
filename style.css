@@ -9,82 +9,57 @@ body { background: var(--bg-dark); color: var(--text); display: flex; justify-co
 
 #app { width: 100%; max-width: 480px; height: 100%; background: var(--bg-dark); border: 1px solid var(--border); display: flex; flex-direction: column; position: relative; }
 
-/* 頂部欄位：強化靈石視覺 */
-header { padding: 12px 15px; background: var(--card-bg); border-bottom: 2px solid var(--gold); }
+header { padding: 12px 15px; background: var(--card-bg); border-bottom: 2px solid var(--gold); z-index: 10; }
 .realm-tag { color: var(--gold); font-weight: 900; font-size: 18px; text-shadow: 0 0 10px rgba(241,224,90,0.3); }
 
-/* 進度條與數字 */
+/* 進度條 */
 .bar-container { height: 10px; background: #000; border-radius: 5px; overflow: hidden; margin: 6px 0; border: 1px solid var(--border); position: relative; }
 .hp-bar-wrap { height: 18px; border-radius: 9px; }
 .bar-fill { height: 100%; transition: width 0.3s ease-out; }
-.bar-text { 
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-    display: flex; justify-content: center; align-items: center; 
-    font-size: 10px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; 
-}
+.bar-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; font-size: 10px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; }
 
-/* 核心容器：解決遮擋問題 */
+/* 核心容器：優化滾動與底部遮擋 */
 .stage { 
-    flex: 1; 
-    display: flex; 
-    flex-direction: column; 
-    overflow-y: auto; 
-    padding: 15px;
-    padding-bottom: 110px; /* 加大底部間距，確保最後一個按鈕不被擋住 */
+    flex: 1; display: flex; flex-direction: column; 
+    overflow-y: auto; padding: 15px; 
+    padding-bottom: 120px; /* 增加底部防護墊，防止導覽列遮擋 */
+    scrollbar-width: none; 
 }
+.stage::-webkit-scrollbar { display: none; }
 
-/* 戰鬥畫面 */
+/* 戰鬥 */
 .battle-view { display: flex; flex-direction: column; align-items: center; }
 .monster-card { 
     width: 140px; height: 140px; background: rgba(255,255,255,0.03); border: 4px solid var(--border);
     border-radius: 30px; display: flex; align-items: center; justify-content: center; 
-    cursor: pointer; font-size: 60px; transition: 0.1s;
+    cursor: pointer; font-size: 60px; transition: 0.1s; margin: 10px 0;
 }
-.monster-card:active { transform: scale(0.95); }
 .monster-card.elite { border-color: var(--gold); box-shadow: 0 0 20px rgba(241,224,90,0.3); }
 
-/* 修為與屬性卡片 */
+/* 屬性與背包網格 */
 .stat-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding: 6px 10px; background: rgba(255,255,255,0.02); border-radius: 6px; }
-.stats-panel { background: var(--card-bg); padding: 12px; border-radius: 10px; border: 1px solid var(--border); }
-.stat-detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
-.stat-detail-item { background: rgba(0,0,0,0.2); padding: 6px; border-radius: 4px; font-size: 9px; text-align: center; }
-.stat-detail-item b { color: var(--info); display: block; font-size: 13px; }
+.bag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-bottom: 20px; }
+.item-card { background: #1c2128; border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 11px; display: flex; flex-direction: column; justify-content: space-between; min-height: 80px; }
 
-/* 裝備與背包 */
-.equip-box { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
-.slot { background: #0d1117; border: 1px dashed var(--border); padding: 8px; border-radius: 8px; text-align: center; font-size: 11px; }
-.slot b { color: var(--gold); display: block; margin: 3px 0; font-size: 12px; }
+/* 品質外框 */
+.quality-0 { border-left: 3px solid #8b949e; }
+.quality-1 { border-left: 3px solid #3fb950; }
+.quality-2 { border-left: 3px solid #58a6ff; }
+.quality-3 { border-left: 3px solid #a371f7; border-style: dashed; }
+.quality-4 { border: 1px solid var(--gold) !important; box-shadow: inset 0 0 10px rgba(241,224,90,0.1); }
 
-.bag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.item-card { background: #1c2128; border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 11px; }
-.quality-4 { border: 2px solid var(--gold) !important; box-shadow: 0 0 10px rgba(241,224,90,0.2); }
+/* 商店 */
+.shop-item { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; display: flex; align-items: center; }
 
-/* 黑市商店樣式 (V0.6.0) */
-.shop-item { 
-    background: var(--card-bg); 
-    border: 1px solid var(--border); 
-    border-radius: 10px; 
-    padding: 12px; 
-    margin-bottom: 10px; 
-    display: flex; 
-    align-items: center; 
-    transition: 0.2s;
-}
-.shop-item:hover { border-color: var(--gold); background: rgba(241, 224, 90, 0.05); }
-
-/* 按鈕類 */
+/* 按鈕與導覽 */
+.btn-small { padding: 5px 8px; background: #30363d; border: 0; color: #fff; border-radius: 4px; font-size: 11px; cursor: pointer; margin-top: 5px; }
 .btn-plus { width: 30px; height: 26px; background: var(--info); border: 0; border-radius: 4px; color: #fff; cursor: pointer; }
-.btn-small { padding: 4px 8px; background: #30363d; border: 0; color: #fff; border-radius: 4px; font-size: 11px; cursor: pointer; }
 .btn-reset { margin-top: 10px; padding: 10px; width: 100%; background: transparent; border: 1px solid var(--danger); color: var(--danger); border-radius: 6px; cursor: pointer; font-size: 12px; }
-.btn-reset:hover { background: var(--danger); color: #fff; }
-.btn-skill { padding: 8px 16px; background: var(--info); border: 0; color: #fff; border-radius: 6px; font-weight: bold; position: relative; overflow: hidden; font-size: 13px; cursor: pointer; }
 
-/* 底部導覽列 */
-nav { position: absolute; bottom: 0; width: 100%; display: flex; background: var(--card-bg); border-top: 1px solid var(--border); z-index: 100; height: 70px; }
-.tab { flex: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #8b949e; font-weight: bold; font-size: 14px; transition: 0.2s; }
+nav { position: absolute; bottom: 0; width: 100%; display: flex; background: var(--card-bg); border-top: 1px solid var(--border); z-index: 100; height: 75px; padding-bottom: env(safe-area-inset-bottom); }
+.tab { flex: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #8b949e; font-weight: bold; font-size: 13px; }
 .tab.active { color: var(--gold); border-top: 3px solid var(--gold); background: rgba(241,224,90,0.05); }
 
-/* 動效 */
 #log { height: 110px; overflow-y: auto; font-size: 12px; background: #000; padding: 8px; border-radius: 6px; border: 1px solid var(--border); margin-top: 10px; width: 100%; }
 .dmg { position: absolute; font-weight: 900; font-size: 26px; animation: fly 0.6s ease-out forwards; pointer-events: none; z-index: 99; text-shadow: 2px 2px #000; }
 @keyframes fly { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-80px); } }
