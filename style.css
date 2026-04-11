@@ -1,60 +1,70 @@
 :root {
-    --bg-dark: #0d1117; 
-    --card-bg: #161b22; 
-    --border: #444c56;
-    --text-main: #ffffff;
-    --gold: #f1e05a; 
-    --danger: #f85149;
-    --success: #3fb950; 
-    --info: #58a6ff; 
-    --purple: #a371f7;
+    --bg: #121212;
+    --card: #1e1e1e;
+    --border: #333;
+    --text: #e0e0e0;
+    --gold: #ffd700;
+    --purple: #a333c8;
+    --red: #ff4d4d;
+    --green: #4caf50;
+    --info: #2196f3;
 }
 
-html, body { height: 100%; margin: 0; padding: 0; background: var(--bg-dark); color: var(--text-main); font-family: sans-serif; overflow: hidden; }
-* { box-sizing: border-box; }
+* { box-sizing: border-box; font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; }
+body { background: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; justify-content: center; overflow: hidden; touch-action: manipulation; }
 
-#app { width: 100%; max-width: 480px; height: 100dvh; margin: 0 auto; display: grid; grid-template-rows: auto 1fr auto; border: 1px solid var(--border); }
+#game-container { width: 100%; max-width: 500px; height: 100vh; display: flex; flex-direction: column; position: relative; background: var(--bg); border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
 
-header { padding: 15px; background: var(--card-bg); border-bottom: 2px solid var(--gold); }
-.stage { padding: 15px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
-.stage h4 { color: var(--gold); margin: 0 0 15px 0; width: 100%; text-align: left; }
+/* 頂部修為欄 */
+.header-info { padding: 15px; background: rgba(0,0,0,0.5); border-bottom: 1px solid var(--border); }
+.header-line { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 5px; }
+.exp-bar-container { width: 100%; height: 4px; background: #333; border-radius: 2px; }
+.exp-bar-fill { height: 100%; background: var(--info); width: 0%; transition: width 0.3s; }
 
-/* 導航 */
-nav { display: flex; background: var(--card-bg); height: 70px; border-top: 1px solid var(--border); }
-.tab { flex: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #8b949e; font-weight: bold; }
-.tab.active { color: var(--gold); border-top: 3px solid var(--gold); }
+/* 舞台切換 */
+.stage { flex: 1; display: flex; flex-direction: column; padding: 15px; overflow-y: auto; padding-bottom: 80px; }
 
-/* 按鈕 */
-button { background: #3d444d; color: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; cursor: pointer; font-weight: bold; }
-button:active { transform: scale(0.95); }
-button:disabled { opacity: 0.5; cursor: not-allowed; }
+/* 戰鬥舞台：法相莊嚴 (解決怪物太小問題) */
+.monster-area { text-align: center; padding: 20px 0; min-height: 200px; }
+#monster-name { font-size: 18px; margin-bottom: 10px; color: var(--gold); }
+.monster-pic { font-size: 100px; height: 120px; display: flex; align-items: center; justify-content: center; user-select: none; cursor: pointer; transition: transform 0.1s; }
+.monster-pic:active { transform: scale(0.9); }
 
-/* 詳細屬性面板 */
-.stats-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(0, 0, 0, 0.3); padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px dashed var(--border); width: 100%; }
-.stat-item { font-size: 11px; color: #aaa; display: flex; justify-content: space-between; }
-.stat-item b { color: var(--gold); }
+/* 血條系統 (解決數字看不清問題) */
+.hp-container { position: relative; width: 100%; height: 22px; background: #333; border-radius: 11px; overflow: hidden; margin: 10px 0; border: 1px solid #444; }
+.hp-bar-fill { height: 100%; width: 100%; background: var(--red); transition: width 0.2s; }
+.p-hp { background: var(--green); }
+.hp-text { position: absolute; width: 100%; text-align: center; top: 0; line-height: 22px; font-size: 12px; font-weight: bold; text-shadow: 1px 1px 2px #000; color: white; }
 
-/* 洗髓按鈕 */
-.btn-respec { width: 100%; margin-top: 15px; padding: 10px !important; background: transparent !important; color: var(--danger) !important; border: 1px solid var(--danger) !important; border-radius: 6px; cursor: pointer; }
-.btn-respec:hover { background: rgba(248, 81, 73, 0.1) !important; }
+.quick-stats { display: flex; justify-content: space-around; font-size: 14px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; }
 
-/* 技能槽位 */
-.skill-slots { display: flex; gap: 10px; margin: 10px 0; }
-.slot { width: 50px; height: 50px; background: #0d1117; border: 1px solid var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #444; position: relative; cursor: pointer; }
-.slot.active { border-color: var(--gold); color: var(--gold); }
+/* 日誌分頁系統 */
+.log-container { flex: 1; display: flex; flex-direction: column; margin-top: 15px; background: #000; border-radius: 8px; border: 1px solid var(--border); overflow: hidden; }
+.log-tabs { display: flex; background: #222; }
+.log-tab { flex: 1; padding: 8px; border: none; background: transparent; color: #888; font-size: 12px; cursor: pointer; }
+.log-tab.active { background: #333; color: var(--gold); border-bottom: 2px solid var(--gold); }
+.log-list { flex: 1; padding: 10px; font-size: 12px; overflow-y: auto; line-height: 1.6; }
 
-/* 特效 */
-@keyframes monster-shake { 0% { transform: translateX(0); } 25% { transform: translateX(8px); } 50% { transform: translateX(-8px); } 100% { transform: translateX(0); } }
-.shake { animation: monster-shake 0.15s ease-in-out; }
+/* 儲物袋格子 (自適應) */
+.bag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 8px; margin-top: 10px; }
+.item-slot { aspect-ratio: 1; background: var(--card); border: 1px solid var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 24px; position: relative; cursor: pointer; }
 
-.dmg { position: absolute; font-weight: bold; font-size: 24px; animation: fly 0.6s forwards; pointer-events: none; text-shadow: 2px 2px #000; z-index: 100; }
-@keyframes fly { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-60px); } }
+/* 全域彈窗特效 (Toast) */
+#toast-container { position: absolute; top: 30%; width: 100%; display: flex; flex-direction: column; align-items: center; z-index: 9999; pointer-events: none; }
+.toast { background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 20px; margin-bottom: 10px; animation: toastIn 1.5s forwards; border: 1px solid var(--gold); color: var(--gold); font-weight: bold; }
+@keyframes toastIn {
+    0% { transform: translateY(20px); opacity: 0; }
+    20% { transform: translateY(0); opacity: 1; }
+    80% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-20px); opacity: 0; }
+}
 
-.bar-container { width: 100%; height: 14px; background: #000; border-radius: 7px; overflow: hidden; margin: 5px 0; position: relative; border: 1px solid var(--border); }
-.bar-fill { height: 100%; transition: width 0.3s; }
-.bar-text { position: absolute; width: 100%; text-align: center; font-size: 10px; line-height: 14px; color: #fff; }
+/* 底部導航欄 */
+.nav-bar { position: absolute; bottom: 0; width: 100%; height: 70px; display: flex; background: #1a1a1a; border-top: 1px solid var(--border); padding: 5px; }
+.nav-bar button { flex: 1; background: transparent; border: none; color: #888; font-size: 12px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.nav-bar button:active { color: var(--gold); }
 
-/* 背包 */
-.bag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
-.item-card { background: #1c2128; border: 1px solid var(--border); border-radius: 8px; padding: 10px; position: relative; font-size: 12px; }
-.btn-single-melt { position: absolute; top: 5px; right: 5px; padding: 2px 5px !important; font-size: 10px !important; background: #442d2d !important; color: #ff7b72 !important; border-radius: 4px; }
+/* 稀有度顏色 */
+.rarity-0 { color: #aaa; } .rarity-1 { color: #4caf50; } .rarity-2 { color: #2196f3; }
+.rarity-3 { color: #a333c8; border-color: #a333c8 !important; }
+.rarity-4 { color: #ffd700; border-color: #ffd700 !important; font-weight: bold; text-shadow: 0 0 5px gold; }
