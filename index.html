@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>仙俠宗門 V0.7.1 - 核心對接版</title>
+    <title>仙俠宗門 V0.7.2 - 核心穩定版</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,39 +16,39 @@
             </span>
             <div style="color: var(--gold); font-weight: bold; font-size: 14px;">💎 <span id="val-money">0</span></div>
         </div>
-        <div class="bar-container hp-bar-wrap">
+        <div class="bar-container" style="height: 18px;">
             <div id="bar-p-hp" class="bar-fill" style="width: 100%; background: var(--success);"></div>
             <div class="bar-text" id="val-hp-txt">0 / 0</div>
         </div>
-        <div class="bar-container">
+        <div class="bar-container" style="height: 10px;">
             <div id="bar-xp" class="bar-fill" style="width: 0%; background: var(--info);"></div>
         </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #eee;">
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #eee; margin-top: 5px;">
             <span>LV: <b id="val-lv">1</b> | 戰力: <b id="val-power" style="color: var(--gold);">0</b></span>
             <span>修為: <span id="val-xp">0</span> / <span id="val-next-xp">100</span></span>
         </div>
     </header>
 
     <div id="p-battle" class="stage" style="display: flex;">
-        <div class="battle-view" style="width:100%">
-            <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 10px; background: rgba(255,255,255,0.05); padding: 5px 10px; border-radius: 6px;">
+        <div style="width: 100%;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; background: rgba(255,255,255,0.05); padding: 5px 10px; border-radius: 6px;">
                 <span id="val-map-name" style="color: var(--info); font-weight: bold;">📍 載入中...</span>
                 <button onclick="_X_CORE.showMapModal()" style="padding: 2px 8px; font-size: 10px; background: var(--info);">切換地圖</button>
             </div>
             
             <div class="monster-card" onclick="_X_CORE.manualAtk(event)">👹</div>
             
-            <div style="display:flex; gap:10px; margin-bottom: 15px;">
-                <button id="btn-auto" onclick="_X_CORE.toggleAuto()">自動歷練: OFF</button>
-                <button id="btn-skill" onclick="_X_CORE.useSkill()">御劍術<div id="skill-cd" class="skill-cd"></div></button>
+            <div style="display:flex; gap:10px; margin-bottom: 15px; width: 100%;">
+                <button id="btn-auto" onclick="_X_CORE.toggleAuto()" style="flex:1;">自動歷練: OFF</button>
+                <button onclick="_X_CORE.useSkill()" style="flex:1; position:relative;">御劍術<div id="skill-cd" style="position:absolute; bottom:0; left:0; height:3px; background:var(--gold); width:0%; transition:0.1s;"></div></button>
             </div>
 
             <div style="width: 100%;">
-                <div style="display: flex; justify-content: space-between; font-size: 11px; color: #fff; margin-bottom: 2px;">
+                <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px;">
                     <span id="m-name">怪物</span>
                     <span id="m-hp-txt">0 / 0</span>
                 </div>
-                <div class="bar-container hp-bar-wrap">
+                <div class="bar-container">
                     <div id="bar-m-hp" class="bar-fill" style="width: 100%; background: var(--danger);"></div>
                 </div>
             </div>
@@ -57,31 +57,38 @@
     </div>
 
     <div id="p-stats" class="stage" style="display: none;">
-        <h4>修為面板 (點數: <span id="val-pts">0</span>)</h4>
-        <button id="btn-class" onclick="_X_CORE.showClassModal()" style="display:none; width:100%; background:var(--purple) !important; margin-bottom:15px;">🌟 選擇流派</button>
-        <div id="stat-list"></div>
+        <h4>修為面板 (可用點數: <span id="val-pts">0</span>)</h4>
         
-        <div class="equip-box-v2" style="display:flex; gap:10px; margin-top:10px;">
-            <div style="flex:1; background:#222; padding:10px; border-radius:8px; text-align:center;">
-                ⚔️ <b id="eq-weapon" style="display:block; color:var(--gold);">無</b>
-                <button id="btn-unequip-weapon" class="btn-unequip" style="display:none; margin-top:5px;" onclick="_X_CORE.unequip('weapon')">卸下</button>
+        <button id="btn-class" onclick="_X_CORE.showClassModal()" style="display:none; width:100%; background:var(--purple) !important; margin-bottom:15px; border-color:white;">🌟 選擇修仙流派</button>
+        
+        <div id="stat-list" style="width:100%"></div>
+        
+        <div style="display:flex; gap:10px; width:100%; margin-top:20px;">
+            <div style="flex:1; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; text-align:center;">
+                <span style="font-size:12px; color:#888;">⚔️ 武器</span>
+                <b id="eq-weapon" style="display:block; margin:5px 0; color:var(--gold); font-size:12px;">無</b>
+                <button id="btn-unequip-weapon" class="btn-unequip" style="display:none;" onclick="_X_CORE.unequip('weapon')">卸下</button>
             </div>
-            <div style="flex:1; background:#222; padding:10px; border-radius:8px; text-align:center;">
-                🛡️ <b id="eq-body" style="display:block; color:var(--gold);">無</b>
-                <button id="btn-unequip-body" class="btn-unequip" style="display:none; margin-top:5px;" onclick="_X_CORE.unequip('body')">卸下</button>
+            <div style="flex:1; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; text-align:center;">
+                <span style="font-size:12px; color:#888;">🛡️ 防具</span>
+                <b id="eq-body" style="display:block; margin:5px 0; color:var(--gold); font-size:12px;">無</b>
+                <button id="btn-unequip-body" class="btn-unequip" style="display:none;" onclick="_X_CORE.unequip('body')">卸下</button>
             </div>
         </div>
-        <button class="btn-reset" onclick="_X_CORE.respec()">使用「洗點丹」</button>
+        
+        <button style="margin-top:20px; color:var(--danger); border-color:var(--danger); background:transparent; width:100%;" onclick="_X_CORE.respec()">使用「洗點丹」</button>
     </div>
 
     <div id="p-bag" class="stage" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; width:100%; margin-bottom: 15px;">
             <h4>儲物袋 (<span id="bag-count">0</span>/<span id="val-bag-max">20</span>)</h4>
-            <div>
-                <select id="melt-filter" style="background:#333; color:#fff;">
-                    <option value="0">凡品</option><option value="1">良品</option><option value="2">精品</option>
+            <div style="display:flex; gap:5px;">
+                <select id="melt-filter" style="background:#2d333b; color:#fff; border:1px solid #444; border-radius:4px;">
+                    <option value="0">凡品</option>
+                    <option value="1">良品</option>
+                    <option value="2">精品</option>
                 </select>
-                <button onclick="_X_CORE.quickMelt()" style="background:var(--danger) !important;">熔煉</button>
+                <button onclick="_X_CORE.quickMelt()" style="background:var(--danger) !important; padding: 4px 8px; font-size:12px;">熔煉</button>
             </div>
         </div>
         <div id="bag-list" class="bag-grid"></div>
@@ -89,7 +96,13 @@
 
     <div id="p-shop" class="stage" style="display: none;">
         <h4>宗門黑市</h4>
-        <button onclick="_X_CORE.buyBag()" style="width:100%; height:50px;">擴充背包 (💰 <span id="val-bag-price">1000</span>)</button>
+        <div style="background:var(--card-bg); border:1px solid var(--border); padding:15px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; width:100%;">
+            <div>
+                <b>乾坤袋擴充券</b>
+                <p style="font-size: 11px; color:#888; margin:5px 0 0 0;">增加 5 格背包容量</p>
+            </div>
+            <button onclick="_X_CORE.buyBag()"><span id="val-bag-price">1000</span> 💰</button>
+        </div>
     </div>
 
     <nav>
@@ -100,19 +113,19 @@
     </nav>
 
     <div id="map-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:100; justify-content:center; align-items:center;">
-        <div style="background:#161b22; padding:20px; border-radius:12px; border:1px solid var(--info); width:80%;">
-            <h3 style="color:var(--info); text-align:center;">選擇歷練禁地</h3>
-            <div id="map-list" style="margin:15px 0;"></div>
-            <button onclick="document.getElementById('map-modal').style.display='none'" style="width:100%;">關閉</button>
+        <div style="background:var(--card-bg); padding:20px; border-radius:12px; border:1px solid var(--info); width:85%;">
+            <h3 style="color:var(--info); margin:0 0 15px 0; text-align:center;">選擇歷練禁地</h3>
+            <div id="map-list"></div>
+            <button onclick="document.getElementById('map-modal').style.display='none'" style="margin-top:20px; width:100%; background:#555 !important;">關閉</button>
         </div>
     </div>
 
     <div id="class-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:101; justify-content:center; align-items:center;">
-        <div style="background:#161b22; padding:20px; border-radius:15px; border:2px solid var(--purple); width:80%;">
-            <h3 style="color:var(--purple); text-align:center;">選擇修仙流派</h3>
-            <button onclick="_X_CORE.chooseClass('sword')" style="width:100%; margin:10px 0; background:var(--danger)!important;">劍修 (攻擊)</button>
-            <button onclick="_X_CORE.chooseClass('body')" style="width:100%; margin:10px 0; background:var(--success)!important;">體修 (血量)</button>
-            <button onclick="_X_CORE.chooseClass('soul')" style="width:100%; margin:10px 0; background:var(--info)!important;">靈修 (爆擊)</button>
+        <div style="background:var(--card-bg); padding:20px; border-radius:15px; border:2px solid var(--purple); width:80%;">
+            <h3 style="color:var(--purple); text-align:center; margin:0 0 15px 0;">選擇修仙流派</h3>
+            <button style="width:100%; margin-bottom:10px; background:var(--danger) !important;" onclick="_X_CORE.chooseClass('sword')">【劍修】攻擊、敏捷翻倍</button>
+            <button style="width:100%; margin-bottom:10px; background:var(--success) !important;" onclick="_X_CORE.chooseClass('body')">【體修】血量、體質翻倍</button>
+            <button style="width:100%; background:var(--info) !important;" onclick="_X_CORE.chooseClass('soul')">【靈修】靈力、暴擊翻倍</button>
         </div>
     </div>
 </div>
