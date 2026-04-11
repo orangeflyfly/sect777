@@ -128,4 +128,3 @@ class Inventory {
 }
 
 console.log("[系統] 儲物袋 (inventory.js) 已就緒");
-
