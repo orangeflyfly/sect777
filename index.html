@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>仙俠宗門 V0.4.0 - 屬性飛升版</title>
+    <title>仙俠宗門 V0.4.3 - 整合穩定版</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -56,15 +56,16 @@
         <div class="stats-panel">
             <p>當前氣血: <b id="val-hp">0/0</b></p>
             <div class="stat-detail-grid">
-                <div class="stat-detail-item">每秒回血 <b id="val-regen">0</b></div>
-                <div class="stat-detail-item">閃避機率 <b id="val-evasion">0</b>%</div>
-                <div class="stat-detail-item">暴擊倍率 <b id="val-crit-dmg">1.5</b>x</div>
+                <div class="stat-detail-item">秒回血 <b id="val-regen">0</b></div>
+                <div class="stat-detail-item">閃避 <b id="val-evasion">0</b>%</div>
+                <div class="stat-detail-item">暴傷 <b id="val-crit-dmg">1.5</b>x</div>
             </div>
             <hr style="margin: 12px 0; border: 0; border-top: 1px solid #30363d;">
-            <p>基礎攻擊: <b id="val-atk">0</b></p>
-            <p>攻擊速度: <b id="val-spd">0</b> 次/秒</p>
-            <p>暴擊機率: <b id="val-crit">0</b>%</p>
-            
+            <div style="font-size: 13px; line-height: 1.8;">
+                <p>基礎攻擊: <b id="val-atk">0</b></p>
+                <p>攻擊速度: <b id="val-spd">0</b> 次/秒</p>
+                <p>暴擊機率: <b id="val-crit">0</b>%</p>
+            </div>
             <button class="btn-reset" onclick="game.respec()">重置所有屬性點 (洗點)</button>
         </div>
     </div>
@@ -75,7 +76,7 @@
             <button onclick="game.quickMelt()" style="padding: 5px 10px; background: var(--danger); border: 0; color: #fff; border-radius: 4px; font-size: 12px; cursor: pointer;">一鍵熔煉(凡/良)</button>
         </div>
         <hr style="margin: 15px 0; border: 0; border-top: 1px solid var(--border);">
-        <div id="bag-list"></div>
+        <div id="bag-list" class="bag-grid"></div>
     </div>
 
     <nav>
