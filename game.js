@@ -1,5 +1,5 @@
 /**
- * 仙俠宗門 V0.8.0 - 視覺與命名強化版
+ * 仙俠宗門 V0.8.0 - 核心引擎
  */
 
 class XianXiaGame {
@@ -27,7 +27,7 @@ class XianXiaGame {
         this.calc(); this.curHp = this.finalHp;
         this.spawn(); this.update();
         setInterval(() => this.loop(), 100);
-        this.log("⚔️ V0.8.0 戰鬥視覺系統載入完畢", "var(--gold)");
+        this.log("⚔️ V0.8.0 戰鬥系統初始化成功", "var(--gold)");
     }
 
     calc() {
@@ -86,11 +86,11 @@ class XianXiaGame {
     }
 
     atk(isM, x, y, multi = 1) {
-        // 戰鬥視覺：抖動怪物
+        // 戰鬥視覺：怪物受擊抖動
         const mCard = document.querySelector('.monster-card');
         if (mCard) {
             mCard.classList.remove('shake');
-            void mCard.offsetWidth; // 強制重繪觸發動畫
+            void mCard.offsetWidth; // 強制重繪
             mCard.classList.add('shake');
         }
 
@@ -100,7 +100,7 @@ class XianXiaGame {
         this.pop(dmg, isC, x, y);
 
         if (this.m.hp <= 0) {
-            this.log(`⚔️ 擊敗 ${this.m.n}，獲靈石 +${this.m.money}`);
+            this.log(`⚔️ 擊敗 ${this.m.n}，獲靈石 +${this.m.money}，修為 +${this.m.exp}`);
             this.state.p.money += this.m.money;
             this.gainXp(this.m.exp);
             this.state.mapProgress[this.state.curMap]++;
@@ -118,26 +118,25 @@ class XianXiaGame {
         this.curHp -= Math.floor(this.m.mx * 0.05);
         if (this.curHp <= 0) {
             this.curHp = Math.floor(this.finalHp * 0.2); this.rt.auto = false;
-            this.log("💀 體力耗盡...", "var(--danger)");
+            this.log("💀 體力耗盡，暫停歷練。", "var(--danger)");
+            this.u('btn-auto', "自動歷練: OFF");
         }
     }
 
-    // --- 🛠️ 優化：中二命名邏輯 ---
+    // --- 🛠️ 更新：中二命名與魚目混珠 ---
     drop(isB) {
         const r = Math.random();
-        // 品級：0凡 1良 2精 3極 4仙
         let q = isB ? (r < 0.3 ? 4 : 3) : (r < 0.01 ? 4 : r < 0.05 ? 3 : r < 0.15 ? 2 : r < 0.4 ? 1 : 0);
         const type = Math.random() < 0.5 ? 'weapon' : 'body';
         const map = MAP_DATA[this.state.curMap];
         const aT = map.bias && Math.random() < 0.4 ? map.bias : Object.keys(AFFIX_DATA)[Math.floor(Math.random() * 4)];
         
-        // 取得前綴：良品以下可能出現「斷裂、生鏽」等名帥實爛的詞
         const qPrefixes = [
-            ["凡塵的", "生鏽的", "斑駁的", "粗製的"], // 凡
-            ["精鋼的", "鋒銳的", "斷裂的·", "殘缺的·"], // 良 (加入魚目混珠詞)
-            ["赤霄", "沉淵", "聚靈", "寒光"], // 精
-            ["九幽", "鎮岳", "斷罪", "戮仙"], // 極
-            ["太初·", "荒古·", "無極·", "萬劫·"] // 仙
+            ["凡塵的", "生鏽的", "斑駁的", "粗製的"], 
+            ["精鋼的", "鋒銳的", "斷裂的·", "殘缺的·"], // 良品混入帥名
+            ["赤霄", "沉淵", "聚靈", "寒光"], 
+            ["九幽", "鎮岳", "斷罪", "戮仙"], 
+            ["太初·", "荒古·", "無極·", "萬劫·"]
         ];
 
         const lib = AFFIX_DATA[aT];
@@ -154,17 +153,17 @@ class XianXiaGame {
 
         if (this.state.bag.length < this.state.p.maxBag) {
             this.state.bag.push(item);
-            this.log(`🎁 獲得寶物：${item.name}`, this.getQColor(q));
+            this.log(`🎁 掉落：${item.name}`, this.getQColor(q));
         }
     }
 
-    // --- 🛠️ 優化：全品級與單件熔煉 ---
+    // --- 🛠️ 更新：單件熔煉 ---
     meltItem(id) {
-        const idx = this.state.bag.findIndex(i => i.id === id);
+        const idx = this.state.bag.findIndex(i => i.id === Number(id));
         if (idx !== -1) {
             const item = this.state.bag[idx];
-            this.state.p.xp += item.val * 2; // 單件熔煉經驗加倍
-            this.log(`🔥 熔煉 ${item.name}，獲得修為 ${item.val * 2}`);
+            this.state.p.xp += item.val * 2;
+            this.log(`🔥 熔煉 ${item.name}，獲修為 ${item.val * 2}`);
             this.state.bag.splice(idx, 1);
             this.gainXp(0); this.renderBag(); this.update(); this.save();
         }
@@ -192,7 +191,6 @@ class XianXiaGame {
             </div>`).join('');
     }
 
-    // 基礎邏輯
     update() {
         const { p, eq } = this.state;
         const curMap = MAP_DATA[this.state.curMap];
@@ -202,15 +200,17 @@ class XianXiaGame {
         this.u('val-hp-txt', `${Math.floor(this.curHp)} / ${this.finalHp}`);
         this.u('bar-p-hp', (this.curHp / this.finalHp * 100) + "%", true);
         this.u('bar-xp', (p.xp / p.nx * 100) + "%", true);
-        this.u('val-power', Math.floor(this.finalAtk * 4 + this.finalHp / 2));
+        this.u('val-xp', Math.floor(p.xp)); this.u('val-next-xp', p.nx);
+        this.u('val-pts', p.pts); this.u('val-power', Math.floor(this.finalAtk * 4 + this.finalHp / 2));
         this.u('eq-weapon', eq.weapon ? eq.weapon.name : '無');
         this.u('eq-body', eq.body ? eq.body.name : '無');
-        this.u('bag-count', this.state.bag.length);
-        this.u('val-bag-max', p.maxBag);
+        this.u('bag-count', this.state.bag.length); this.u('val-bag-max', p.maxBag);
+        this.u('val-bag-price', 1000 * Math.pow(2, p.bagBuyCount));
         this.u('m-hp-txt', `${Math.floor(this.m.hp)} / ${this.m.mx}`);
         this.u('bar-m-hp', (this.m.hp / this.m.mx * 100) + "%", true);
         document.getElementById('btn-unequip-weapon').style.display = eq.weapon ? 'block' : 'none';
         document.getElementById('btn-unequip-body').style.display = eq.body ? 'block' : 'none';
+        document.getElementById('btn-class').style.display = (p.lv >= 11 && !p.job) ? 'block' : 'none';
     }
 
     gainXp(a) { 
@@ -218,7 +218,7 @@ class XianXiaGame {
         while (this.state.p.xp >= this.state.p.nx) { 
             this.state.p.lv++; this.state.p.xp -= this.state.p.nx; 
             this.state.p.nx = Math.floor(this.state.p.nx * 1.5); this.state.p.pts += 5; 
-            this.calc(); this.log(`🎊 突破至 LV.${this.state.p.lv}`, "var(--gold)");
+            this.calc(); this.log(`🎊 突破！目前修為 LV.${this.state.p.lv}`, "var(--gold)");
         } 
     }
     manualAtk(e) { this.atk(true, e.clientX, e.clientY); }
@@ -233,7 +233,7 @@ class XianXiaGame {
     }
     renderStats() {
         const m = { str: '力量', vit: '體質', agi: '敏捷', int: '靈力' };
-        document.getElementById('stat-list').innerHTML = Object.entries(m).map(([k, n]) => `<div class="stat-row" style="display:flex;justify-content:space-between;margin-bottom:8px;"><span>${n}: <b>${this.state.p[k]}</b></span><button onclick="_X_CORE.addStat('${k}')">+</button></div>`).join('');
+        document.getElementById('stat-list').innerHTML = Object.entries(m).map(([k, n]) => `<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span>${n}: <b>${this.state.p[k]}</b></span><button onclick="_X_CORE.addStat('${k}')">+</button></div>`).join('');
     }
     equip(id) {
         const idx = this.state.bag.findIndex(i => i.id === Number(id));
@@ -270,8 +270,9 @@ class XianXiaGame {
     }
     respec() { if (confirm("重置點數？")) { const p = this.state.p; p.pts += (p.str-5)+(p.vit-5)+(p.agi-5)+(p.int-5); p.str=5; p.vit=5; p.agi=5; p.int=5; this.calc(); this.update(); this.renderStats(); this.save(); } }
     pop(d, c, x, y) {
-        const e = document.createElement('div'); e.className = 'dmg';
-        e.innerText = (c ? '💥 ' : '') + d; e.style.color = c ? 'var(--gold)' : '#fff';
+        const e = document.createElement('div'); 
+        e.className = c ? 'dmg dmg-crit' : 'dmg';
+        e.innerText = (c ? '💥 ' : '') + d;
         e.style.left = (x || 200) + 'px'; e.style.top = (y || 300) + 'px';
         document.body.appendChild(e); setTimeout(() => e.remove(), 600);
     }
