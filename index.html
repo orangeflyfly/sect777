@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>仙俠宗門 V0.1 - 創世之初</title>
+    <title>仙俠宗門 V(0.2.0) - 裝備與掛機</title>
     <style>
         :root {
             --bg-dark: #0d1117;
@@ -14,17 +14,18 @@
             --danger: #f85149;
             --success: #3fb950;
             --info: #58a6ff;
+            --purple: #a371f7;
+            --white: #ffffff;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; user-select: none; }
         body { background: var(--bg-dark); color: var(--text-main); display: flex; justify-content: center; height: 100vh; overflow: hidden; }
 
         #app {
             width: 100%; max-width: 480px; height: 100%; background: var(--bg-dark);
-            border: 1px solid var(--border-color); display: flex; flex-direction: column;
+            border: 1px solid var(--border-color); display: flex; flex-direction: column; position: relative;
         }
 
-        /* 頂部狀態欄 */
         header { padding: 15px; background: var(--card-bg); border-bottom: 1px solid var(--border-color); }
         .player-basic { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .lv-tag { background: var(--gold); color: #000; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 14px; }
@@ -33,37 +34,58 @@
         .bar-fill { height: 100%; transition: width 0.3s ease; }
 
         /* 戰鬥區 */
-        .battle-zone { flex: 1; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
-        .monster-card { 
-            width: 200px; height: 200px; background: rgba(255,255,255,0.05); border: 2px solid var(--border-color);
-            border-radius: 50%; display: flex; align-items: center; justify-content: center; 
-            cursor: pointer; transition: transform 0.1s; position: relative;
+        .battle-zone { flex: 1; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        
+        /* 怪物抖動動畫 */
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            20% { transform: translate(-3px, 0px) rotate(-1deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            80% { transform: translate(1px, 1px) rotate(-1deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
         }
-        .monster-card:active { transform: scale(0.95); }
-        .monster-card::after { content: '👹'; font-size: 80px; }
+        .monster-shake { animation: shake 0.2s; }
 
-        .hp-label { width: 100%; max-width: 250px; text-align: center; margin-top: 15px; }
+        .monster-card { 
+            width: 180px; height: 180px; background: rgba(255,255,255,0.05); border: 2px solid var(--border-color);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; 
+            cursor: pointer; position: relative; font-size: 80px;
+        }
+        .monster-card::after { content: '👹'; }
 
-        /* 浮動傷害 */
-        .dmg-num { position: absolute; font-weight: bold; font-size: 24px; pointer-events: none; animation: flyUp 0.6s ease-out forwards; }
-        @keyframes flyUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-80px); } }
+        /* 自動掛機開關 */
+        .auto-toggle {
+            margin-top: 15px; background: #21262d; padding: 8px 15px; border-radius: 20px;
+            border: 1px solid var(--border-color); cursor: pointer; font-size: 14px;
+        }
+        .auto-toggle.active { background: var(--success); color: #000; font-weight: bold; border-color: #fff; }
 
-        /* 標籤頁與內容 */
-        .tabs { display: flex; background: var(--card-bg); border-top: 1px solid var(--border-color); }
-        .tab-btn { flex: 1; padding: 12px; text-align: center; cursor: pointer; border-bottom: 2px solid transparent; }
-        .tab-btn.active { border-bottom-color: var(--gold); color: var(--gold); }
-
-        .content-area { flex: 1; overflow-y: auto; padding: 15px; display: none; }
+        /* 內容區 */
+        .content-area { flex: 1; overflow-y: auto; padding: 15px; display: none; padding-bottom: 80px; }
         .content-area.active { display: block; }
 
-        /* 屬性列表 */
-        .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #21262d; }
-        .stat-ctrl { display: flex; gap: 10px; align-items: center; }
-        .btn-plus { width: 30px; height: 30px; background: var(--info); border: none; color: #fff; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-plus:disabled { opacity: 0.3; }
+        /* 背包物品樣式 */
+        .bag-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .item-card {
+            background: #1c2128; border: 1px solid var(--border-color); border-radius: 8px;
+            padding: 10px; font-size: 13px; position: relative;
+        }
+        .quality-0 { color: var(--text-main); } /* 凡 */
+        .quality-1 { color: var(--success); border-color: var(--success); } /* 良 */
+        .quality-2 { color: var(--info); border-color: var(--info); } /* 精 */
+        .quality-3 { color: var(--purple); border-color: var(--purple); } /* 極 */
+        .quality-4 { color: var(--gold); border-color: var(--gold); } /* 仙 */
 
-        /* 日誌 */
-        #log-box { font-size: 13px; color: #8b949e; line-height: 1.6; }
+        /* 導覽列 */
+        nav { position: absolute; bottom: 0; width: 100%; display: flex; background: var(--card-bg); border-top: 1px solid var(--border-color); }
+        .tab-btn { flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #8b949e; }
+        .tab-btn.active { color: var(--gold); border-top: 2px solid var(--gold); }
+
+        .dmg-num { position: absolute; font-weight: 900; font-size: 28px; pointer-events: none; animation: flyUp 0.6s ease-out forwards; z-index: 100; text-shadow: 2px 2px #000; }
+        @keyframes flyUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-100px); } }
+
+        #log-box { height: 120px; overflow-y: auto; font-size: 12px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 10px; border: 1px solid #21262d; }
     </style>
 </head>
 <body>
@@ -71,41 +93,47 @@
 <div id="app">
     <header>
         <div class="player-basic">
-            <span id="p-name">修仙者</span>
+            <span id="p-name">初入道途的修士</span>
             <span class="lv-tag">LV <span id="val-lv">1</span></span>
         </div>
         <div class="bar-container"><div id="bar-xp" class="bar-fill" style="width: 0%; background: var(--info);"></div></div>
-        <div style="font-size: 12px; text-align: right;">經驗: <span id="val-xp">0</span> / <span id="val-next-xp">100</span></div>
+        <div style="font-size: 11px; display: flex; justify-content: space-between;">
+            <span>戰力: <b id="val-power" style="color: var(--gold);">0</b></span>
+            <span>經驗: <span id="val-xp">0</span> / <span id="val-next-xp">100</span></span>
+        </div>
     </header>
 
     <div id="page-battle" class="content-area active">
         <div class="battle-zone">
             <div id="monster-target" class="monster-card" onclick="game.manualAttack(event)"></div>
-            <div class="hp-label">
-                <b id="m-name">荒野野狗</b><br>
+            <div class="auto-toggle" id="btn-auto" onclick="game.toggleAuto()">自動歷練：關閉</div>
+            <div style="width: 100%; max-width: 250px; text-align: center; margin-top: 15px;">
+                <b id="m-name">載入中...</b>
                 <div class="bar-container"><div id="bar-m-hp" class="bar-fill" style="width: 100%; background: var(--danger);"></div></div>
-                <small><span id="val-m-hp">50</span> / <span id="val-m-max-hp">50</span></small>
+                <small id="txt-m-hp">0 / 0</small>
             </div>
         </div>
         <div id="log-box"></div>
     </div>
 
     <div id="page-stats" class="content-area">
-        <div style="margin-bottom: 20px;">
-            <h3>角色潛能: <span id="val-points" style="color: var(--gold);">0</span></h3>
-        </div>
-        <div id="stat-list">
-            </div>
-        <hr style="margin: 15px 0; border: 0; border-top: 1px solid var(--border-color);">
-        <div id="combat-stats" style="font-size: 14px; color: #8b949e;">
-            <p>攻擊力: <span id="val-atk">0</span></p>
-            <p>生命值: <span id="val-max-hp">0</span></p>
-            <p>攻速: <span id="val-spd">0</span> 次/秒</p>
-            <p>暴擊率: <span id="val-crit">0</span>%</p>
+        <h3>角色潛能: <span id="val-points" style="color: var(--gold);">0</span></h3>
+        <div id="stat-list" style="margin: 15px 0;"></div>
+        <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px;">
+            <p>攻擊力: <b id="val-atk">0</b></p>
+            <p>生命值: <b id="val-max-hp">0</b></p>
+            <p>攻速: <b id="val-spd">0</b> 次/秒</p>
+            <p>暴擊率: <b id="val-crit">0</b>%</p>
         </div>
     </div>
 
-    <nav class="tabs">
+    <div id="page-bag" class="content-area">
+        <h3>儲物袋 (<span id="val-bag-count">0</span>/20)</h3>
+        <hr style="margin: 10px 0; border: 0; border-top: 1px solid var(--border-color);">
+        <div id="bag-list" class="bag-grid"></div>
+    </div>
+
+    <nav>
         <div class="tab-btn active" onclick="game.switchTab('battle', this)">戰鬥</div>
         <div class="tab-btn" onclick="game.switchTab('stats', this)">修為</div>
         <div class="tab-btn" onclick="game.switchTab('bag', this)">儲物袋</div>
@@ -115,64 +143,81 @@
 <script>
 class XianXiaCore {
     constructor() {
-        this.state = JSON.parse(localStorage.getItem('XX_V01')) || {
-            player: {
-                lv: 1, xp: 0, nextXp: 100, points: 0,
-                // 四維原始點數
-                str: 5,  // 力量：影響攻擊力
-                vit: 5,  // 體質：影響血量
-                agi: 5,  // 敏捷：影響攻速
-                int: 5   // 靈力：影響暴擊
-            },
-            stats: { atk: 0, maxHp: 0, hp: 0, spd: 0, crit: 0 }
+        const saved = JSON.parse(localStorage.getItem('XX_V02'));
+        this.state = saved || {
+            player: { lv: 1, xp: 0, nextXp: 100, points: 0, str: 5, vit: 5, agi: 5, int: 5 },
+            bag: [],
+            equip: { weapon: null },
+            lastSave: Date.now()
         };
 
-        this.monster = { name: "野外小妖", hp: 50, maxHp: 50, lv: 1, exp: 25 };
-        this.runtime = { lastAutoAtk: 0 };
+        this.monster = { name: "野外小妖", hp: 50, maxHp: 50, exp: 20 };
+        this.runtime = { 
+            isAuto: false, 
+            lastAutoAtk: Date.now(),
+            dom: {} 
+        };
 
+        this.qualities = ["凡品", "良品", "精品", "極品", "仙品"];
         this.init();
     }
 
     init() {
         this.calculateStats();
-        this.state.hp = this.state.stats.maxHp;
-        this.renderStats();
+        this.spawnMonster();
+        this.renderStatList();
         this.updateUI();
-        
-        // 每秒檢查一次自動戰鬥 (掛機邏輯預留)
         setInterval(() => this.loop(), 100);
     }
 
-    // --- 核心演算系統 ---
     calculateStats() {
         const p = this.state.player;
-        this.state.stats = {
+        this.stats = {
             atk: p.str * 3 + (p.lv * 2),
             maxHp: p.vit * 20 + (p.lv * 10),
-            spd: (0.5 + (p.agi * 0.05)).toFixed(2), // 攻速：每秒幾次
-            crit: Math.min(50, p.int * 0.8).toFixed(1) // 暴擊率上限 50%
+            spd: (0.5 + (p.agi * 0.05)), 
+            crit: Math.min(50, p.int * 0.8)
         };
     }
 
     loop() {
-        // 未來 V0.5 自動掛機邏輯將在此實現
+        if (this.runtime.isAuto) {
+            const now = Date.now();
+            const msPerAtk = 1000 / this.stats.spd;
+            if (now - this.runtime.lastAutoAtk >= msPerAtk) {
+                this.attack(false);
+                this.runtime.lastAutoAtk = now;
+            }
+        }
     }
 
-    // --- 戰鬥邏輯 ---
     manualAttack(e) {
         this.attack(true, e.clientX, e.clientY);
+        const el = document.getElementById('monster-target');
+        el.classList.remove('monster-shake');
+        void el.offsetWidth; // 觸發重繪
+        el.classList.add('monster-shake');
+    }
+
+    toggleAuto() {
+        this.runtime.isAuto = !this.runtime.isAuto;
+        const btn = document.getElementById('btn-auto');
+        btn.innerText = `自動歷練：${this.runtime.isAuto ? '開啟' : '關閉'}`;
+        btn.className = `auto-toggle ${this.runtime.isAuto ? 'active' : ''}`;
+        this.log(this.runtime.isAuto ? "開啟自動歷練，神識已鎖定妖獸。" : "停止自動歷練。");
     }
 
     attack(isManual, x, y) {
-        const s = this.state.stats;
-        let isCrit = Math.random() * 100 < s.crit;
-        let dmg = Math.floor(s.atk * (isManual ? 1.2 : 1.0)); // 手動點擊加成 20%
+        let isCrit = Math.random() * 100 < this.stats.crit;
+        let dmg = Math.floor(this.stats.atk * (isManual ? 1.2 : 1.0));
         if (isCrit) dmg *= 2;
 
         this.monster.hp -= dmg;
         this.showDmg(dmg, isCrit, x, y);
 
-        if (this.monster.hp <= 0) this.onMonsterDie();
+        if (this.monster.hp <= 0) {
+            this.onMonsterDie();
+        }
         this.updateUI();
     }
 
@@ -180,82 +225,132 @@ class XianXiaCore {
         this.log(`擊殺了 ${this.monster.name}，獲得 ${this.monster.exp} 經驗。`);
         this.gainXp(this.monster.exp);
         
-        // 怪物重生
+        // 掉落邏輯
+        if (Math.random() < 0.3) {
+            this.dropItem();
+        }
+
+        this.spawnMonster();
+    }
+
+    spawnMonster() {
+        const names = ["落單野狼", "吸血蝙蝠", "千年樹精", "赤練蛇", "山賊教頭"];
+        this.monster.name = names[Math.floor(Math.random() * names.length)];
         this.monster.maxHp = Math.floor(50 * Math.pow(1.2, this.state.player.lv - 1));
         this.monster.hp = this.monster.maxHp;
+        this.monster.exp = 20 + (this.state.player.lv * 5);
+    }
+
+    dropItem() {
+        const r = Math.random();
+        let quality = 0; // 凡品
+        if (r < 0.02) quality = 4;      // 仙
+        else if (r < 0.08) quality = 3; // 極
+        else if (r < 0.18) quality = 2; // 精
+        else if (r < 0.4) quality = 1;  // 良
+
+        const names = ["玄鐵劍", "百煉刀", "青竹杖", "破甲錐"];
+        const name = names[Math.floor(Math.random() * names.length)];
         
-        // V0.3 將在此加入物品掉落邏輯
+        // 隨機屬性
+        const bonus = Math.floor((quality + 1) * (1 + Math.random() * 2) * this.state.player.lv);
+        
+        const item = {
+            id: Date.now(),
+            name: `${this.qualities[quality]}·${name}`,
+            quality: quality,
+            atkBonus: bonus
+        };
+
+        if (this.state.bag.length < 20) {
+            this.state.bag.push(item);
+            this.log(`🎒 獲得掉落物：${item.name}！`, this.getQualityColor(quality));
+            this.renderBag();
+        } else {
+            this.log("⚠️ 背包已滿，掉落物消失在塵土中。");
+        }
+    }
+
+    getQualityColor(q) {
+        return ["#c9d1d9", "#3fb950", "#58a6ff", "#a371f7", "#f1e05a"][q];
     }
 
     gainXp(amt) {
         const p = this.state.player;
         p.xp += amt;
-        if (p.xp >= p.nextXp) {
+        while (p.xp >= p.nextXp) {
             p.lv++;
             p.xp -= p.nextXp;
-            p.nextXp = Math.floor(p.nextXp * 1.5);
-            p.points += 5; // 每級 5 點潛能
-            this.log(`恭喜突破！當前境界：等級 ${p.lv}`, "var(--gold)");
+            p.nextXp = Math.floor(p.nextXp * 1.6);
+            p.points += 5;
+            this.log(`🌟 晉升等級：LV ${p.lv}`, "var(--gold)");
             this.calculateStats();
         }
     }
 
-    // --- UI 控制 ---
-    renderStats() {
+    renderStatList() {
         const list = document.getElementById('stat-list');
-        const statNames = { str: '力量 (攻擊)', vit: '體質 (生命)', agi: '敏捷 (攻速)', int: '靈力 (暴擊)' };
-        list.innerHTML = Object.entries(statNames).map(([key, name]) => `
-            <div class="stat-row">
-                <span>${name}</span>
-                <div class="stat-ctrl">
-                    <b>${this.state.player[key]}</b>
-                    <button class="btn-plus" onclick="game.addStat('${key}')" ${this.state.player.points <= 0 ? 'disabled' : ''}>+</button>
+        const map = { str: '力量', vit: '體質', agi: '敏捷', int: '靈力' };
+        list.innerHTML = Object.entries(map).map(([k, n]) => `
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                <span>${n}</span>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <b>${this.state.player[k]}</b>
+                    <button style="width:24px; height:24px; background:var(--info); border:0; color:#000; font-weight:bold; cursor:pointer;" onclick="game.addStat('${k}')">+</button>
                 </div>
             </div>
         `).join('');
     }
 
-    addStat(key) {
+    addStat(k) {
         if (this.state.player.points > 0) {
             this.state.player.points--;
-            this.state.player[key]++;
+            this.state.player[k]++;
             this.calculateStats();
-            this.renderStats();
+            this.renderStatList();
             this.updateUI();
             this.save();
         }
     }
 
+    renderBag() {
+        const list = document.getElementById('bag-list');
+        list.innerHTML = this.state.bag.map(item => `
+            <div class="item-card quality-${item.quality}">
+                <b>${item.name}</b><br>
+                <small>攻擊 +${item.atkBonus}</small>
+            </div>
+        `).join('');
+        document.getElementById('val-bag-count').innerText = this.state.bag.length;
+    }
+
     updateUI() {
         const p = this.state.player;
-        const s = this.state.stats;
-        
         document.getElementById('val-lv').innerText = p.lv;
         document.getElementById('val-xp').innerText = p.xp;
         document.getElementById('val-next-xp').innerText = p.nextXp;
         document.getElementById('bar-xp').style.width = (p.xp / p.nextXp * 100) + "%";
+        document.getElementById('val-points').innerText = p.points;
         
-        document.getElementById('val-m-hp').innerText = this.monster.hp;
-        document.getElementById('val-m-max-hp').innerText = this.monster.maxHp;
+        document.getElementById('m-name').innerText = this.monster.name;
+        document.getElementById('txt-m-hp').innerText = `${this.monster.hp} / ${this.monster.maxHp}`;
         document.getElementById('bar-m-hp').style.width = (this.monster.hp / this.monster.maxHp * 100) + "%";
 
-        document.getElementById('val-points').innerText = p.points;
-        document.getElementById('val-atk').innerText = s.atk;
-        document.getElementById('val-max-hp').innerText = s.maxHp;
-        document.getElementById('val-spd').innerText = s.spd;
-        document.getElementById('val-crit').innerText = s.crit;
-        
-        // 更新按鈕狀態
-        document.querySelectorAll('.btn-plus').forEach(b => b.disabled = p.points <= 0);
+        document.getElementById('val-atk').innerText = this.stats.atk;
+        document.getElementById('val-max-hp').innerText = this.stats.maxHp;
+        document.getElementById('val-spd').innerText = this.stats.spd.toFixed(2);
+        document.getElementById('val-crit').innerText = this.stats.crit.toFixed(1);
+        document.getElementById('val-power').innerText = Math.floor(this.stats.atk * 5 + this.stats.maxHp / 2);
     }
 
     showDmg(dmg, isCrit, x, y) {
         const d = document.createElement('div');
         d.className = 'dmg-num';
-        d.innerText = (isCrit ? '💥 ' : '') + dmg;
-        d.style.color = isCrit ? 'var(--gold)' : '#fff';
-        d.style.left = (x || 200) + 'px';
-        d.style.top = (y || 300) + 'px';
+        d.innerText = (isCrit ? '爆 ' : '') + dmg;
+        d.style.color = isCrit ? 'var(--gold)' : 'white';
+        // 如果沒有座標則顯示在中間
+        d.style.left = (x ? x - 20 : 200) + 'px';
+        d.style.top = (y ? y - 50 : 300) + 'px';
         document.body.appendChild(d);
         setTimeout(() => d.remove(), 600);
     }
@@ -265,18 +360,19 @@ class XianXiaCore {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('page-' + tab).classList.add('active');
         el.classList.add('active');
+        if (tab === 'bag') this.renderBag();
     }
 
     log(msg, color) {
         const box = document.getElementById('log-box');
         const div = document.createElement('div');
         div.style.color = color || 'inherit';
-        div.innerHTML = `<span style="color:#555">[系統]</span> ${msg}`;
+        div.innerHTML = `<span style="color:#555">[${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}]</span> ${msg}`;
         box.prepend(div);
-        if (box.children.length > 5) box.lastChild.remove();
+        if (box.children.length > 20) box.lastChild.remove();
     }
 
-    save() { localStorage.setItem('XX_V01', JSON.stringify(this.state)); }
+    save() { localStorage.setItem('XX_V02', JSON.stringify(this.state)); }
 }
 
 const game = new XianXiaCore();
