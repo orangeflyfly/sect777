@@ -196,13 +196,16 @@ class XianXiaGame {
     }
 
     renderStats() {
-        const map = { str: '力量', vit: '體質', agi: '敏捷', int: '靈力' };
-        document.getElementById('stat-list').innerHTML = Object.entries(map).map(([k, n]) => `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <span>${n} (<b>${this.state.p[k]}</b>)</span>
-                <button style="width:30px; background:var(--info); border:0; border-radius:4px; font-weight:bold; cursor:pointer;" onclick="game.addStat('${k}')">+</button>
-            </div>
-        `).join('');
+    const map = { str: '力量', vit: '體質', agi: '敏捷', int: '靈力' };
+    const listEl = document.getElementById('stat-list');
+    if (!listEl) return;
+    
+    listEl.innerHTML = Object.entries(map).map(([k, n]) => `
+        <div class="stat-row">
+            <span style="font-size: 13px;">${n} (<b>${this.state.p[k]}</b>)</span>
+            <button class="btn-plus" onclick="game.addStat('${k}')">+</button>
+        </div>
+    `).join('');
     }
 
     addStat(k) {
