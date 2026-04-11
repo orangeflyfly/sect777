@@ -31,7 +31,11 @@ header { padding: 15px; background: var(--card-bg); border-bottom: 2px solid var
     border: none; color: #fff; border-radius: 8px; font-weight: bold; cursor: pointer; position: relative; overflow: hidden;
 }
 .btn-skill:disabled { opacity: 0.6; cursor: not-allowed; }
-.skill-cd { position: absolute; top: 0; left: 0; height: 100%; background: rgba(0,0,0,0.4); width: 0%; transition: width 0.1s linear; }
+.skill-cd { 
+    position: absolute; top: 0; left: 0; height: 100%; 
+    background: rgba(0,0,0,0.4); width: 0%; 
+    transition: width 0.1s linear; /* 讓條跑起來更順 */
+}
 
 .equip-box { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
 .slot { background: #0d1117; border: 1px dashed var(--border); padding: 10px; border-radius: 8px; text-align: center; font-size: 12px; }
