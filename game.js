@@ -181,4 +181,4 @@ class XianXiaGame {
 }
 
 // 🚀 關鍵：必須在 class 定義後立即實例化
-const game = new XianXiaGame();
+window._X_CORE = new XianXiaGame();
