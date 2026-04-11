@@ -1,0 +1,251 @@
+class XianXiaGame {
+    constructor() {
+        const saved = JSON.parse(localStorage.getItem('XX_V030'));
+        this.state = saved || {
+            p: { lv: 1, xp: 0, nx: 100, pts: 0, str: 5, vit: 5, agi: 5, int: 5 },
+            bag: [],
+            eq: { weapon: null, body: null },
+            lastSave: Date.now()
+        };
+
+        this.realms = ["凡人", "練氣期", "築基期", "金丹期", "元嬰期", "化神期", "煉虛期", "合體期", "大乘期", "渡劫期"];
+        this.rt = { auto: false, lastAuto: 0, skillCD: 0, skillMaxCD: 8000 };
+        this.m = { n: "小妖", hp: 50, mx: 50, exp: 20, elite: false };
+        
+        this.init();
+    }
+
+    init() {
+        this.calc();
+        this.spawn();
+        this.renderStats();
+        this.update();
+        setInterval(() => this.loop(), 100);
+    }
+
+    calc() {
+        const { p, eq } = this.state;
+        this.baseAtk = p.str * 3 + (p.lv * 2);
+        this.baseHp = p.vit * 20 + (p.lv * 10);
+        this.plusAtk = eq.weapon ? eq.weapon.val : 0;
+        this.plusHp = eq.body ? eq.body.val : 0;
+        this.finalAtk = this.baseAtk + this.plusAtk;
+        this.finalHp = this.baseHp + this.plusHp;
+        this.spd = 0.5 + (p.agi * 0.05);
+        this.crit = Math.min(50, p.int * 0.8);
+    }
+
+    loop() {
+        if (this.rt.auto) {
+            const now = Date.now();
+            if (now - this.rt.lastAuto >= (1000 / this.spd)) {
+                this.atk(false);
+                this.rt.lastAuto = now;
+            }
+        }
+        if (this.rt.skillCD > 0) {
+            this.rt.skillCD -= 100;
+            const per = (this.rt.skillCD / this.rt.skillMaxCD) * 100;
+            document.getElementById('skill-cd').style.width = per + "%";
+            document.getElementById('btn-skill').disabled = true;
+        } else {
+            document.getElementById('btn-skill').disabled = false;
+        }
+    }
+
+    atk(isManual, x, y, multi = 1) {
+        let crit = Math.random() * 100 < this.crit;
+        let dmg = Math.floor(this.finalAtk * (isManual ? 1.2 : 1.0) * multi);
+        if (crit) dmg *= 2;
+        this.m.hp -= dmg;
+        this.pop(dmg, crit, x, y);
+        if (this.m.hp <= 0) this.onDie();
+        this.update();
+    }
+
+    useSkill() {
+        if (this.rt.skillCD <= 0) {
+            this.atk(true, 240, 300, 4);
+            this.rt.skillCD = this.rt.skillMaxCD;
+            this.log("💥 施展【御劍術】，劍氣縱橫！", "var(--info)");
+        }
+    }
+
+    manualAtk(e) {
+        this.atk(true, e.clientX, e.clientY);
+        const card = document.getElementById('m-card');
+        card.style.transform = "scale(0.9)";
+        setTimeout(() => card.style.transform = "scale(1)", 50);
+    }
+
+    onDie() {
+        const gold = this.m.elite ? "var(--gold)" : "";
+        this.log(`擊殺了 ${this.m.n}，收穫 ${this.m.exp} 修為。`, gold);
+        this.gainXp(this.m.exp);
+        if (Math.random() < (this.m.elite ? 0.8 : 0.25)) this.drop();
+        this.spawn();
+    }
+
+    spawn() {
+        const pLv = this.state.p.lv;
+        this.m.elite = Math.random() < 0.15;
+        const names = this.m.elite ? ["狂暴妖虎", "千年屍王", "幽冥使者"] : ["小野豬", "迷途小鬼", "劇毒蜘蛛"];
+        this.m.n = names[Math.floor(Math.random() * 3)];
+        this.m.mx = Math.floor(50 * Math.pow(1.22, pLv - 1)) * (this.m.elite ? 3 : 1);
+        this.m.hp = this.m.mx;
+        this.m.exp = Math.floor((20 + pLv * 5) * (this.m.elite ? 2.5 : 1));
+        document.getElementById('m-card').className = `monster-card ${this.m.elite ? 'elite' : ''}`;
+    }
+
+    drop() {
+        const r = Math.random();
+        let q = 0;
+        if (r < 0.03) q = 4; else if (r < 0.1) q = 3; else if (r < 0.25) q = 2; else if (r < 0.5) q = 1;
+        const type = Math.random() < 0.5 ? 'weapon' : 'body';
+        const nameMap = { weapon: ["鐵劍", "靈刀", "長槍"], body: ["布衣", "皮甲", "玄裝"] };
+        const qNames = ["凡品", "良品", "精品", "極品", "仙品"];
+        const val = Math.floor((q + 1) * (5 + Math.random() * 10) * Math.pow(1.15, this.state.p.lv));
+        const item = { id: Date.now(), type, q, val, name: `${qNames[q]}·${nameMap[type][Math.floor(Math.random()*3)]}` };
+        if (this.state.bag.length < 20) {
+            this.state.bag.push(item);
+            this.log(`🎒 獲得掉落：${item.name}`, this.getQColor(q));
+        }
+    }
+
+    gainXp(amt) {
+        const { p } = this.state;
+        p.xp += amt;
+        while (p.xp >= p.nx) {
+            p.lv++; p.xp -= p.nx; p.nx = Math.floor(p.nx * 1.55); p.pts += 5;
+            this.log(`🌟 突破！當前等級：LV ${p.lv}`, "var(--gold)");
+            this.calc();
+        }
+    }
+
+    equip(id) {
+        const idx = this.state.bag.findIndex(i => i.id === id);
+        const item = this.state.bag[idx];
+        const old = this.state.eq[item.type];
+        if (old) this.state.bag.push(old);
+        this.state.eq[item.type] = item;
+        this.state.bag.splice(idx, 1);
+        this.log(`⚔️ 裝備了 ${item.name}`);
+        this.calc(); this.update(); this.renderBag();
+    }
+
+    melt(id) {
+        const idx = this.state.bag.findIndex(i => i.id === id);
+        const item = this.state.bag[idx];
+        this.state.p.xp += Math.floor(item.val * 2);
+        this.state.bag.splice(idx, 1);
+        this.log(`🔥 熔煉 ${item.name}，化為修為。`);
+        this.update(); this.renderBag();
+    }
+
+    quickMelt() {
+        this.state.bag = this.state.bag.filter(i => {
+            if (i.q <= 1) {
+                this.state.p.xp += Math.floor(i.val * 2);
+                return false;
+            }
+            return true;
+        });
+        this.log("🧹 已清理所有凡品與良品裝備。");
+        this.update(); this.renderBag();
+    }
+
+    renderStats() {
+        const map = { str: '力量', vit: '體質', agi: '敏捷', int: '靈力' };
+        document.getElementById('stat-list').innerHTML = Object.entries(map).map(([k, n]) => `
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                <span>${n} (<b>${this.state.p[k]}</b>)</span>
+                <button style="width:30px; background:var(--info); border:0; border-radius:4px;" onclick="game.addStat('${k}')">+</button>
+            </div>
+        `).join('');
+    }
+
+    addStat(k) {
+        if (this.state.p.pts > 0) {
+            this.state.p.pts--; this.state.p[k]++;
+            this.calc(); this.renderStats(); this.update(); this.save();
+        }
+    }
+
+    renderBag() {
+        const list = document.getElementById('bag-list');
+        list.innerHTML = this.state.bag.map(i => `
+            <div class="item-card quality-${i.q}">
+                <div style="display:flex; justify-content:space-between;">
+                    <b>${i.name}</b>
+                    <span>${i.type === 'weapon' ? 'ATK' : 'HP'} +${i.val}</span>
+                </div>
+                <div class="btn-group">
+                    <button class="btn-small" onclick="game.equip(${i.id})">穿戴</button>
+                    <button class="btn-small" onclick="game.melt(${i.id})">熔煉</button>
+                </div>
+            </div>
+        `).join('');
+        document.getElementById('bag-count').innerText = this.state.bag.length;
+    }
+
+    update() {
+        const { p, eq } = this.state;
+        const realmIdx = Math.min(Math.floor((p.lv - 1) / 10), this.realms.length - 1);
+        document.getElementById('val-realm').innerText = this.realms[realmIdx];
+        document.getElementById('val-lv').innerText = p.lv;
+        document.getElementById('val-xp').innerText = p.xp;
+        document.getElementById('val-next-xp').innerText = p.nx;
+        document.getElementById('bar-xp').style.width = (p.xp / p.nx * 100) + "%";
+        document.getElementById('val-pts').innerText = p.pts;
+        document.getElementById('val-atk').innerText = this.finalAtk;
+        document.getElementById('val-hp').innerText = this.finalHp;
+        document.getElementById('val-atk-plus').innerText = this.plusAtk ? `(+${this.plusAtk})` : '';
+        document.getElementById('val-hp-plus').innerText = this.plusHp ? `(+${this.plusHp})` : '';
+        document.getElementById('val-spd').innerText = this.spd.toFixed(2);
+        document.getElementById('val-crit').innerText = this.crit.toFixed(1);
+        document.getElementById('val-power').innerText = Math.floor(this.finalAtk * 4 + this.finalHp / 3);
+        document.getElementById('m-name').innerText = (this.m.elite ? '🌟 ' : '') + this.m.n;
+        document.getElementById('m-hp-txt').innerText = `${this.m.hp}/${this.m.mx}`;
+        document.getElementById('bar-m-hp').style.width = (this.m.hp / this.m.mx * 100) + "%";
+        document.getElementById('eq-weapon').innerText = eq.weapon ? eq.weapon.name : '無';
+        document.getElementById('eq-body').innerText = eq.body ? eq.body.name : '無';
+    }
+
+    pop(dmg, crit, x, y) {
+        const d = document.createElement('div');
+        d.className = 'dmg';
+        d.innerText = (crit ? '💥 ' : '') + dmg;
+        d.style.color = crit ? 'var(--gold)' : '#fff';
+        d.style.left = (x || 200) + 'px'; d.style.top = (y || 300) + 'px';
+        document.body.appendChild(d);
+        setTimeout(() => d.remove(), 600);
+    }
+
+    toggleAuto() {
+        this.rt.auto = !this.rt.auto;
+        document.getElementById('btn-auto').innerText = `自動歷練: ${this.rt.auto ? 'ON' : 'OFF'}`;
+        document.getElementById('btn-auto').style.background = this.rt.auto ? "var(--success)" : "#30363d";
+    }
+
+    switchTab(tab, el) {
+        document.querySelectorAll('.stage').forEach(s => s.style.display = 'none');
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('p-' + tab).style.display = 'flex';
+        el.classList.add('active');
+        if (tab === 'bag') this.renderBag();
+    }
+
+    log(m, c) {
+        const b = document.getElementById('log');
+        const d = document.createElement('div');
+        d.style.color = c || 'inherit';
+        d.innerHTML = `<span style="color:#555">[${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}]</span> ${m}`;
+        b.prepend(d);
+        if (b.children.length > 20) b.lastChild.remove();
+    }
+
+    getQColor(q) { return ["#8b949e", "#3fb950", "#58a6ff", "#a371f7", "#f1e05a"][q]; }
+    save() { localStorage.setItem('XX_V030', JSON.stringify(this.state)); }
+}
+
+const game = new XianXiaGame();
