@@ -143,14 +143,42 @@ class XianXiaGame {
     drop() {
         const r = Math.random();
         let q = 0;
-        if (r < 0.03) q = 4; else if (r < 0.1) q = 3; else if (r < 0.25) q = 2; else if (r < 0.5) q = 1;
+        
+        // 大幅調低高階裝備機率
+        if (r < 0.005) q = 4;       // 仙品：0.5% (原本 3%)
+        else if (r < 0.03) q = 3;   // 極品：2.5% (原本 7%)
+        else if (r < 0.12) q = 2;   // 精品：9%   (原本 15%)
+        else if (r < 0.35) q = 1;   // 良品：23%  (原本 25%)
+        else q = 0;                 // 凡品：其餘
+    
         const type = Math.random() < 0.5 ? 'weapon' : 'body';
         const qNames = ["凡品", "良品", "精品", "極品", "仙品"];
-        const val = Math.floor((q + 1) * (5 + Math.random() * 10) * Math.pow(1.15, this.state.p.lv));
-        const item = { id: Date.now(), type, q, val, name: `${qNames[q]}·裝備` };
+        const typeNames = type === 'weapon' ? ["長劍", "重錘", "靈珠", "唐刀"] : ["布袍", "輕甲", "重鎧", "法衣"];
+        
+        // 計算屬性：讓高品質裝備的成長性更高
+        const baseVal = 5 + (this.state.p.lv * 2);
+        const qualityMult = [1, 1.5, 2.5, 4, 8][q]; // 仙品是凡品的 8 倍強
+        const val = Math.floor(baseVal * qualityMult * (0.8 + Math.random() * 0.4));
+        
+        // 設定等級需求 (當前等級 +/- 2級)
+        const lvReq = Math.max(1, this.state.p.lv + Math.floor(Math.random() * 5) - 2);
+    
+        const item = { 
+            id: Date.now(), 
+            type, 
+            q, 
+            val, 
+            lvReq,
+            name: `${qNames[q]}·${typeNames[Math.floor(Math.random()*4)]}` 
+        };
+    
         if (this.state.bag.length < 20) {
             this.state.bag.push(item);
-            this.log(`🎒 拾得：${item.name}`, this.getQColor(q));
+            if (q >= 3) {
+                this.log(`✨ 天降祥瑞！獲得【${item.name}】！`, this.getQColor(q));
+            } else {
+                this.log(`🎒 獲得：${item.name}`, this.getQColor(q));
+            }
         }
     }
 
@@ -167,6 +195,12 @@ class XianXiaGame {
     equip(id) {
         const idx = this.state.bag.findIndex(i => i.id === id);
         const item = this.state.bag[idx];
+        
+        if (this.state.p.lv < item.lvReq) {
+            alert(`等級不足！需要等級 ${item.lvReq} 才能裝備。`);
+            return;
+        }
+        
         const old = this.state.eq[item.type];
         if (old) this.state.bag.push(old);
         this.state.eq[item.type] = item;
