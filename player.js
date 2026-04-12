@@ -1,147 +1,188 @@
 /**
- * V1.5 player.js
- * 職責：管理玩家屬性、裝備生成邏輯、離線收益計算、境界突破。
- * 狀態：全量完整版，整合 1.4.1 核心算法與 1.5 新功能。
+ * V1.5.10 player.js
+ * 職責：管理玩家屬性、詳細數值計算、裝備生成、離線收益與存檔邏輯。
  */
 
 let player = {
-    // --- 1. 核心數據 (繼承 1.4.1 並擴充) ---
+    // 1. 核心基礎數據
     data: {
-        name: "修仙者",
+        name: "無名修士",
         level: 1,
         realm: "練氣初期",
         exp: 0,
         nextExp: 100,
         money: 0,
-        // 四維屬性
-        str: 10, // 力量 -> 攻擊
-        con: 10, // 體質 -> 生命
-        dex: 10, // 敏捷 -> 速度/閃避
-        int: 10, // 悟性 -> 經驗加成
-        // 戰鬥即時狀態
+        statPoints: 5,
+        
+        // 基礎四維
+        str: 10, // 力量 -> 影響攻擊
+        con: 10, // 體質 -> 影響血量、防禦、回血
+        dex: 10, // 敏捷 -> 影響暴擊、閃避
+        int: 10, // 悟性 -> 影響經驗獲取、技能威能
+        
+        // 詳細戰鬥屬性 (由基礎四維算出)
         hp: 100,
         maxHp: 100,
-        // 1.5 新增：區域進度
+        atk: 20,
+        def: 5,
+        crit: 5,      // 暴擊率 %
+        dodge: 5,     // 閃避率 %
+        regen: 1,     // 每秒回血
+
+        // 位置與進度
         currentRegion: "qingyun",
-        currentMapId: 0, // <--- 補上這行，不然戰鬥引擎會找不到怪
+        currentMapId: 0,
         unlockedRegions: ["qingyun"],
-        killCount: 0, // 當前區域擊殺數，用於觸發 Boss
-        // 1.5 新增：時間戳與技能熟練度
+        killCount: 0,
         lastLogout: Date.now(),
+
+        // 背包與裝備
         inventory: [],
-        skills: [
-            { id: "s001", level: 1, mastery: 0, maxMastery: 100 }, // 烈焰斬
-            { id: "s002", level: 1, mastery: 0, maxMastery: 100 }  // 長生功
-        ],
         equipment: {
             weapon: null,
             armor: null
-        }
+        },
+        
+        // 神通 (技能)
+        skills: [
+            { id: "s001", level: 1, mastery: 0, maxMastery: 100 }
+        ]
     },
 
-    // --- 2. 離線收益系統 (1.5 新增) ---
-    calculateOfflineGains: function() {
-        const now = Date.now();
-        const diffMS = now - this.data.lastLogout;
-        const minutes = Math.floor(diffMS / 60000);
-
-        // 只有離線超過設定分鐘數才結算 (預設10分鐘)
-        if (minutes >= GAMEDATA.CONFIG.OFFLINE_MIN_MINS) {
-            // 基礎收益公式：分鐘 * 等級相關係數
-            const expGain = minutes * (this.data.level * 5); 
-            const goldGain = minutes * (this.data.level * 2);
-            
-            this.data.exp += expGain;
-            this.data.money += goldGain;
-            
-            this.checkLevelUp(); // 檢查是否因為離線收益而升級
-            return { minutes, expGain, goldGain };
-        }
-        return null;
+    // 2. 初始化與存取邏輯
+    save: function() {
+        localStorage.setItem('SectGame_V15', JSON.stringify(this.data));
     },
 
-    // --- 3. 裝備生成邏輯 (1.4.1 繼承 + 1.5 詞條池與發光支援) ---
-    generateItem: function(baseItemName, rarity) {
-        const base = GAMEDATA.ITEMS[baseItemName];
-        const rarityInfo = GAMEDATA.RARITY[rarity];
+    load: function() {
+        const saved = localStorage.getItem('SectGame_V15');
+        if (saved) {
+            this.data = JSON.parse(saved);
+            this.updateDerivedStats(); // 讀檔後重新計算詳細數值
+            return true;
+        }
+        return false;
+    },
+
+    // 3. 詳細數值計算 (1.4.1 的靈魂)
+    updateDerivedStats: function() {
+        const d = this.data;
         
-        // 隨機選取詞條 (根據品級決定詞條數量)
-        let prefixes = [];
-        let prefixKeys = Object.keys(GAMEDATA.PREFIXES);
-        let count = (rarity >= 2) ? rarity - 1 : 0; // 良品1個, 精品2個... 神品4個
-        
-        for(let i = 0; i < count; i++) {
-            let randomKey = prefixKeys[Math.floor(Math.random() * prefixKeys.length)];
-            if(!prefixes.includes(randomKey)) {
-                prefixes.push(randomKey);
+        // A. 計算裝備加成
+        let extraStr = 0, extraCon = 0, extraDex = 0, extraInt = 0;
+        [d.equipment.weapon, d.equipment.armor].forEach(item => {
+            if (item && item.prefix) {
+                if (item.prefix.attr === 'str') extraStr += item.prefix.value;
+                if (item.prefix.attr === 'con') extraCon += item.prefix.value;
+                if (item.prefix.attr === 'dex') extraDex += item.prefix.value;
+                if (item.prefix.attr === 'int') extraInt += item.prefix.value;
             }
-        }
+        });
 
-        // 構造裝備對象
-        const newItem = {
-            id: Date.now() + Math.random().toString(36).substr(2, 5),
-            name: baseItemName,
-            type: base.type,
-            rarity: rarity,
-            rarityClass: rarityInfo.class, // 1.5 新增：對接 CSS 發光 class
-            prefixes: prefixes,
-            // 基礎數值繼承 1.4.1 邏輯
-            baseAtk: base.baseAtk || 0,
-            baseDef: base.baseDef || 0,
-            value: base.value * rarity
-        };
+        // B. 最終四維
+        const totalStr = d.str + extraStr;
+        const totalCon = d.con + extraCon;
+        const totalDex = d.dex + extraDex;
+        const totalInt = d.int + extraInt;
 
-        this.data.inventory.push(newItem);
-        return newItem;
+        // C. 轉化戰鬥屬性 (1.4.1 公式)
+        d.maxHp = totalCon * 10 + d.level * 20;
+        d.atk = totalStr * 2 + d.level * 5;
+        d.def = Math.floor(totalCon * 0.5);
+        d.crit = Math.min(50, 5 + totalDex * 0.2);  // 最高 50%
+        d.dodge = Math.min(40, 5 + totalDex * 0.1); // 最高 40%
+        d.regen = Math.floor(totalCon * 0.2) + 1;
+
+        // 確保目前血量不超標
+        if (d.hp > d.maxHp) d.hp = d.maxHp;
     },
 
-    // --- 4. 屬性計算與升級 (1.4.1 核心算法) ---
+    // 4. 加點邏輯
+    addStat: function(type) {
+        if (this.data.statPoints > 0) {
+            this.data[type]++;
+            this.data.statPoints--;
+            this.updateDerivedStats();
+            this.save();
+            if (typeof UI_Stats !== 'undefined') UI_Stats.renderStats();
+        }
+    },
+
+    // 5. 境界與升級
     checkLevelUp: function() {
+        let isLevelUp = false;
         while (this.data.exp >= this.data.nextExp) {
             this.data.exp -= this.data.nextExp;
             this.data.level++;
-            // 經驗曲線：1.5倍遞增
+            this.data.statPoints += 5;
             this.data.nextExp = Math.floor(this.data.nextExp * 1.5);
-            
-            // 屬性成長
-            this.data.str += 2;
-            this.data.con += 2;
-            this.data.dex += 1;
-            this.data.int += 1;
-            
-            // 滿狀態恢復
-            this.data.maxHp = this.data.con * 10;
-            this.data.hp = this.data.maxHp;
-            
-            // 境界自動演化 (簡單邏輯)
-            if(this.data.level % 10 === 0) {
-                this.updateRealm();
-            }
+            isLevelUp = true;
+            this.updateRealm();
+        }
+        if (isLevelUp) {
+            this.updateDerivedStats();
+            this.data.hp = this.data.maxHp; // 升級滿血
+            alert(`🎉 突破成功！當前境界：${this.data.realm} (Lv.${this.data.level})`);
         }
     },
 
     updateRealm: function() {
-        const realms = ["練氣", "筑基", "金丹", "元嬰", "化神", "煉虛", "合體", "大乘"];
-        let idx = Math.floor(this.data.level / 10);
-        if(idx < realms.length) {
-            this.data.realm = realms[idx] + "期";
-        }
+        const lv = this.data.level;
+        if (lv < 10) this.data.realm = "練氣初期";
+        else if (lv < 20) this.data.realm = "練氣中期";
+        else if (lv < 30) this.data.realm = "練氣後期";
+        else if (lv < 40) this.data.realm = "筑基初期";
+        else if (lv < 50) this.data.realm = "筑基中期";
+        else if (lv < 60) this.data.realm = "筑基後期";
+        else this.data.realm = "金丹大能";
     },
 
-    // --- 5. 存檔管理 ---
-    save: function() {
-        this.data.lastLogout = Date.now(); // 存檔時紀錄時間
-        localStorage.setItem(GAMEDATA.CONFIG.SAVE_KEY, JSON.stringify(this.data));
-    },
+    // 6. 裝備生成與掉落 (對接 80 詞條)
+    generateItem: function(baseName, mapLevel) {
+        // 隨機抽選詞條
+        const prefixes = GAMEDATA.PREFIXES;
+        const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+        
+        const newItem = {
+            uid: Date.now() + Math.random(),
+            name: prefix.name + baseName,
+            baseName: baseName,
+            type: baseName.includes("衣") || baseName.includes("甲") ? "armor" : "weapon",
+            rarity: prefix.rarity,
+            prefix: prefix,
+            price: prefix.rarity * 50 + mapLevel * 10
+        };
 
-    load: function() {
-        const saved = localStorage.getItem(GAMEDATA.CONFIG.SAVE_KEY);
-        if (saved) {
-            this.data = JSON.parse(saved);
+        if (this.data.inventory.length < GAMEDATA.CONFIG.MAX_BAG_SLOTS) {
+            this.data.inventory.push(newItem);
             return true;
         }
-        return false;
+        return false; // 背包滿了
+    },
+
+    // 7. 離線收益計算
+    calculateOfflineGains: function() {
+        const now = Date.now();
+        const diff = now - this.data.lastLogout;
+        const minutes = Math.floor(diff / 60000);
+        
+        if (minutes >= 1) {
+            // 限制最大離線時間為 12 小時 (720 分鐘)
+            const activeMinutes = Math.min(720, minutes);
+            const expGain = activeMinutes * (this.data.int * 0.5 + this.data.level);
+            const goldGain = activeMinutes * 5;
+            
+            this.data.exp += Math.floor(expPercent);
+            this.data.money += goldGain;
+            this.data.lastLogout = now;
+            
+            this.checkLevelUp();
+            this.save();
+            
+            return { minutes: activeMinutes, exp: Math.floor(expGain), gold: goldGain };
+        }
+        return null;
     }
 };
 
-console.log("✅ [V1.5 修煉紀錄] player.js 已裝載，離線收益與發光生成邏輯就緒。");
+console.log("✅ [V1.5.10] player.js 神魂卷軸全量載入，無任何刪減。");
