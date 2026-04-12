@@ -23,7 +23,8 @@
 
         <div id="p-battle" class="stage">
             <div class="map-selector">
-                <select id="map-select-dropdown" onchange="_X_CORE.changeMap(this.value)"></select>
+                <select id="map-select-dropdown" onchange="_X_CORE.changeMap(this.value)">
+                    </select>
             </div>
 
             <div class="monster-area">
@@ -46,7 +47,12 @@
                     <div id="p-hp-bar" class="hp-bar-fill p-hp"></div>
                     <div id="p-hp-txt" class="hp-text">0 / 0</div>
                 </div>
-                <div id="active-skill-slots" class="active-skills"></div>
+                
+                <div id="active-skill-slots" class="active-skills">
+                    <div class="skill-slot-mini"></div>
+                    <div class="skill-slot-mini"></div>
+                    <div class="skill-slot-mini"></div>
+                </div>
             </div>
 
             <div class="log-container">
@@ -69,19 +75,19 @@
 
         <div id="p-stats" class="stage" style="display:none;">
             <h4>本命命牌</h4>
-            <div class="stats-container">
-                <div class="detailed-stats-box">
-                    <h5>詳細屬性</h5>
-                    <div id="detail-stats-list"></div> </div>
-                <hr>
-                <div class="points-allocation">
-                    <p>可用屬性點：<b id="val-pts" style="color:gold;">0</b></p>
-                    <div id="stat-list"></div>
-                </div>
-                <hr>
-                <h5>裝備位</h5>
-                <div id="equipment-slots" class="eq-grid"></div>
+            <div class="detailed-stats-box">
+                <h5>詳細屬性</h5>
+                <div id="detail-stats-list">
+                    </div>
             </div>
+            <hr>
+            <div class="points-allocation">
+                <p>可用屬性點：<b id="val-pts" style="color:gold;">0</b></p>
+                <div id="stat-list"></div>
+            </div>
+            <hr>
+            <h5>裝備位</h5>
+            <div id="equipment-slots"></div>
         </div>
 
         <div class="nav-bar">
