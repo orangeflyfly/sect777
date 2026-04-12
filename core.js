@@ -1,50 +1,102 @@
+/**
+ * V1.5.10 core.js
+ * 職責：啟動遊戲、全域數據刷新、標籤切換、離線收益彈窗、自動存檔。
+ */
+
 const GameCore = {
     init: function() {
-        player.load();
-        Combat.init();
-        this.switchTab('battle'); 
-        this.startGlobalUpdater(); // 啟動全域刷新
-        this.startAutoSave();
-    },
-
-    // 介面切換
-    switchTab: function(tabId) {
-        const screens = ['battle-screen', 'stats-screen', 'bag-screen', 'shop-screen'];
-        screens.forEach(s => {
-            const el = document.getElementById(s);
-            if (el) el.style.display = 'none';
-        });
-        document.getElementById(tabId + '-screen').style.display = 'flex';
+        console.log("🕉️ 宗門大陣啟動中...");
         
-        // 觸發各頁面渲染
-        if(tabId === 'stats') UI_Stats.renderStats();
-        if(tabId === 'bag') UI_Bag.renderBag();
-        if(tabId === 'shop') UI_Shop.renderShop();
+        // 1. 載入存檔
+        player.load();
+
+        // 2. 處理離線收益
+        this.handleOffline();
+
+        // 3. 初始化戰鬥
+        Combat.init();
+
+        // 4. 預設顯示歷練頁
+        this.switchTab('battle');
+
+        // 5. 啟動高頻刷新 (每 200ms 刷新一次頂部狀態)
+        this.startGlobalUpdater();
+
+        // 6. 啟動自動存檔 (每 30 秒)
+        this.startAutoSave();
+
+        console.log("✅ 宗門大陣運行平穩，恭迎宗主回歸！");
     },
 
-    // 核心更新器：解決經驗值消失的問題
+    // 離線收益彈窗 (1.4.1 特色)
+    handleOffline: function() {
+        const gains = player.calculateOfflineGains();
+        if (gains && gains.minutes > 0) {
+            // 延遲一點點顯示，確保畫面已加載
+            setTimeout(() => {
+                alert(`【離線修煉結算】\n\n宗主閉關了 ${gains.minutes} 分鐘\n獲得修為：${gains.exp}\n獲得靈石：${gains.gold}\n\n修行之路，貴在持之以恆！`);
+            }, 1000);
+        }
+    },
+
+    // 分頁切換 (1.4.1 的流暢感)
+    switchTab: function(tabId) {
+        const screens = ['battle', 'bag', 'stats', 'shop'];
+        
+        screens.forEach(s => {
+            const el = document.getElementById(s + '-screen');
+            const btn = document.querySelector(`.nav-btn[onclick*="${s}"]`);
+            if (el) el.classList.remove('active');
+            if (btn) btn.classList.remove('active');
+        });
+
+        // 啟動目標頁面
+        const targetScreen = document.getElementById(tabId + '-screen');
+        const targetBtn = document.querySelector(`.nav-btn[onclick*="${tabId}"]`);
+        
+        if (targetScreen) targetScreen.classList.add('active');
+        if (targetBtn) targetBtn.classList.add('active');
+
+        // 觸發各頁面的初次渲染
+        if (tabId === 'battle') {
+            if (Combat.currentMonster) UI_Battle.renderBattle(Combat.currentMonster);
+        }
+        if (tabId === 'stats') UI_Stats.renderStats();
+        if (tabId === 'bag') UI_Bag.renderBag();
+        if (tabId === 'shop') UI_Shop.renderShop();
+    },
+
+    // 全域數據同步
     startGlobalUpdater: function() {
         setInterval(() => {
             const d = player.data;
             
-            // 1. 更新頂部等級與境界
-            document.getElementById('val-level').innerText = `【${d.realm}】 Lv.${d.level}`;
+            // 同步頂部狀態
+            const lvlEl = document.getElementById('val-level');
+            const monEl = document.getElementById('val-money');
+            const expBar = document.getElementById('val-exp-bar');
+            const expTxt = document.getElementById('val-exp-txt');
+
+            if (lvlEl) lvlEl.innerText = `【${d.realm}】 Lv.${d.level}`;
+            if (monEl) monEl.innerText = `🪙 ${Math.floor(d.money)}`;
             
-            // 2. 更新靈石
-            document.getElementById('val-money').innerText = `🪙 ${Math.floor(d.money)}`;
-            
-            // 3. 更新經驗條
-            const expPercent = (d.exp / d.nextExp) * 100;
-            document.getElementById('val-exp-bar').style.width = Math.min(100, expPercent) + "%";
-            document.getElementById('val-exp-txt').innerText = Math.floor(expPercent) + "%";
-            
-            // 4. 如果在歷練頁，由 Combat 模組更新怪物血量，這裡只需確保基本數值同步
-        }, 200); // 提高刷新頻率至 0.2 秒，讓數值更流暢
+            if (expBar && expTxt) {
+                const percent = (d.exp / d.nextExp) * 100;
+                expBar.style.width = Math.min(100, percent) + "%";
+                expTxt.innerText = Math.floor(percent) + "%";
+            }
+        }, 200);
     },
 
     startAutoSave: function() {
-        setInterval(() => player.save(), 30000);
+        setInterval(() => {
+            player.save();
+            console.log("💾 陣法自動存檔完成...");
+        }, 30000);
     }
 };
 
-window.onload = () => GameCore.init();
+// 大陣最後的啟動咒語
+window.onload = () => {
+    GameCore.init();
+};
