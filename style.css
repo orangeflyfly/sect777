@@ -1,70 +1,21 @@
-:root {
-    --bg: #121212;
-    --card: #1e1e1e;
-    --border: #333;
-    --text: #e0e0e0;
-    --gold: #ffd700;
-    --purple: #a333c8;
-    --red: #ff4d4d;
-    --green: #4caf50;
-    --info: #2196f3;
-}
+/* 戰鬥中的地圖選擇器 */
+.map-selector { margin-bottom: 10px; text-align: center; }
+#map-select-dropdown { width: 100%; background: #222; color: gold; border: 1px solid #444; padding: 5px; border-radius: 4px; }
 
-* { box-sizing: border-box; font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; }
-body { background: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; justify-content: center; overflow: hidden; touch-action: manipulation; }
+/* 自動戰鬥開關 */
+.battle-controls { display: flex; justify-content: flex-end; margin-bottom: 5px; }
+.switch-label { font-size: 12px; display: flex; align-items: center; color: #888; }
+#auto-battle-toggle { margin-right: 5px; }
 
-#game-container { width: 100%; max-width: 500px; height: 100vh; display: flex; flex-direction: column; position: relative; background: var(--bg); border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+/* 戰鬥畫面的技能格子 */
+.active-skills { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
+.skill-slot-mini { width: 45px; height: 45px; background: #222; border: 1px dashed #555; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
 
-/* 頂部修為欄 */
-.header-info { padding: 15px; background: rgba(0,0,0,0.5); border-bottom: 1px solid var(--border); }
-.header-line { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 5px; }
-.exp-bar-container { width: 100%; height: 4px; background: #333; border-radius: 2px; }
-.exp-bar-fill { height: 100%; background: var(--info); width: 0%; transition: width 0.3s; }
+/* 經典儲物袋樣式 */
+.bag-grid.classic-style { gap: 10px; padding: 5px; }
+.item-slot { border: 1px solid #333; background: linear-gradient(145deg, #222, #1a1a1a); box-shadow: inset 1px 1px 2px rgba(255,255,255,0.05); }
 
-/* 舞台切換 */
-.stage { flex: 1; display: flex; flex-direction: column; padding: 15px; overflow-y: auto; padding-bottom: 80px; }
-
-/* 戰鬥舞台：法相莊嚴 (解決怪物太小問題) */
-.monster-area { text-align: center; padding: 20px 0; min-height: 200px; }
-#monster-name { font-size: 18px; margin-bottom: 10px; color: var(--gold); }
-.monster-pic { font-size: 100px; height: 120px; display: flex; align-items: center; justify-content: center; user-select: none; cursor: pointer; transition: transform 0.1s; }
-.monster-pic:active { transform: scale(0.9); }
-
-/* 血條系統 (解決數字看不清問題) */
-.hp-container { position: relative; width: 100%; height: 22px; background: #333; border-radius: 11px; overflow: hidden; margin: 10px 0; border: 1px solid #444; }
-.hp-bar-fill { height: 100%; width: 100%; background: var(--red); transition: width 0.2s; }
-.p-hp { background: var(--green); }
-.hp-text { position: absolute; width: 100%; text-align: center; top: 0; line-height: 22px; font-size: 12px; font-weight: bold; text-shadow: 1px 1px 2px #000; color: white; }
-
-.quick-stats { display: flex; justify-content: space-around; font-size: 14px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; }
-
-/* 日誌分頁系統 */
-.log-container { flex: 1; display: flex; flex-direction: column; margin-top: 15px; background: #000; border-radius: 8px; border: 1px solid var(--border); overflow: hidden; }
-.log-tabs { display: flex; background: #222; }
-.log-tab { flex: 1; padding: 8px; border: none; background: transparent; color: #888; font-size: 12px; cursor: pointer; }
-.log-tab.active { background: #333; color: var(--gold); border-bottom: 2px solid var(--gold); }
-.log-list { flex: 1; padding: 10px; font-size: 12px; overflow-y: auto; line-height: 1.6; }
-
-/* 儲物袋格子 (自適應) */
-.bag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 8px; margin-top: 10px; }
-.item-slot { aspect-ratio: 1; background: var(--card); border: 1px solid var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 24px; position: relative; cursor: pointer; }
-
-/* 全域彈窗特效 (Toast) */
-#toast-container { position: absolute; top: 30%; width: 100%; display: flex; flex-direction: column; align-items: center; z-index: 9999; pointer-events: none; }
-.toast { background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 20px; margin-bottom: 10px; animation: toastIn 1.5s forwards; border: 1px solid var(--gold); color: var(--gold); font-weight: bold; }
-@keyframes toastIn {
-    0% { transform: translateY(20px); opacity: 0; }
-    20% { transform: translateY(0); opacity: 1; }
-    80% { transform: translateY(0); opacity: 1; }
-    100% { transform: translateY(-20px); opacity: 0; }
-}
-
-/* 底部導航欄 */
-.nav-bar { position: absolute; bottom: 0; width: 100%; height: 70px; display: flex; background: #1a1a1a; border-top: 1px solid var(--border); padding: 5px; }
-.nav-bar button { flex: 1; background: transparent; border: none; color: #888; font-size: 12px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.nav-bar button:active { color: var(--gold); }
-
-/* 稀有度顏色 */
-.rarity-0 { color: #aaa; } .rarity-1 { color: #4caf50; } .rarity-2 { color: #2196f3; }
-.rarity-3 { color: #a333c8; border-color: #a333c8 !important; }
-.rarity-4 { color: #ffd700; border-color: #ffd700 !important; font-weight: bold; text-shadow: 0 0 5px gold; }
+/* 詳細屬性清單 */
+.detailed-stats-box { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; font-size: 13px; line-height: 1.8; }
+.stat-row { display: flex; justify-content: space-between; border-bottom: 1px solid #222; }
+.stat-val { color: var(--gold); font-weight: bold; }
