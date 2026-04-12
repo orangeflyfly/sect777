@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
-    <title>宗門修仙錄 V1.5.10 - 大乘圓滿</title>
+    <title>宗門修仙錄 V1.5.12 - 大乘補完版</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="toast-container"></div>
-    <div id="item-modal" class="modal" style="display:none;"></div>
 
     <div id="game-container">
         <header class="header-info">
@@ -20,15 +19,19 @@
                 <div id="val-exp-bar" class="exp-bar-fill"></div>
                 <div id="val-exp-txt" class="exp-text-overlay">0%</div>
             </div>
+            <div class="player-hp-container" style="margin-top:5px; height:14px; background:#222; border-radius:7px; border:1px solid #c0392b; overflow:hidden; position:relative;">
+                <div id="val-hp-bar" style="height:100%; background:linear-gradient(90deg, #e74c3c, #c0392b); width:100%; transition: width 0.3s;"></div>
+                <div id="val-hp-txt" style="position:absolute; width:100%; text-align:center; font-size:10px; color:white; top:0;">100 / 100</div>
+            </div>
         </header>
 
         <section id="battle-screen" class="stage">
-            <div class="map-selector">
+            <div class="battle-header" style="display:flex; justify-content:space-between; align-items:center;">
                 <button class="map-btn" onclick="UI_Battle.showMapSelector()">🗺️ 前往歷練</button>
+                <button id="btn-auto-combat" class="auto-btn" onclick="GameCore.toggleAuto()">自動練功：關</button>
             </div>
             
-            <div id="monster-display" class="battle-main">
-                </div>
+            <div id="monster-display" class="battle-main"></div>
 
             <button id="boss-btn" class="boss-btn" onclick="Combat.initBattle(true)" style="display:none;">挑戰區域領主</button>
 
@@ -42,29 +45,9 @@
             </div>
         </section>
 
-        <section id="bag-screen" class="stage" style="display:none;">
-            <div class="bag-header">
-                <h4>儲物袋 (<span id="bag-count">0</span>/50)</h4>
-                <button class="btn-auto-melt" onclick="player.autoMelt()">一鍵熔煉(凡/良)</button>
-            </div>
-            <div id="bag-grid" class="bag-grid"></div>
-        </section>
-
-        <section id="stats-screen" class="stage" style="display:none;">
-            <div class="stats-section">
-                <h4>本命命牌</h4>
-                <div id="detail-stats-list" class="stats-grid-v2"></div>
-                <div class="pts-box">
-                    <span>可用潛能: <b id="val-pts" style="color:gold;">0</b></span>
-                </div>
-                <div id="stat-allocate-list" class="stat-allocate-list"></div>
-            </div>
-        </section>
-
-        <section id="shop-screen" class="stage" style="display:none;">
-            <h4>萬寶閣</h4>
-            <div id="shop-list" class="shop-grid"></div>
-        </section>
+        <section id="bag-screen" class="stage" style="display:none;"></section>
+        <section id="stats-screen" class="stage" style="display:none;"></section>
+        <section id="shop-screen" class="stage" style="display:none;"></section>
 
         <nav class="nav-bar">
             <button class="nav-btn active" onclick="GameCore.switchTab('battle')">⚔️ 歷練</button>
