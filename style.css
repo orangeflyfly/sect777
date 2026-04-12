@@ -1,128 +1,154 @@
-/* 宗門修仙錄 V1.3.1 視覺總綱 */
+/* 宗門修仙錄 V1.4 - 視覺總綱 */
 :root {
-    --bg-dark: #0f0f0f;
-    --card-bg: #1a1a1a;
-    --border-color: #333;
+    --bg-dark: #0a0a0a;
+    --card-bg: #161616;
+    --border: #2a2a2a;
     --gold: #ffd700;
-    --rarity-0: #aaa;    /* 凡 */
+    --rarity-0: #888;    /* 凡 */
     --rarity-1: #4caf50; /* 良 */
     --rarity-2: #2196f3; /* 精 */
     --rarity-3: #a333c8; /* 仙 */
-    --rarity-4: #ffa500; /* 神 */
+    --rarity-4: #ff4500; /* 神 */
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body {
-    margin: 0; background: var(--bg-dark); color: #eee;
+    margin: 0; background: var(--bg-dark); color: #ddd;
     font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
     overflow: hidden; height: 100vh;
 }
 
-/* 🚀 修正：通知懸浮化，徹底解決位移 */
+/* 🚀 通知系統：固定懸浮，不佔位 */
 #toast-container {
-    position: fixed; top: 15%; left: 50%;
-    transform: translateX(-50%);
-    z-index: 10001; pointer-events: none;
-    display: flex; flex-direction: column; align-items: center;
+    position: fixed; top: 12%; left: 50%; transform: translateX(-50%);
+    z-index: 9999; pointer-events: none; display: flex; flex-direction: column; gap: 8px;
 }
 .toast {
-    background: rgba(0,0,0,0.85); border: 1px solid var(--gold);
-    padding: 8px 16px; border-radius: 20px; margin-bottom: 8px;
-    animation: toastFade 1.5s forwards; font-size: 13px; color: var(--gold);
+    background: rgba(0,0,0,0.9); border: 1px solid var(--gold);
+    padding: 8px 16px; border-radius: 20px; font-size: 13px; color: var(--gold);
+    box-shadow: 0 0 10px rgba(255,215,0,0.3); animation: toastFade 1.8s forwards;
 }
 @keyframes toastFade {
     0% { opacity: 0; transform: translateY(10px); }
-    20% { opacity: 1; transform: translateY(0); }
-    80% { opacity: 1; }
-    100% { opacity: 0; transform: translateY(-20px); }
+    15% { opacity: 1; transform: translateY(0); }
+    85% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-15px); }
 }
 
+/* 主容器：鎖定高度避免位移 */
 #game-container {
     max-width: 500px; margin: 0 auto; height: 100vh;
-    display: flex; flex-direction: column; background: #121212;
+    display: grid; grid-template-rows: 70px 1fr 65px; background: #111;
 }
 
 /* 頂部資訊 */
-.header-info { padding: 15px; background: #1a1a1a; border-bottom: 1px solid var(--border-color); }
-.header-line { display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: bold; font-size: 14px; }
-.exp-bar-container { width: 100%; height: 6px; background: #333; border-radius: 3px; overflow: hidden; }
+.header-info { padding: 10px 15px; background: #1a1a1a; border-bottom: 1px solid var(--border); }
+.header-line { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.realm-text { color: var(--gold); font-weight: bold; font-size: 15px; }
+.exp-bar-container { width: 100%; height: 5px; background: #222; border-radius: 3px; overflow: hidden; }
 .exp-bar-fill { height: 100%; background: #4caf50; width: 0%; transition: width 0.3s; }
 
-/* 分頁內容區 */
-.stage { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 15px; padding-bottom: 80px; }
+/* 分頁核心 */
+.stage { overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
 
-/* ⚔️ 戰鬥區域 */
-.monster-area { text-align: center; padding: 15px; background: #1a1a1a; border-radius: 12px; margin-bottom: 10px; border: 1px solid #2a2a2a; }
-.monster-pic { font-size: 55px; margin: 10px 0; cursor: pointer; }
-.hp-container { height: 20px; background: #222; border-radius: 10px; position: relative; margin: 8px 0; overflow: hidden; border: 1px solid #444; }
-.hp-bar-fill { height: 100%; background: #e53935; width: 0%; transition: width 0.3s ease-out; }
-.p-hp { background: #43a047 !important; }
-.hp-text { position: absolute; width: 100%; text-align: center; font-size: 11px; line-height: 18px; text-shadow: 1px 1px 2px #000; color: white; z-index: 5; }
-
-/* 🧘 修為頁面：屬性表對齊修正 */
-.detailed-stats-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-    background: #1a1a1a; padding: 12px; border-radius: 8px; border: 1px solid #333; margin-bottom: 15px;
+/* ⚔️ 歷練區佈局鎖定 */
+.battle-main { display: flex; flex-direction: column; gap: 10px; }
+.monster-card, .player-card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    padding: 12px; border-radius: 10px; text-align: center;
 }
-.stat-row-flex {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 6px 0; border-bottom: 1px solid #2a2a2a; font-size: 13px;
-}
-.stat-row-flex span { color: #888; }
-.stat-row-flex b { color: #eee; }
-.stat-row-flex button { background: #333; color: gold; border: 1px solid #555; border-radius: 3px; padding: 0 6px; cursor: pointer; }
+.m-name { font-weight: bold; margin-bottom: 8px; height: 20px; color: #ff6b6b; }
 
-/* 🎒 物品格子與長條樣式 */
-.bag-grid { display: flex; flex-direction: column; gap: 8px; }
+/* 血條鎖定系統：解決消失問題 */
+.hp-container {
+    height: 22px; background: #000; border-radius: 11px;
+    position: relative; overflow: hidden; border: 1px solid #444; margin: 5px 0;
+}
+.hp-bar-fill { height: 100%; width: 0%; transition: width 0.3s ease-out; }
+.monster-hp .hp-bar-fill { background: linear-gradient(90deg, #8b0000, #ff4d4d); }
+.player-hp .hp-bar-fill { background: linear-gradient(90deg, #1b5e20, #4caf50); }
+.hp-text {
+    position: absolute; width: 100%; text-align: center; font-size: 11px;
+    line-height: 20px; color: #fff; font-weight: bold; text-shadow: 1px 1px 2px #000; z-index: 5;
+}
+
+.monster-visual { height: 100px; display: flex; align-items: center; justify-content: center; }
+.monster-pic { font-size: 60px; cursor: pointer; user-select: none; transition: transform 0.1s; }
+.monster-pic:active { transform: scale(0.9); }
+
+/* 神通槽位顯示 */
+.active-skills-row { display: flex; justify-content: center; gap: 8px; margin-top: 8px; height: 32px; }
+.skill-icon-sm {
+    width: 32px; height: 32px; border: 1px solid var(--border);
+    background: #222; border-radius: 4px; display: flex; align-items: center; justify-content: center;
+}
+
+/* 日誌系統鎖定 */
+.log-system {
+    flex: 1; min-height: 150px; background: #080808;
+    border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column;
+}
+.log-tabs { display: flex; border-bottom: 1px solid var(--border); }
+.log-tab {
+    flex: 1; background: none; border: none; color: #666; padding: 8px; font-size: 12px;
+}
+.log-tab.active { color: var(--gold); border-bottom: 2px solid var(--gold); }
+.log-list { flex: 1; overflow-y: auto; padding: 8px; font-size: 12px; line-height: 1.6; }
+
+/* 🎒 儲物袋美化 */
+.tab-filters { display: flex; gap: 5px; margin-bottom: 10px; }
+.filter-btn {
+    flex: 1; background: #222; border: 1px solid var(--border);
+    color: #888; padding: 6px; border-radius: 4px; font-size: 12px;
+}
+.filter-btn.active { border-color: var(--gold); color: var(--gold); background: #2a2a2a; }
+
+.bag-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
 .item-slot {
-    display: flex; align-items: center; background: #1d1d1d;
-    padding: 10px; border-radius: 6px; border-left: 4px solid #555; cursor: pointer;
+    display: flex; align-items: center; background: #1a1a1a;
+    padding: 10px; border-radius: 6px; border-left: 4px solid #444; cursor: pointer;
 }
 .item-icon { font-size: 24px; margin-right: 12px; width: 30px; text-align: center; }
-.item-info-main { flex: 1; }
-.item-name-text { font-size: 14px; font-weight: bold; margin-bottom: 2px; }
-.item-stats-text { font-size: 11px; color: #888; }
 
-/* 稀有度顏色 */
-.rarity-0 { border-left-color: var(--rarity-0); }
-.rarity-1 { border-left-color: var(--rarity-1); }
-.rarity-2 { border-left-color: var(--rarity-2); }
-.rarity-3 { border-left-color: var(--rarity-3); box-shadow: inset 0 0 5px rgba(163, 51, 200, 0.2); }
-.rarity-4 { border-left-color: var(--rarity-4); border: 1px solid rgba(255,215,0,0.3); border-left-width: 4px; }
+/* 暴力美學：[詞條]·名稱 顏色控制 */
+.affix-tag { font-weight: bold; margin-right: 2px; }
+.r-0 { color: var(--rarity-0); } .r-1 { color: var(--rarity-1); }
+.r-2 { color: var(--rarity-2); } .r-3 { color: var(--rarity-3); }
+.r-4 { color: var(--rarity-4); text-shadow: 0 0 5px rgba(255,69,0,0.5); }
 
-/* 過濾與日誌切換 */
-.filter-bar, .log-tabs { display: flex; gap: 4px; background: #1a1a1a; padding: 5px; border-radius: 5px; margin-bottom: 10px; }
-.filter-btn, .log-tab {
-    flex: 1; background: #222; border: 1px solid #333; color: #777;
-    padding: 6px 0; font-size: 11px; border-radius: 4px; cursor: pointer;
+/* 🧘 修為頁面對齊 */
+.stats-grid-v2 {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    background: #111; padding: 12px; border-radius: 8px; border: 1px solid var(--border);
 }
-.filter-btn.active, .log-tab.active { background: #333; color: var(--gold); border-color: var(--gold); }
+.stat-row-flex { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; border-bottom: 1px solid #222; }
+.stat-allocate-list button { background: #333; color: gold; border: 1px solid #444; padding: 2px 8px; border-radius: 4px; }
 
-/* 日誌區域 */
-.log-container { flex: 1; display: flex; flex-direction: column; background: #0a0a0a; border: 1px solid #222; border-radius: 8px; overflow: hidden; }
-.log-list { flex: 1; overflow-y: auto; padding: 10px; font-size: 11px; line-height: 1.6; }
+/* 神通管理 */
+.skills-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+.skill-card {
+    background: #222; padding: 10px; border-radius: 6px; text-align: center;
+    border: 1px solid var(--border); font-size: 12px; cursor: pointer;
+}
+.skill-card.equipped { border-color: var(--gold); box-shadow: 0 0 5px var(--gold); }
 
 /* 底部導航 */
-.nav-bar {
-    position: fixed; bottom: 0; width: 100%; max-width: 500px;
-    display: flex; background: #1a1a1a; border-top: 1px solid #333; height: 65px;
-}
+.nav-bar { display: flex; background: #1a1a1a; border-top: 1px solid var(--border); height: 65px; }
 .nav-bar button {
-    flex: 1; background: none; border: none; color: #888; font-size: 12px;
+    flex: 1; background: none; border: none; color: #777; font-size: 12px;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
 }
-.nav-bar button:active { background: #222; color: var(--gold); }
+.nav-bar button:active { background: #222; }
 
 /* 彈窗 */
-.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10002; display: flex; align-items: center; justify-content: center; }
-.modal-content { background: #1a1a1a; width: 85%; max-width: 350px; border-radius: 12px; border: 1px solid var(--gold); padding: 20px; }
-.modal-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; text-align: center; color: var(--gold); }
-.modal-body { font-size: 14px; line-height: 1.8; color: #ccc; margin-bottom: 20px; }
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 10000; }
+.modal-content { background: #1a1a1a; width: 85%; max-width: 360px; padding: 20px; border-radius: 12px; border: 1px solid var(--gold); }
+.modal-title { font-size: 18px; margin-bottom: 15px; text-align: center; }
+.modal-body { font-size: 14px; color: #bbb; line-height: 1.6; margin-bottom: 20px; }
 .modal-footer { display: flex; flex-direction: column; gap: 8px; }
-.btn-primary, .btn-danger, .btn-close { padding: 10px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-.btn-primary { background: #2196f3; color: white; }
-.btn-danger { background: #e53935; color: white; }
+.btn-primary, .btn-danger, .btn-close { padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+.btn-primary { background: #2196f3; color: #fff; }
+.btn-danger { background: #d32f2f; color: #fff; }
 .btn-close { background: #444; color: #eee; }
 
-select { width: 100%; padding: 8px; background: #1a1a1a; color: white; border: 1px solid #444; border-radius: 5px; margin-bottom: 10px; }
-hr { border: 0; border-top: 1px solid #333; margin: 15px 0; }
+select { width: 100%; padding: 8px; background: #222; color: #fff; border: 1px solid var(--border); border-radius: 5px; margin-bottom: 10px; }
