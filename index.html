@@ -3,10 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
-    <title>宗門修仙錄 V1.5.1 - 飛升修復版</title>
+    <title>宗門修仙錄 V1.5.10 - 大乘圓滿</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="toast-container"></div>
+    <div id="item-modal" class="modal" style="display:none;"></div>
+
     <div id="game-container">
         <header class="header-info">
             <div class="header-line">
@@ -19,21 +22,49 @@
             </div>
         </header>
 
-        <section id="battle-screen" class="screen">
-            <div class="map-info">
-                <button class="nav-btn" onclick="UI_Battle.showMapSelector()">🗺️ 前往歷練</button>
+        <section id="battle-screen" class="stage">
+            <div class="map-selector">
+                <button class="map-btn" onclick="UI_Battle.showMapSelector()">🗺️ 前往歷練</button>
             </div>
             
-            <div id="monster-display"></div> 
-            
-            <button id="boss-btn" onclick="Combat.initBattle(true)" style="display:none;">挑戰區域領主</button>
-            
-            <div id="battle-logs" class="log-list"></div>
+            <div id="monster-display" class="battle-main">
+                </div>
+
+            <button id="boss-btn" class="boss-btn" onclick="Combat.initBattle(true)" style="display:none;">挑戰區域領主</button>
+
+            <div class="log-system">
+                <div class="log-tabs">
+                    <button class="log-tab active" onclick="UI_Battle.switchLog('all')">全部</button>
+                    <button class="log-tab" onclick="UI_Battle.switchLog('combat')">鬥法</button>
+                    <button class="log-tab" onclick="UI_Battle.switchLog('loot')">獲取</button>
+                </div>
+                <div id="battle-logs" class="log-list"></div>
+            </div>
         </section>
 
-        <section id="stats-screen" class="screen" style="display:none;"></section>
-        <section id="bag-screen" class="screen" style="display:none;"></section>
-        <section id="shop-screen" class="screen" style="display:none;"></section>
+        <section id="bag-screen" class="stage" style="display:none;">
+            <div class="bag-header">
+                <h4>儲物袋 (<span id="bag-count">0</span>/50)</h4>
+                <button class="btn-auto-melt" onclick="player.autoMelt()">一鍵熔煉(凡/良)</button>
+            </div>
+            <div id="bag-grid" class="bag-grid"></div>
+        </section>
+
+        <section id="stats-screen" class="stage" style="display:none;">
+            <div class="stats-section">
+                <h4>本命命牌</h4>
+                <div id="detail-stats-list" class="stats-grid-v2"></div>
+                <div class="pts-box">
+                    <span>可用潛能: <b id="val-pts" style="color:gold;">0</b></span>
+                </div>
+                <div id="stat-allocate-list" class="stat-allocate-list"></div>
+            </div>
+        </section>
+
+        <section id="shop-screen" class="stage" style="display:none;">
+            <h4>萬寶閣</h4>
+            <div id="shop-list" class="shop-grid"></div>
+        </section>
 
         <nav class="nav-bar">
             <button class="nav-btn active" onclick="GameCore.switchTab('battle')">⚔️ 歷練</button>
