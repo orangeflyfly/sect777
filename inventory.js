@@ -1,200 +1,219 @@
 /**
- * 宗門修仙錄 - 儲物袋模組 (inventory.js) V1.3.0
- * 【修正】：補全所有函數，實裝物品疊加與五卷合成
+ * 宗門修仙錄 - 儲物袋模組 (inventory.js) V1.3.1
+ * 職責：處理物品疊加、裝備生成、五卷參透與熔煉邏輯
  */
 function Inventory(core) {
     this.core = core;
-    this.maxSize = GAME_DATA.CONFIG.MAX_BAG_SIZE;
+    this.maxSize = 50; // 儲物袋格子上限
 }
 
-// 1. 添加物品 (核心疊加邏輯)
-Inventory.prototype.addItem = function(itemData) {
-    var p = this.core.player;
+/**
+ * 添加物品：實裝疊加邏輯 (裝備不疊加，其餘依名稱疊加)
+ */
+Inventory.prototype.addItem = function(data) {
+    const p = this.core.player;
     
-    // 裝備不疊加
-    if (itemData.itemType === 'equip') {
-        if (p.data.bag.length >= this.maxSize) return false;
-        p.data.bag.push(itemData);
-        return true;
-    }
-
-    // 材料、殘卷、丹藥 嘗試疊加
-    var existingItem = null;
-    for (var i = 0; i < p.data.bag.length; i++) {
-        if (p.data.bag[i].name === itemData.name && p.data.bag[i].itemType !== 'equip') {
-            existingItem = p.data.bag[i];
-            break;
+    // 如果不是裝備，嘗試尋找同名物品進行疊加
+    if (data.itemType !== 'equip') {
+        const exist = p.data.bag.find(i => i.name === data.name && i.itemType !== 'equip');
+        if (exist) {
+            exist.count = (exist.count || 0) + (data.count || 1);
+            return true;
         }
     }
 
-    if (existingItem) {
-        existingItem.count = (existingItem.count || 1) + (itemData.count || 1);
-    } else {
-        if (p.data.bag.length >= this.maxSize) return false;
-        itemData.count = itemData.count || 1;
-        p.data.bag.push(itemData);
+    // 若無法疊加且格子已滿，則失敗
+    if (p.data.bag.length >= this.maxSize) {
+        return false;
     }
+
+    // 加入新格子
+    data.count = data.count || 1;
+    p.data.bag.push(data);
     return true;
 };
 
-// 2. 顯示詳情
-Inventory.prototype.showItemDetail = function(indexOrType, isEquipped) {
-    var p = this.core.player;
-    var item = isEquipped ? p.data.equips[indexOrType] : p.data.bag[indexOrType];
+/**
+ * 顯示詳情彈窗：根據物品類型（裝備/殘卷/材料）動態調整按鈕與描述
+ */
+Inventory.prototype.showItemDetail = function(idx, isEq) {
+    const p = this.core.player;
+    const item = isEq ? p.data.equips[idx] : p.data.bag[idx];
     if (!item) return;
 
-    var rarityColor = GAME_DATA.RARITY[item.rarity || 0].c;
-    var countText = (item.count > 1) ? " (持有: " + item.count + ")" : "";
-    var title = '<span style="color:' + rarityColor + '">' + item.name + '</span>' + countText;
-
-    var body = "";
-    var actionText = "使用";
+    const rarityColor = GAME_DATA.RARITY[item.rarity || 0].c;
+    const title = `<span style="color:${rarityColor}">${item.name}</span>` + (item.count > 1 ? ` x${item.count}` : "");
     
+    let body = "";
+    let actionText = "使用";
+
     if (item.itemType === 'equip') {
-        body += "類型：" + (item.type === 'weapon' ? "武器" : "法衣") + "<br>";
-        if (item.atk) body += "攻擊：+" + item.atk + "<br>";
-        if (item.def) body += "防禦：+" + item.def + "<br>";
-        if (item.hp) body += "生命：+" + item.hp + "<br>";
-        if (item.dodge) body += "閃避：+" + (item.dodge * 100).toFixed(1) + "%<br>";
-        if (item.lifeSteal) body += "吸血：+" + (item.lifeSteal * 100).toFixed(0) + "%<br>";
-        actionText = isEquipped ? "卸下" : "裝備";
+        body = `類型：${item.type === 'weapon' ? '武器' : '法衣'}<br>`;
+        if (item.atk) body += `攻擊: +${item.atk}<br>`;
+        if (item.def) body += `防禦: +${item.def}<br>`;
+        if (item.hp) body += `生命: +${item.hp}<br>`;
+        if (item.dodge) body += `閃避: +${(item.dodge * 100).toFixed(1)}%<br>`;
+        if (item.lifeSteal) body += `吸血: +${(item.lifeSteal * 100).toFixed(0)}%<br>`;
+        actionText = isEq ? "卸下" : "穿戴";
     } else if (item.itemType === 'scroll') {
-        body += "類型：功法殘卷<br>說明：湊齊 5 卷可參透對應神通。<br>當前進度：" + (item.count || 1) + " / 5";
-        actionText = "參透";
-    } else if (item.itemType === 'material') {
-        body += "類型：煉器材料<br>說明：" + (item.desc || "野獸掉落的基礎材料。");
-        actionText = "不可使用";
+        body = `類型：功法殘卷<br>說明：湊齊 5 卷可嘗試參透。<br>當前進度：<b>${item.count} / 5</b>`;
+        actionText = "參透功法";
+    } else {
+        body = `類型：煉器材料<br>說明：${item.desc || "暫無說明"}`;
+        actionText = "不可直接使用";
     }
 
-    var self = this;
-    var actionFn = function() {
-        if (isEquipped) self.unequip(indexOrType);
-        else self.useItem(indexOrType);
+    // 設置彈窗按鈕邏輯
+    const actionFn = () => {
+        if (isEq) this.unequip(idx);
+        else this.useItem(idx);
     };
 
-    var meltFn = (!isEquipped) ? function() { self.meltItem(indexOrType); } : null;
+    const meltFn = (!isEq) ? () => this.meltItem(idx) : null;
+
     this.core.ui.showModal(title, body, actionText, actionFn, meltFn);
 };
 
-// 3. 使用/參透物品
-Inventory.prototype.useItem = function(index) {
-    var p = this.core.player;
-    var item = p.data.bag[index];
+/**
+ * 使用物品：處理裝備穿戴與五卷參透
+ */
+Inventory.prototype.useItem = function(idx) {
+    const p = this.core.player;
+    const item = p.data.bag[idx];
     if (!item) return;
 
     if (item.itemType === 'scroll') {
-        if (p.data.learnedSkills.indexOf(item.target) !== -1) {
-            this.core.ui.toast("此功法已學會", "#888"); return;
+        // 檢查是否已學會該神通
+        const base = GAME_DATA.ITEMS.find(i => i.name === item.name);
+        if (p.data.learnedSkills.includes(base.target)) {
+            this.core.ui.toast("已參透此功法，不需重複學習", "#888");
+            return;
         }
-        if ((item.count || 1) >= 5) {
+
+        if (item.count >= 5) {
             item.count -= 5;
-            if (item.count <= 0) p.data.bag.splice(index, 1);
-            p.data.learnedSkills.push(item.target);
-            this.core.ui.log("✨ 成功參透：" + item.name, "system", "gold");
+            if (item.count <= 0) p.data.bag.splice(idx, 1);
+            p.data.learnedSkills.push(base.target);
+            this.core.ui.log(`✨ 萬卷歸宗！成功參透：${item.name}`, "system", "gold");
+            this.core.ui.toast("參透成功！", "gold");
         } else {
-            this.core.ui.toast("數量不足，需 5 卷", "#aaa");
+            this.core.ui.toast("殘卷不足 (需 5 卷)", "#aaa");
         }
     } else if (item.itemType === 'equip') {
-        var old = p.data.equips[item.type];
+        const oldEquip = p.data.equips[item.type];
         p.data.equips[item.type] = item;
-        p.data.bag.splice(index, 1);
-        if (old) this.addItem(old);
-        this.core.ui.toast("已穿戴：" + item.name);
+        p.data.bag.splice(idx, 1);
+        if (oldEquip) this.addItem(oldEquip);
+        this.core.ui.toast(`已穿戴：${item.name}`);
     }
 
-    p.refresh(); p.save(); this.core.ui.renderAll();
+    p.refresh();
+    p.save();
+    this.core.ui.renderAll();
 };
 
-// 4. 熔煉 (支持疊加數量)
-Inventory.prototype.meltItem = function(index) {
-    var p = this.core.player;
-    var item = p.data.bag[index];
+/**
+ * 熔煉：將物品換成靈石 (支持疊加數量一次熔煉)
+ */
+Inventory.prototype.meltItem = function(idx) {
+    const p = this.core.player;
+    const item = p.data.bag[idx];
     if (!item) return;
 
-    var count = item.count || 1;
-    var price = 30; 
-    if (item.itemType === 'equip') price = (item.rarity + 1) * 30;
+    const count = item.count || 1;
+    let unitPrice = 30; 
+    if (item.itemType === 'equip') unitPrice = (item.rarity + 1) * 30;
     
-    var totalGain = price * count;
+    const totalGain = unitPrice * count;
     p.data.money += totalGain;
-    p.data.bag.splice(index, 1);
+    p.data.bag.splice(idx, 1);
     
-    this.core.ui.log("熔煉 " + item.name + " x" + count + "，獲得🪙" + totalGain, "system");
-    p.save(); this.core.ui.renderAll();
+    this.core.ui.log(`熔煉了 ${item.name} x${count}，獲得🪙${totalGain}`, "system");
+    p.save();
+    this.core.ui.renderAll();
 };
 
-// 5. 卸下裝備
+/**
+ * 卸下裝備
+ */
 Inventory.prototype.unequip = function(type) {
-    var p = this.core.player;
-    var item = p.data.equips[type];
+    const p = this.core.player;
+    const item = p.data.equips[type];
     if (item) {
-        if (p.data.bag.length >= this.maxSize) { this.core.ui.toast("儲物袋已滿", "red"); return; }
+        if (p.data.bag.length >= this.maxSize) {
+            this.core.ui.toast("儲物袋已滿，無法卸下", "red");
+            return;
+        }
         p.data.equips[type] = null;
-        this.addItem(item); 
-        p.refresh(); p.save(); this.core.ui.renderAll();
+        this.addItem(item);
+        p.refresh();
+        p.save();
+        this.core.ui.renderAll();
     }
 };
 
-// 6. 一鍵熔煉 (排除稀有裝備與材料)
+/**
+ * 一鍵熔煉：清理凡品與良品的裝備
+ */
 Inventory.prototype.autoMelt = function() {
-    var p = this.core.player;
-    var gain = 0;
-    var newBag = [];
-    for (var i = 0; i < p.data.bag.length; i++) {
-        var item = p.data.bag[i];
-        // 只自動熔煉 凡品與良品的裝備
+    const p = this.core.player;
+    let gain = 0;
+    p.data.bag = p.data.bag.filter(item => {
         if (item.itemType === 'equip' && item.rarity < 2) {
             gain += (item.rarity + 1) * 30;
-        } else {
-            newBag.push(item);
+            return false;
         }
+        return true;
+    });
+    if (gain > 0) {
+        p.data.money += gain;
+        this.core.ui.toast(`清理完畢，獲得🪙${gain}`);
+        p.save();
+        this.core.ui.renderAll();
+    } else {
+        this.core.ui.toast("袋中無低階法寶可供熔煉");
     }
-    p.data.bag = newBag;
-    p.data.money += gain;
-    this.core.ui.toast("清理完畢，獲得🪙" + gain);
-    this.core.ui.renderAll();
-    p.save();
 };
 
-// 7. 掉落與生成
+/**
+ * 掉落判定邏輯
+ */
 Inventory.prototype.dropLoot = function(mapId) {
-    var map = GAME_DATA.MAPS[mapId];
-    var roll = Math.random();
-    if (roll < 0.2) { 
+    const map = GAME_DATA.MAPS[mapId];
+    const r = Math.random();
+    
+    if (r < 0.2) { // 20% 掉裝備
         this.addEquipment(map.lv);
-    } else if (roll < 0.5) {
-        var randId = map.drops[Math.floor(Math.random() * map.drops.length)];
-        var base = null;
-        for(var i=0; i<GAME_DATA.ITEMS.length; i++) {
-            if(GAME_DATA.ITEMS[i].id === randId) { base = GAME_DATA.ITEMS[i]; break; }
-        }
+    } else if (r < 0.5) { // 30% 掉落材料或殘卷
+        const dropId = map.drops[Math.floor(Math.random() * map.drops.length)];
+        const base = GAME_DATA.ITEMS.find(i => i.id === dropId);
         if (base) {
-            var newItem = JSON.parse(JSON.stringify(base));
-            newItem.itemType = base.type;
-            newItem.count = 1;
+            const newItem = { ...base, itemType: base.type, count: 1 };
             this.addItem(newItem);
-            this.core.ui.log("獲得：" + newItem.name, 'loot');
+            this.core.ui.log(`獲得：${newItem.name}`, 'loot');
         }
     }
 };
 
+/**
+ * 隨機生成法寶
+ */
 Inventory.prototype.addEquipment = function(lv) {
-    var type = Math.random() > 0.5 ? 'weapon' : 'body';
-    var rarRoll = Math.random();
-    var rar = 0;
-    if (rarRoll < 0.01) rar = 4;
-    else if (rarRoll < 0.05) rar = 3;
-    else if (rarRoll < 0.15) rar = 2;
-    else if (rarRoll < 0.4) rar = 1;
+    const type = Math.random() > 0.5 ? 'weapon' : 'body';
+    // 稀有度權重
+    const rRoll = Math.random();
+    let rar = 0;
+    if (rRoll < 0.01) rar = 4;      // 神
+    else if (rRoll < 0.05) rar = 3; // 仙
+    else if (rRoll < 0.15) rar = 2; // 精
+    else if (rRoll < 0.4) rar = 1;  // 良
 
-    var prefixes = GAME_DATA.AFFIX.PREFIX;
-    var pre = prefixes[Math.floor(Math.random() * prefixes.length)];
-    var suffixes = GAME_DATA.AFFIX.SUFFIX.filter(function(s) { return s.type === type; });
-    var suf = suffixes[Math.floor(Math.random() * suffixes.length)];
+    const prefixes = GAME_DATA.AFFIX.PREFIX;
+    const pre = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const suffixes = GAME_DATA.AFFIX.SUFFIX.filter(s => s.type === type);
+    const suf = suffixes[Math.floor(Math.random() * suffixes.length)];
     
-    var mul = (rar + 1) * lv;
-    var eq = {
-        uid: Date.now() + Math.random(),
+    const eq = {
         itemType: 'equip',
         type: type,
         rarity: rar,
@@ -202,18 +221,24 @@ Inventory.prototype.addEquipment = function(lv) {
         count: 1
     };
 
-    var keys = ['atk', 'def', 'hp', 'dodge', 'lifeSteal', 'regen', 'exp', 'money'];
-    for (var i = 0; i < keys.length; i++) {
-        var k = keys[i];
-        var baseVal = (pre[k] || 0) + (suf[k] || 0);
+    // 根據稀有度與等級縮放數值
+    const scale = (rar + 1) * lv;
+    const keys = ['atk', 'def', 'hp', 'dodge', 'lifeSteal', 'regen', 'exp', 'money'];
+    
+    keys.forEach(k => {
+        const baseVal = (pre[k] || 0) + (suf[k] || 0);
         if (baseVal !== 0) {
-            if (['exp', 'money', 'dodge', 'lifeSteal'].indexOf(k) !== -1) {
-                eq[k] = baseVal * (1 + rar * 0.2); 
+            if (['dodge', 'lifeSteal', 'exp', 'money'].includes(k)) {
+                // 機率類與倍率類：不隨等級縮放，僅隨稀有度微調
+                eq[k] = baseVal * (1 + rar * 0.1);
             } else {
-                eq[k] = Math.floor(baseVal * mul);
+                // 基礎數值：隨等級與稀有度深度縮放
+                eq[k] = Math.floor(baseVal * scale);
             }
         }
+    });
+
+    if (this.addItem(eq)) {
+        this.core.ui.log(`獲得法寶：${eq.name}`, 'loot', GAME_DATA.RARITY[rar].c);
     }
-    this.addItem(eq);
-    this.core.ui.log("掉落法寶：" + eq.name, 'loot', GAME_DATA.RARITY[rar].c);
 };
