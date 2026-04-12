@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
-    <title>宗門修仙錄 V1.5.15 - 大乘圓滿版</title>
+    <title>宗門修仙錄 V1.5.12 - 圓滿版</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,10 +15,12 @@
                 <span id="val-level" class="realm-text">感應中...</span>
                 <span id="val-money" class="coin-text">🪙 0</span>
             </div>
+            
             <div class="bar-container exp">
                 <div id="val-exp-bar" class="bar-fill exp"></div>
                 <div id="val-exp-txt" class="bar-text">0%</div>
             </div>
+
             <div class="bar-container hp">
                 <div id="val-hp-bar" class="bar-fill hp"></div>
                 <div id="val-hp-txt" class="bar-text">100 / 100</div>
@@ -31,8 +33,7 @@
                 <button id="btn-auto-combat" class="auto-btn" onclick="GameCore.toggleAuto()">自動練功：關</button>
             </div>
             
-            <div id="monster-display" class="battle-main">
-                </div>
+            <div id="monster-display" class="battle-main"></div>
 
             <button id="boss-btn" class="boss-btn" onclick="Combat.initBattle(true)" style="display:none;">挑戰區域領主</button>
 
