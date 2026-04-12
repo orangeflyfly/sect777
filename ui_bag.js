@@ -1,213 +1,202 @@
 /**
- * V1.6.0 ui_bag.js (加固優化版)
- * 職責：網格渲染、裝備穿脫邏輯、安全熔煉、屬性同步。
+ * V1.7.0 ui_bag.js
+ * 職責：儲物袋渲染、類別過濾、殘卷合成邏輯、物品處置。
  */
 
 const UI_Bag = {
-    // 1. 渲染儲物袋主介面
-    renderBag: function() {
-        const bagArea = document.getElementById('bag-screen');
-        if (!bagArea) return;
+    currentFilter: 'all', // 當前過濾標籤
 
-        const d = player.data;
-        const maxSlots = GAMEDATA.CONFIG?.MAX_BAG_SLOTS || 50;
-        
-        bagArea.innerHTML = `
-            <div class="bag-container" style="animation: fade-in 0.3s ease;">
-                <div class="equipment-section">
-                    <h4 class="section-title">當前穿戴</h4>
-                    <div class="equip-row" style="display:flex; gap:12px;">
-                        ${this.renderEquipSlot('武 器', d.equipment.weapon, 'weapon')}
-                        ${this.renderEquipSlot('法 袍', d.equipment.armor, 'armor')}
-                    </div>
-                </div>
-
-                <div class="bag-actions">
-                    <div class="bag-status">
-                        儲物空間：<span id="bag-count" class="highlight">${d.inventory.length}</span> / ${maxSlots}
-                    </div>
-                    <button class="melt-btn-auto" onclick="UI_Bag.autoMelt()">一鍵熔煉 (凡/良)</button>
-                </div>
-
-                <div class="bag-grid" id="main-bag-grid">
-                    ${this.renderGrid()}
-                </div>
-            </div>
-        `;
+    init() {
+        this.render();
     },
 
-    // 2. 生成穿戴格
-    renderEquipSlot: function(label, item, slot) {
-        if (!item) {
-            return `
-                <div class="equip-box empty">
-                    <div class="label">${label}</div>
-                    <div class="status">未裝備</div>
+    // 1. 執行過濾切換
+    filter(type) {
+        this.currentFilter = type;
+        // 更新 Tab 視覺狀態
+        document.querySelectorAll('.bag-tab').forEach(btn => {
+            const btnText = btn.innerText;
+            const typeMap = { '全部': 'all', '裝備': 'equip', '殘卷': 'fragment', '材料': 'item' };
+            btn.classList.toggle('active', typeMap[btnText] === type);
+        });
+        this.render();
+    },
+
+    // 2. 渲染背包網格
+    render() {
+        const grid = document.getElementById('bag-grid');
+        const countEl = document.getElementById('bag-count');
+        if (!grid) return;
+
+        grid.innerHTML = '';
+        const inventory = Player.data.inventory;
+        countEl.innerText = inventory.length;
+
+        // 執行邏輯過濾 (不影響原始數據)
+        const filteredList = inventory.filter(item => {
+            if (this.currentFilter === 'all') return true;
+            if (this.currentFilter === 'equip') return item.type === 'weapon' || item.type === 'armor';
+            if (this.currentFilter === 'fragment') return item.name && item.name.includes("殘卷：");
+            if (this.currentFilter === 'item') return !item.type && !item.name.includes("殘卷：");
+            return true;
+        });
+
+        // 生成 50 個格子 (固定格數保持美觀)
+        for (let i = 0; i < GAMEDATA.CONFIG.MAX_BAG_SLOTS; i++) {
+            const slot = document.createElement('div');
+            slot.className = 'bag-slot';
+            
+            const item = filteredList[i];
+            if (item) {
+                slot.innerHTML = `
+                    <div class="item-icon r-${item.rarity || 1}">${this.getItemIcon(item)}</div>
+                    ${item.count > 1 ? `<span class="item-count">${item.count}</span>` : ''}
+                `;
+                slot.onclick = () => this.showDetail(item);
+            }
+            grid.appendChild(slot);
+        }
+    },
+
+    // 取得物品圖標邏輯
+    getItemIcon(item) {
+        if (item.name.includes("殘卷")) return "📜";
+        if (item.type === "weapon") return "⚔️";
+        if (item.type === "armor") return "👕";
+        return "📦";
+    },
+
+    // 3. 顯示物品詳情 (含殘卷合成檢查)
+    showDetail(item) {
+        const modal = document.getElementById('modal-detail');
+        const content = document.getElementById('item-detail-content');
+        const useBtn = document.getElementById('btn-use-item');
+        const sellBtn = document.getElementById('btn-sell-item');
+
+        modal.style.display = 'flex';
+        
+        let html = `
+            <div class="detail-header r-${item.rarity || 1}">
+                <span class="detail-name">${item.name}</span>
+                <span class="detail-rarity">${GAMEDATA.CONFIG.RARITY_NAMES[(item.rarity || 1) - 1]}</span>
+            </div>
+            <div class="detail-body">
+                <p class="detail-desc">${item.desc || '這是一件神祕的物品。'}</p>
+        `;
+
+        // 裝備屬性顯示
+        if (item.stats) {
+            html += `<div class="detail-stats">`;
+            for (let s in item.stats) {
+                html += `<div>${s.toUpperCase()}: +${item.stats[s]}</div>`;
+            }
+            html += `</div>`;
+        }
+
+        // 殘卷拼圖進度檢查
+        let canCombine = false;
+        let fragmentInfo = null;
+        if (item.name.includes("殘卷：")) {
+            fragmentInfo = this.checkFragmentProgress(item.name);
+            html += `
+                <div class="fragment-progress">
+                    <h4>合成進度 (${fragmentInfo.count}/5)</h4>
+                    <div class="fragment-list">${fragmentInfo.listHtml}</div>
                 </div>
             `;
-        }
-        return `
-            <div class="equip-box r-${item.rarity}" onclick="UI_Bag.showItemDetail('${item.uid}', true)">
-                <div class="label">${label}</div>
-                <div class="name">${item.name}</div>
-                <div class="rarity-glow"></div>
-            </div>
-        `;
-    },
-
-    // 3. 渲染網格 (優化迴圈效能)
-    renderGrid: function() {
-        const inv = player.data.inventory;
-        const maxSlots = GAMEDATA.CONFIG?.MAX_BAG_SLOTS || 50;
-        let html = '';
-
-        for (let i = 0; i < maxSlots; i++) {
-            const item = inv[i];
-            if (item) {
-                html += `
-                    <div class="item-slot r-${item.rarity}" onclick="UI_Bag.showItemDetail('${item.uid}', false)">
-                        <div class="item-icon">${item.type === 'weapon' ? '⚔️' : '🛡️'}</div>
-                    </div>`;
-            } else {
-                html += `<div class="item-slot empty"></div>`;
-            }
-        }
-        return html;
-    },
-
-    // 4. 物品詳情 (加固數據展示)
-    showItemDetail: function(uid, isEquipped) {
-        const d = player.data;
-        // 使用嚴格比對找到物品
-        let item = isEquipped ? 
-            (d.equipment.weapon?.uid === uid ? d.equipment.weapon : d.equipment.armor) :
-            d.inventory.find(i => String(i.uid) === String(uid));
-
-        if (!item) return;
-
-        const rarityName = GAMEDATA.CONFIG.RARITY_NAMES[item.rarity - 1] || "凡品";
-        const attrMap = {str:'力量', con:'體質', dex:'敏捷', int:'悟性'};
-        const attrName = attrMap[item.prefix.attr] || "未知";
-
-        const modalHtml = `
-            <div id="item-modal" class="modal-overlay" onclick="if(event.target==this) UI_Bag.closeModal()">
-                <div class="modal-content r-${item.rarity} detail-card">
-                    <div class="detail-header">
-                        <div class="rarity-tag">— ${rarityName} —</div>
-                        <h3 class="item-title">${item.name}</h3>
-                    </div>
-
-                    <div class="detail-body">
-                        <div class="stat-line">
-                            <span class="label">加成屬性：</span>
-                            <span class="value">${attrName} +${item.prefix.value}</span>
-                        </div>
-                        <div class="stat-line">
-                            <span class="label">回收價值：</span>
-                            <span class="value-gold">🪙 ${item.price} 靈石</span>
-                        </div>
-                    </div>
-
-                    <div class="detail-footer">
-                        ${isEquipped ? 
-                            `<button class="btn-primary" onclick="UI_Bag.unequip('${item.type}')">卸下裝備</button>` :
-                            `<button class="btn-primary" onclick="UI_Bag.equip('${item.uid}')">立即裝備</button>`
-                        }
-                        ${!isEquipped ? `<button class="btn-danger" onclick="UI_Bag.melt('${item.uid}')">熔煉</button>` : ''}
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-    },
-
-    // 5. 穿脫邏輯 (加固屬性刷新)
-    equip: function(uid) {
-        const inv = player.data.inventory;
-        const idx = inv.findIndex(i => String(i.uid) === String(uid));
-        if (idx === -1) return;
-
-        const item = inv[idx];
-        const slot = item.type; // weapon 或 armor
-
-        // 核心加固：自動替換並退回背包
-        if (player.data.equipment[slot]) {
-            inv.push(player.data.equipment[slot]);
+            if (fragmentInfo.count >= 5) canCombine = true;
         }
 
-        player.data.equipment[slot] = item;
-        inv.splice(idx, 1);
+        html += `</div>`;
+        content.innerHTML = html;
 
-        this.finalizeChange(`已穿戴：${item.name}`);
-    },
+        // 按鈕功能邏輯
+        sellBtn.onclick = () => this.sellItem(item);
 
-    unequip: function(slot) {
-        const inv = player.data.inventory;
-        if (inv.length >= (GAMEDATA.CONFIG.MAX_BAG_SLOTS || 50)) {
-            player.showToast("儲物袋已滿，無法卸下！");
-            return;
-        }
-
-        const item = player.data.equipment[slot];
-        if (item) {
-            inv.push(item);
-            player.data.equipment[slot] = null;
-            this.finalizeChange(`已卸下：${item.name}`);
-        }
-    },
-
-    melt: function(uid) {
-        const inv = player.data.inventory;
-        const idx = inv.findIndex(i => String(i.uid) === String(uid));
-        if (idx === -1) return;
-
-        const item = inv[idx];
-        player.data.money += item.price;
-        inv.splice(idx, 1);
-        
-        this.finalizeChange(`熔煉成功，獲得 🪙${item.price}`);
-    },
-
-    autoMelt: function() {
-        const inv = player.data.inventory;
-        let totalGain = 0;
-        let count = 0;
-
-        // 從後往前刪除是標準做法，防止索引偏移
-        for (let i = inv.length - 1; i >= 0; i--) {
-            if (inv[i].rarity <= 2) {
-                totalGain += inv[i].price;
-                inv.splice(i, 1);
-                count++;
-            }
-        }
-
-        if (count > 0) {
-            player.data.money += totalGain;
-            this.finalizeChange(`一鍵熔煉：清理 ${count} 件凡/良品，獲得靈石 🪙${totalGain}`);
+        if (canCombine) {
+            useBtn.innerText = "合成修煉";
+            useBtn.style.display = "block";
+            useBtn.onclick = () => this.combineSkill(item.name);
+        } else if (item.type === 'weapon' || item.type === 'armor') {
+            useBtn.innerText = "裝備";
+            useBtn.style.display = "block";
+            useBtn.onclick = () => this.equipItem(item);
         } else {
-            player.showToast("儲物袋內無低級品級裝備。");
+            useBtn.style.display = "none";
         }
     },
 
-    // 輔助：統一結算變動
-    finalizeChange: function(msg) {
-        player.updateDerivedStats(); // 重算四維
-        player.save();               // 存檔
-        this.closeModal();           // 關彈窗
-        this.renderBag();            // 刷新背包 UI
-        player.showToast(msg);
-        
-        // 如果目前在屬性頁面，同步刷新
-        if (typeof UI_Stats !== 'undefined' && document.getElementById('stats-screen')?.style.display !== 'none') {
-            UI_Stats.renderStats();
+    // 4. 檢查殘卷拼圖進度
+    checkFragmentProgress(fullName) {
+        // fullName 格式: "殘卷：烈焰斬-1"
+        const skillName = fullName.split("：")[1].split("-")[0];
+        let count = 0;
+        let listHtml = "";
+
+        for (let i = 1; i <= 5; i++) {
+            const targetName = `殘卷：${skillName}-${i}`;
+            const exists = Player.data.inventory.some(it => it.name === targetName);
+            if (exists) count++;
+            listHtml += `<span class="frag-dot ${exists ? 'owned' : ''}">${i}</span>`;
         }
+
+        return { count, listHtml, skillName };
     },
 
-    closeModal: function() {
-        const modal = document.getElementById('item-modal');
-        if (modal) modal.remove();
+    // 5. 執行合成邏輯
+    combineSkill(fullName) {
+        const skillName = fullName.split("：")[1].split("-")[0];
+        const skillData = Object.values(GAMEDATA.SKILLS).find(s => s.name === skillName);
+
+        if (!skillData) return;
+
+        // 1. 扣除 1-5 號碎片
+        for (let i = 1; i <= 5; i++) {
+            const targetName = `殘卷：${skillName}-${i}`;
+            const index = Player.data.inventory.findIndex(it => it.name === targetName);
+            if (index > -1) Player.data.inventory.splice(index, 1);
+        }
+
+        // 2. 學習技能 (加入玩家技能庫)
+        if (!Player.data.skills.some(s => s.id === skillData.id)) {
+            Player.data.skills.push(skillData);
+            UI_Battle.log(`✨ 成功集齊殘卷！你領悟了神通：【${skillName}】`, 'reward');
+        } else {
+            UI_Battle.log(`✨ 成功集齊殘卷！你的神通【${skillName}】感悟加深了（後續實裝升級）。`, 'reward');
+        }
+
+        Player.save();
+        this.closeDetail();
+        this.render();
+    },
+
+    // 6. 裝備物品邏輯
+    equipItem(item) {
+        const type = item.type; // weapon 或 armor
+        Player.data.equipped[type] = item;
+        UI_Battle.log(`裝備了 [${item.name}]`, 'system');
+        Player.save();
+        this.closeDetail();
+        this.render();
+    },
+
+    // 7. 出售物品邏輯
+    sellItem(item) {
+        const price = item.price || 10;
+        Player.data.coin += price;
+        const index = Player.data.inventory.findIndex(i => i.uuid === item.uuid);
+        if (index > -1) {
+            Player.data.inventory.splice(index, 1);
+        }
+        Player.save();
+        this.closeDetail();
+        this.render();
+        UI_Battle.log(`出售了 [${item.name}]，獲得靈石 x${price}`, 'system');
+    },
+
+    closeDetail() {
+        document.getElementById('modal-detail').style.display = 'none';
     }
 };
 
-console.log("✅ [V1.6.0] ui_bag.js 儲物系統優化加固完成。");
+window.UI_Bag = UI_Bag;
