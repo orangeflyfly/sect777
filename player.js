@@ -1,211 +1,165 @@
 /**
- * V1.6.0 player.js (加固優化版)
- * 職責：玩家數據管理、防禦性存取系統、屬性計算、氣泡彈窗系統。
- * 狀態：100% 全量實裝，包含 1.4.1 公式復刻與數據補全邏輯。
+ * V1.7.0 player.js
+ * 職責：玩家數據管理、存檔讀取、經驗加成計算、物品獲取邏輯。
  */
 
-// 1. 定義標準數據藍本 (作為新功能擴充的基準)
-const INITIAL_PLAYER_DATA = {
-    name: "修士",
-    level: 1,
-    realm: "練氣初期",
-    exp: 0,
-    nextExp: 100,
-    money: 0,
-    statPoints: 5,
-    
-    // 基礎四維
-    str: 10, con: 10, dex: 10, int: 10,
-    
-    // 衍生戰鬥屬性
-    hp: 100,
-    maxHp: 100,
-    atk: 20,
-    def: 5,
-    crit: 5,
-    dodge: 5,
-    regen: 1,
+const Player = {
+    data: null,
 
-    // 冒險狀態
-    currentRegion: "qingyun",
-    currentMapId: 0,
-    unlockedRegions: ["qingyun"],
-    killCount: 0,
-    lastLogout: Date.now(),
-    isAuto: false,
-
-    // 儲物與裝備
-    inventory: [],
-    equipment: {
-        weapon: null,
-        armor: null
-    },
-    
-    // 神通
-    skills: []
-};
-
-let player = {
-    // 引用當前數據
-    data: JSON.parse(JSON.stringify(INITIAL_PLAYER_DATA)),
-
-    // 2. 存取系統 (專業加固版：具備版本標記與數據補全)
-    save: function() {
-        const saveData = {
-            version: "1.6.0",
-            timestamp: Date.now(),
-            payload: this.data
+    // 初始化數據 (對齊 V1.6.0 防禦性架構)
+    init() {
+        const savedData = localStorage.getItem('CultivationGame_Save_V1.7');
+        const INITIAL_PLAYER_DATA = {
+            name: "無名修者",
+            realm: 0, // 凡人
+            exp: 0,
+            maxExp: 100,
+            level: 1,
+            coin: 500,
+            stats: {
+                str: 10, // 力量
+                con: 10, // 體質
+                dex: 10, // 敏捷
+                int: 10  // 悟性
+            },
+            statPoints: 0,
+            inventory: [],
+            skills: [],
+            equipped: {
+                weapon: null,
+                armor: null
+            },
+            currentRegion: "region_01",
+            currentMap: 101,
+            lastSaveTime: Date.now()
         };
-        localStorage.setItem('SectGame_V15_Stable', JSON.stringify(saveData));
-        console.log("💾 存檔已安全寫入瀏覽器。");
-    },
 
-    load: function() {
-        const raw = localStorage.getItem('SectGame_V15_Stable');
-        if (!raw) return false;
-
-        try {
-            const wrapped = JSON.parse(raw);
-            // 兼容性處理：判斷是 1.5.12 舊格式還是 1.6.0 新封裝格式
-            const incomingData = wrapped.payload ? wrapped.payload : wrapped;
-
-            // --- 核心加固：數據自動補全 ---
-            // 透過展開運算符，將 incomingData 合併到初始藍本中，確保新加入的屬性不會是 undefined
-            this.data = { 
-                ...INITIAL_PLAYER_DATA, 
-                ...incomingData,
-                // 特別處理深層對象，防止被整個覆蓋
-                equipment: { ...INITIAL_PLAYER_DATA.equipment, ...incomingData.equipment },
-                inventory: incomingData.inventory || []
-            };
-            
-            this.updateDerivedStats();
-            console.log("✅ 數據載入成功，已完成結構校驗。");
-            return true;
-        } catch (e) {
-            console.error("❌ 存檔解析崩潰，請檢查數據格式:", e);
-            return false;
-        }
-    },
-
-    // 3. 屬性轉化公式 (1.4.1 核心比例)
-    updateDerivedStats: function() {
-        const d = this.data;
-        
-        // 累加裝備加成
-        let extraStr = 0, extraCon = 0, extraDex = 0, extraInt = 0;
-        const equips = [d.equipment.weapon, d.equipment.armor];
-        equips.forEach(item => {
-            if (item && item.prefix) {
-                const p = item.prefix;
-                if (p.attr === 'str') extraStr += p.value;
-                if (p.attr === 'con') extraCon += p.value;
-                if (p.attr === 'dex') extraDex += p.value;
-                if (p.attr === 'int') extraInt += p.value;
+        if (savedData) {
+            try {
+                this.data = JSON.parse(savedData);
+                // 數據補全機制：防止舊版存檔缺少新欄位 (如 int)
+                this.data.stats = { ...INITIAL_PLAYER_DATA.stats, ...this.data.stats };
+            } catch (e) {
+                console.error("存檔損壞，初始化新數據");
+                this.data = INITIAL_PLAYER_DATA;
             }
-        });
-
-        const totalStr = d.str + extraStr;
-        const totalCon = d.con + extraCon;
-        const totalDex = d.dex + extraDex;
-        const totalInt = d.int + extraInt;
-
-        // --- 1.4.1 公式復刻 ---
-        d.maxHp = totalCon * 12 + d.level * 25;
-        d.atk = totalStr * 2.5 + d.level * 6;
-        d.def = Math.floor(totalCon * 0.6);
-        d.crit = Math.min(50, 5 + totalDex * 0.2);  // 暴擊上限 50%
-        d.dodge = Math.min(40, 5 + totalDex * 0.15); // 閃避上限 40%
-        d.regen = Math.floor(totalCon * 0.2) + 1;
-
-        if (d.hp > d.maxHp) d.hp = d.maxHp;
-    },
-
-    // 4. 屬性配點
-    addStat: function(type) {
-        if (this.data.statPoints > 0) {
-            this.data[type]++;
-            this.data.statPoints--;
-            this.updateDerivedStats();
-            this.save();
-            
-            if (typeof UI_Stats !== 'undefined') UI_Stats.renderStats();
-            
-            const attrMap = {str:'力量', con:'體質', dex:'敏捷', int:'悟性'};
-            this.showToast(`${attrMap[type]}提升了！`);
+        } else {
+            this.data = INITIAL_PLAYER_DATA;
         }
+        this.save();
     },
 
-    // 升級邏輯
-    checkLevelUp: function() {
-        let leveled = false;
-        while (this.data.exp >= this.data.nextExp) {
-            this.data.exp -= this.data.nextExp;
-            this.data.level++;
-            this.data.statPoints += 5;
-            this.data.nextExp = Math.floor(this.data.nextExp * 1.6);
-            leveled = true;
-            this.updateRealm();
-        }
-
-        if (leveled) {
-            this.updateDerivedStats();
-            this.data.hp = this.data.maxHp;
-            this.showToast(`✨ 恭喜突破！晉升至【${this.data.realm}】`, "gold");
-            this.save();
-            // 如果有 UI 更新函數，在此處調用
-            if (typeof UI_Main !== 'undefined') UI_Main.updateAll();
-        }
+    // 存檔
+    save() {
+        this.data.lastSaveTime = Date.now();
+        localStorage.setItem('CultivationGame_Save_V1.7', JSON.stringify(this.data));
     },
 
-    updateRealm: function() {
-        const lv = this.data.level;
-        const realms = ["練氣初期", "練氣中期", "練氣後期", "築基初期", "築基中期", "築基後期", "金丹大能", "元嬰老祖", "化神真尊"];
-        const idx = Math.min(realms.length - 1, Math.floor((lv - 1) / 10));
-        this.data.realm = realms[idx];
-    },
+    // 獲得修為 (實裝 V1.7 悟性加成)
+    gainExp(amount) {
+        // 公式：最終經驗 = 基礎經驗 * (1 + 悟性 * 1%)
+        const intBonus = this.data.stats.int * 0.01;
+        const totalExp = Math.floor(amount * (1 + intBonus));
+        const bonusAmount = totalExp - amount;
 
-    // 5. 氣泡訊息系統
-    showToast: function(msg, type = "") {
-        const container = document.getElementById('toast-container');
-        if (!container) return;
-
-        const toast = document.createElement('div');
-        toast.className = 'toast';
-        if (type === "gold") toast.style.borderColor = "#f1c40f";
-        toast.innerText = msg;
-
-        container.appendChild(toast);
-
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 500);
-        }, 2500);
-    },
-
-    // 6. 裝備生成
-    generateItem: function(baseName, mapLevel) {
-        // 確保 GAMEDATA 存在防止崩潰
-        if (typeof GAMEDATA === 'undefined') return false;
-
-        const prefixes = GAMEDATA.PREFIXES;
-        const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+        this.data.exp += totalExp;
         
-        const newItem = {
-            uid: "item_" + Date.now() + Math.floor(Math.random()*1000),
-            name: prefix.name + baseName,
-            type: (baseName.includes("劍") || baseName.includes("刀")) ? "weapon" : "armor",
-            rarity: prefix.rarity,
-            prefix: prefix,
-            price: prefix.rarity * 50 + mapLevel * 10
-        };
+        // 檢查升級 (大境界突破)
+        if (this.data.exp >= this.data.maxExp) {
+            this.levelUp();
+        }
+        
+        this.save();
+        return { totalExp, bonusAmount };
+    },
 
-        if (this.data.inventory.length < (GAMEDATA.CONFIG?.MAX_BAG_SLOTS || 20)) {
-            this.data.inventory.push(newItem);
+    // 突破境界
+    levelUp() {
+        this.data.exp -= this.data.maxExp;
+        this.data.realm++;
+        this.data.maxExp = Math.floor(this.data.maxExp * 1.8);
+        this.data.statPoints += 5; // 突破給予屬性點
+        
+        const realmName = GAMEDATA.CONFIG.REALM_NAMES[this.data.realm] || "更高境界";
+        // 這裡後續由 UI 顯示特效
+        this.save();
+    },
+
+    // 增加屬性
+    addStat(type) {
+        if (this.data.statPoints > 0) {
+            this.data.stats[type]++;
+            this.data.statPoints--;
+            this.save();
             return true;
         }
         return false;
+    },
+
+    // 獲得物品 (實裝殘卷溢出煉化)
+    addItem(item) {
+        // 1. 檢查是否為殘卷碎片 (格式範例: "殘卷：烈焰斬-1")
+        if (item.name && item.name.includes("殘卷：")) {
+            const hasDuplicate = this.data.inventory.find(i => i.name === item.name);
+            
+            if (hasDuplicate) {
+                // 方案 A：自動煉化為靈石
+                const skillName = item.name.split("：")[1].split("-")[0];
+                const sellPrice = GAMEDATA.FRAGMENTS[skillName] ? GAMEDATA.FRAGMENTS[skillName].sellPrice : 50;
+                
+                this.data.coin += sellPrice;
+                this.save();
+                return { success: true, type: 'refined', price: sellPrice };
+            }
+        }
+
+        // 2. 檢查背包空間
+        if (this.data.inventory.length >= GAMEDATA.CONFIG.MAX_BAG_SLOTS) {
+            return { success: false, reason: '背包已滿' };
+        }
+
+        // 3. 正常存入背包
+        this.data.inventory.push({
+            ...item,
+            uuid: Date.now() + Math.random().toString(36).substr(2, 9)
+        });
+        this.save();
+        return { success: true, type: 'normal' };
+    },
+
+    // 檢查地圖進入權限 (境界門檻)
+    canAccessMap(mapId) {
+        // 尋找地圖所在的區域
+        let targetMap = null;
+        for (let rId in GAMEDATA.REGIONS) {
+            const map = GAMEDATA.REGIONS[rId].maps.find(m => m.id === mapId);
+            if (map) {
+                targetMap = map;
+                break;
+            }
+        }
+
+        if (!targetMap) return { can: false, reason: "未知地域" };
+
+        // 硬性攔截邏輯
+        if (this.data.realm < targetMap.minRealm) {
+            const reqName = GAMEDATA.CONFIG.REALM_NAMES[targetMap.minRealm];
+            return { can: false, reason: `修為不足！此地需達到 [${reqName}] 方可進入。` };
+        }
+
+        return { can: true };
+    },
+
+    // 計算當前戰鬥屬性 (加成後)
+    getBattleStats() {
+        return {
+            hp: 100 + (this.data.stats.con * 15),
+            atk: 10 + (this.data.stats.str * 3),
+            spd: 5 + (this.data.stats.dex * 0.5),
+            critRate: 0.05 + (this.data.stats.dex * 0.005)
+        };
     }
 };
 
-console.log("✅ [V1.6.0] player.js 已加固，具備防禦性存取機制。");
+// 確保全局可用
+window.Player = Player;
