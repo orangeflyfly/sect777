@@ -1,109 +1,145 @@
 /**
- * V1.5.9 ui_battle.js (強力加固版)
- * 增加自動檢測功能，防止報錯導致遊戲中斷
+ * V1.5.10 ui_battle.js
+ * 職責：渲染怪物卡片、處理戰鬥抖動、實裝分類日誌切換、地圖選擇彈窗。
  */
+
 const UI_Battle = {
-    // 渲染怪物核心區域
+    currentLogTab: 'all',
+
+    // 1. 渲染怪物區域 (包含 1.4.1 的視覺結構)
     renderBattle: function(monster) {
-        // 1. 檢查 HTML 容器
         const displayArea = document.getElementById('monster-display');
-        if (!displayArea) {
-            console.error("❌ 錯誤：HTML 找不到 'monster-display'，請檢查 index.html");
-            return;
-        }
+        if (!displayArea || !monster) return;
 
-        // 2. 檢查怪物資料是否存在
-        if (!monster) {
-            displayArea.innerHTML = "<div style='color:red;'>正在搜尋妖獸...</div>";
-            return;
-        }
+        const hpPercent = (monster.hp / monster.maxHp) * 100;
 
-        // 3. 計算血量 (防止除以零)
-        const maxHp = monster.maxHp || 1;
-        const hp = monster.hp || 0;
-        const hpPercent = (hp / maxHp) * 100;
-
-        // 4. 執行渲染 (將 1.4.1 的點擊感找回來)
-        try {
-            displayArea.innerHTML = `
-                <div class="monster-card ${monster.isBoss ? 'r-5' : 'r-2'}">
-                    <div class="monster-icon" onclick="Combat.playerAttack(true)" style="cursor:pointer; position:relative;">
+        // 構建與 1.4.1 相同的 monster-card 結構
+        displayArea.innerHTML = `
+            <div id="monster-card-container" class="monster-card">
+                <div class="monster-visual">
+                    <div class="monster-icon" onclick="Combat.playerAttack(true)">
                         ${monster.icon || '👾'}
-                        <div style="font-size:12px; color:#f1c40f; position:absolute; bottom:-10px; width:100%; text-align:center;">[點擊斬妖]</div>
-                    </div>
-                    <div class="monster-name" style="margin-top:15px; font-weight:bold;">
-                        ${monster.isBoss ? '<span style="color:gold;">【領主】</span>' : ''}${monster.name || '未知生物'}
-                    </div>
-                    <div class="hp-bar-container" style="background:#000; border:1px solid #444; height:20px; border-radius:10px; margin-top:10px; position:relative; overflow:hidden;">
-                        <div class="hp-bar" style="width: ${Math.max(0, hpPercent)}%; background:linear-gradient(to right, #e74c3c, #c0392b); height:100%; transition: width 0.2s;"></div>
-                        <span style="position:absolute; width:100%; left:0; top:0; font-size:12px; line-height:20px; color:white; text-shadow:1px 1px 1px #000; text-align:center;">
-                            ${Math.ceil(hp)} / ${maxHp}
-                        </span>
                     </div>
                 </div>
-            `;
-            this.updateBossButton();
-        } catch (e) {
-            console.error("❌ 渲染怪物時發生錯誤:", e);
-        }
-    },
-
-    updateBossButton: function() {
-        const btn = document.getElementById('boss-btn');
-        if (!btn) return;
-        // 確保數據存在才比較
-        const killCount = (player && player.data) ? player.data.killCount : 0;
-        const require = (GAMEDATA && GAMEDATA.CONFIG) ? GAMEDATA.CONFIG.BOSS_KILL_REQUIRE : 10;
-        
-        btn.style.display = (killCount >= require) ? 'block' : 'none';
-    },
-
-    showMapSelector: function() {
-        if (!GAMEDATA || !GAMEDATA.REGIONS) {
-            alert("數據未載入，無法打開地圖");
-            return;
-        }
-        
-        let html = `
-            <div class="modal-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:999; display:flex; justify-content:center; align-items:center;">
-                <div class="modal-content" style="background:#222; padding:20px; border-radius:10px; border:1px solid gold; width:80%; max-width:400px;">
-                    <h3 style="color:gold; text-align:center;">選擇歷練區域</h3>
-                    <div id="modal-map-list" style="max-height:300px; overflow-y:auto;">
-                        ${this.renderMaps()}
+                <div class="monster-name">
+                    ${monster.isBoss ? '<span style="color:var(--legend)">【領主】</span>' : ''}${monster.name}
+                </div>
+                <div class="hp-container monster-hp">
+                    <div class="hp-bar-container">
+                        <div class="hp-bar" style="width: ${Math.max(0, hpPercent)}%"></div>
+                        <div class="hp-text">${Math.ceil(monster.hp)} / ${monster.maxHp}</div>
                     </div>
-                    <button onclick="UI_Battle.closeModal()" style="width:100%; margin-top:15px; padding:10px; background:#444; color:white; border:none; border-radius:5px;">離開</button>
+                </div>
+                <div class="click-tip" style="font-size: 10px; color: #666; margin-top: 5px;">點擊圖標手動斬妖</div>
+            </div>
+        `;
+        
+        this.updateBossButton();
+        this.refreshLogVisibility(); // 確保切換回來時日誌顯示正確
+    },
+
+    // 2. 實裝打擊感：抖動效果 (對接 combat.js)
+    triggerShake: function() {
+        const card = document.getElementById('monster-card-container');
+        if (card) {
+            card.classList.remove('shake');
+            void card.offsetWidth; // 觸發重繪，確保動畫能重複播放
+            card.classList.add('shake');
+            setTimeout(() => card.classList.remove('shake'), 200);
+        }
+    },
+
+    // 3. 1.4.1 分類日誌切換邏輯
+    switchLog: function(tab) {
+        this.currentLogTab = tab;
+        
+        // 更新按鈕樣式
+        const tabs = document.querySelectorAll('.log-tab');
+        tabs.forEach(t => {
+            t.classList.remove('active');
+            if (t.innerText === (tab === 'all' ? '全部' : tab === 'combat' ? '鬥法' : '獲取')) {
+                t.classList.add('active');
+            }
+        });
+
+        this.refreshLogVisibility();
+    },
+
+    refreshLogVisibility: function() {
+        const logs = document.querySelectorAll('.log-item');
+        logs.forEach(log => {
+            if (this.currentLogTab === 'all') {
+                log.style.display = 'block';
+            } else {
+                // 檢查 classList 是否包含對應的分類 (combat, loot, system)
+                if (log.classList.contains(this.currentLogTab)) {
+                    log.style.display = 'block';
+                } else if (this.currentLogTab === 'combat' && log.classList.contains('system')) {
+                    // 系統訊息在鬥法頁面也顯示
+                    log.style.display = 'block';
+                } else {
+                    log.style.display = 'none';
+                }
+            }
+        });
+    },
+
+    // 4. 地圖選擇彈窗 (1.4.1 美化版)
+    showMapSelector: function() {
+        const region = GAMEDATA.REGIONS.find(r => r.id === player.data.currentRegion);
+        if (!region) return;
+
+        let mapHtml = region.maps.map(m => `
+            <div class="map-card" onclick="UI_Battle.selectMap(${m.id})" 
+                 style="background:#222; margin-bottom:10px; padding:15px; border-radius:8px; border-left:4px solid var(--gold); cursor:pointer;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong style="color:white;">${m.name}</strong>
+                    <span style="font-size:12px; color:var(--gold);">Lv.${m.level}</span>
+                </div>
+                <div style="font-size:11px; color:#888; margin-top:5px;">產出: ${m.drops.join('、')}</div>
+            </div>
+        `).join('');
+
+        let modalHtml = `
+            <div id="map-modal" class="modal-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1000; display:flex; justify-content:center; align-items:center;">
+                <div class="modal-content" style="background:#1a1a1a; width:85%; max-width:400px; padding:20px; border:1px solid var(--gold); border-radius:12px;">
+                    <h3 style="color:var(--gold); text-align:center; margin-top:0;">探索歷練之地</h3>
+                    <div style="max-height:350px; overflow-y:auto; padding-right:5px;">
+                        ${mapHtml}
+                    </div>
+                    <button onclick="UI_Battle.closeMapModal()" style="width:100%; margin-top:15px; padding:12px; background:#333; color:white; border:none; border-radius:6px; cursor:pointer;">返回</button>
                 </div>
             </div>
         `;
-        document.body.insertAdjacentHTML('beforeend', html);
-    },
-
-    renderMaps: function() {
-        try {
-            const currentRegionId = player.data.currentRegion;
-            const region = GAMEDATA.REGIONS.find(r => r.id === currentRegionId);
-            if (!region) return "找不到區域數據";
-
-            return region.maps.map(m => `
-                <div class="map-card" onclick="UI_Battle.selectMap(${m.id})" style="background:#333; margin:8px 0; padding:12px; border-radius:5px; border-left:4px solid #d4af37; cursor:pointer;">
-                    <div style="font-weight:bold;">${m.name} <small style="color:#888;">(Lv.${m.level})</small></div>
-                    <div style="font-size:11px; color:#aaa; margin-top:4px;">掉落：${m.drops.join(', ')}</div>
-                </div>
-            `).join('');
-        } catch (e) {
-            return "地圖渲染失敗";
-        }
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
     },
 
     selectMap: function(mapId) {
         player.data.currentMapId = mapId;
         player.data.killCount = 0;
-        this.closeModal();
-        if (typeof Combat !== 'undefined') Combat.initBattle();
+        this.closeMapModal();
+        Combat.initBattle();
+        console.log(`✅ 前往地圖 ID: ${mapId}`);
     },
 
-    closeModal: function() {
-        const modal = document.querySelector('.modal-overlay');
+    closeMapModal: function() {
+        const modal = document.getElementById('map-modal');
         if (modal) modal.remove();
+    },
+
+    updateBossButton: function() {
+        const btn = document.getElementById('boss-btn');
+        if (!btn) return;
+        
+        const isReady = player.data.killCount >= (GAMEDATA.CONFIG.BOSS_KILL_REQUIRE || 10);
+        btn.style.display = isReady ? 'block' : 'none';
+        
+        if (isReady) {
+            const region = GAMEDATA.REGIONS.find(r => r.id === player.data.currentRegion);
+            const boss = GAMEDATA.MONSTERS[region.bossId];
+            btn.innerText = `挑戰區域領主：${boss.name}`;
+        }
     }
 };
+
+console.log("✅ [V1.5.10] ui_battle.js 戰鬥視覺全量載入，日誌過濾與抖動已啟動。");
