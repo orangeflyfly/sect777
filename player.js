@@ -1,120 +1,116 @@
 /**
- * 宗門修仙錄 - 玩家數據模組 (player.js)
+ * 宗門修仙錄 - 玩家數據模組 (player.js) V1.2
+ * 修正：強化數據穩定性，防止存檔/升級時導致程序崩潰
  */
-class Player {
-    constructor() {
-        // 初始數據結構
-        this.data = {
-            lv: 1, 
-            exp: 0, 
-            money: 100, 
-            pts: 0,
-            baseStats: { str: 10, vit: 10, agi: 10, int: 10 },
-            bag: [],
-            equips: { weapon: null, body: null },
-            skills: [null, null, null],
-            learnedSkills: [0],
-            mapId: 0
-        };
+function Player(core) {
+    this.core = core;
+    this.data = this.load() || this.initData();
+    this.battle = {}; // 戰鬥實時數值
+    this.refresh();
+}
 
-        // 戰鬥即時數據
-        this.battle = { 
-            hp: 100, 
-            maxHp: 100, 
-            atk: 10, 
-            def: 5, 
-            spd: 10, 
-            dodge: 0.05, 
-            power: 0, 
-            regen: 0, 
-            lifeSteal: 0, 
-            dmgFloor: 0.005, 
-            isDead: false 
-        };
+// 1. 初始化新玩家數據
+Player.prototype.initData = function() {
+    return {
+        lv: 1, exp: 0, money: 0, pts: 0,
+        baseStats: { str: 10, vit: 10, agi: 10, int: 10 },
+        equips: { weapon: null, body: null },
+        bag: [],
+        skills: [null, null, null], // 三個功法槽位
+        learnedSkills: [],
+        mapId: 0
+    };
+};
 
-        this.load();    // 先讀取存檔
-        this.refresh(); // 再計算最終數值
-        
-        // 確保剛進遊戲時是滿血狀態
-        this.battle.hp = this.battle.maxHp;
+// 2. 加載存檔 (帶防錯)
+Player.prototype.load = function() {
+    try {
+        var save = localStorage.getItem('X_CULTIVATION_SAVE');
+        return save ? JSON.parse(save) : null;
+    } catch (e) {
+        console.error("存檔讀取失敗:", e);
+        return null;
     }
+};
 
-    // 重新計算屬性 (加點或換裝後調用)
-    refresh() {
-        const d = this.data; 
-        const b = this.battle;
+// 3. 儲存數據 (天道備份)
+Player.prototype.save = function() {
+    try {
+        localStorage.setItem('X_CULTIVATION_SAVE', JSON.stringify(this.data));
+    } catch (e) {
+        console.error("存檔失敗:", e);
+    }
+};
 
-        // 1. 基礎屬性計算
-        b.maxHp = d.baseStats.vit * 20 + d.lv * 10;
-        b.atk = d.baseStats.str * 3 + d.lv * 2;
-        b.def = d.baseStats.vit * 1.5;
-        // 閃避曲線：身法越高收益越低，最高 75%
-        b.dodge = Math.min(0.75, (d.baseStats.agi / (d.baseStats.agi + 200)));
-        
-        b.regen = 0; 
-        b.lifeSteal = 0; 
-        b.dmgFloor = 0.005; // 預設 0.5% 保底傷害
+// 4. 增加經驗值與境界提升
+Player.prototype.addExp = function(val) {
+    this.data.exp += val;
+    var up = false;
+    // 升級公式：等級 * 100
+    while (this.data.exp >= (this.data.lv * 100)) {
+        this.data.exp -= (this.data.lv * 100);
+        this.data.lv++;
+        this.data.pts += 5; // 每級獲得 5 點自由屬性
+        up = true;
+    }
+    if (up) {
+        this.refresh();
+        this.save();
+    }
+    return up;
+};
 
-        // 2. 裝備加成計算
-        Object.values(d.equips).forEach(eq => {
-            if (!eq) return;
+// 5. 核心：刷新戰鬥數值 (將所有裝備、功法、屬性加總)
+Player.prototype.refresh = function() {
+    var d = this.data;
+    var b = {};
+
+    // 基礎數值繼承自加點
+    b.atk = d.baseStats.str * 2;
+    b.maxHp = d.baseStats.vit * 20;
+    b.def = d.baseStats.vit * 1;
+    b.dodge = d.baseStats.agi * 0.001;     // 每點身法加 0.1% 閃避
+    b.lifeSteal = d.baseStats.str * 0.0001; // 基礎微量吸血
+    b.regen = d.baseStats.vit * 0.1;       // 基礎每秒回血
+    b.dmgFloor = 0.005;                    // 保底受傷 0.5%
+    b.isDead = false;
+
+    // A. 穿戴裝備加成
+    var types = ['weapon', 'body'];
+    for (var i = 0; i < types.length; i++) {
+        var eq = d.equips[types[i]];
+        if (eq) {
             if (eq.atk) b.atk += eq.atk;
             if (eq.def) b.def += eq.def;
             if (eq.hp) b.maxHp += eq.hp;
             if (eq.regen) b.regen += eq.regen;
             if (eq.lifeSteal) b.lifeSteal += eq.lifeSteal;
-            // 天道豁免詞條
-            if (eq.dmgFloorReduce) b.dmgFloor = Math.max(0.001, b.dmgFloor - eq.dmgFloorReduce);
-        });
-
-        // 3. 被動技能加成
-        d.skills.forEach(id => {
-            if (id !== null && GAME_DATA && GAME_DATA.SKILLS[id]) {
-                const s = GAME_DATA.SKILLS[id];
-                if (s.type === 'passive' && s.effect) {
-                    if (s.effect.hpMul) b.maxHp *= s.effect.hpMul;
-                    if (s.effect.defMul) b.def *= s.effect.defMul;
-                }
-            }
-        });
-
-        // 4. 戰力綜合評定
-        b.power = Math.floor(b.atk * 5 + b.def * 3 + b.maxHp / 10);
-        
-        // 5. 修正血量上限 (防止血量溢出，但不隨意補滿)
-        if (b.hp > b.maxHp) b.hp = b.maxHp;
+        }
     }
 
-    save() {
-        localStorage.setItem('ImmortalData_V1', JSON.stringify(this.data));
-    }
-
-    load() {
-        const saved = localStorage.getItem('ImmortalData_V1');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                // 使用深度合併或逐項賦值，確保 baseStats 不會遺失
-                this.data = { ...this.data, ...parsed };
-                // 針對嵌套對象進行強化，防止舊數據格式出錯
-                if (parsed.baseStats) this.data.baseStats = { ...parsed.baseStats };
-                if (parsed.equips) this.data.equips = { ...parsed.equips };
-            } catch (e) {
-                console.error("存檔讀取失敗，可能是格式不相容");
+    // B. 已裝配功法加成 (被動屬性)
+    for (var j = 0; j < d.skills.length; j++) {
+        var sId = d.skills[j];
+        if (sId !== null) {
+            var skill = GAME_DATA.SKILLS[sId];
+            if (skill && skill.type === "passive") {
+                if (skill.effect.hpMul) b.maxHp *= skill.effect.hpMul;
+                if (skill.effect.atkMul) b.atk *= skill.effect.atkMul;
             }
         }
     }
 
-    addExp(val) {
-        this.data.exp += val; 
-        let need = this.data.lv * 100;
-        if (this.data.exp >= need) {
-            this.data.exp -= need; 
-            this.data.lv++; 
-            this.data.pts += 5; 
-            this.refresh(); 
-            return true; // 升級了
-        }
-        return false;
+    // 確保數值不為負或 0
+    b.atk = Math.max(1, Math.floor(b.atk));
+    b.def = Math.max(0, Math.floor(b.def));
+    b.maxHp = Math.max(10, Math.floor(b.maxHp));
+    
+    // 首次初始化或滿血狀態處理
+    if (!this.battle.hp || this.battle.hp > b.maxHp) {
+        b.hp = b.maxHp;
+    } else {
+        b.hp = this.battle.hp; // 保留當前血量
     }
-}
+
+    this.battle = b;
+};
