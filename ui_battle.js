@@ -1,52 +1,56 @@
 /**
- * V1.5 ui_battle.js
- * 職責：戰鬥畫面渲染、地圖彈窗、Boss 按鈕控制。
+ * V1.5.1 ui_battle.js (修正版)
+ * 職責：局部渲染戰鬥內容，保留地圖與 Boss 按鈕。
  */
 
 const UI_Battle = {
-    // --- 1. 渲染戰鬥介面 (1.4.1 繼承 + 1.5 中文化/數值強同步) ---
+    // --- 1. 渲染戰鬥介面 (修正：改為針對 monster-display) ---
     renderBattle: function(monster) {
-        const battleArea = document.getElementById('battle-screen');
-        if (!monster) return;
+        const displayArea = document.getElementById('monster-display');
+        if (!displayArea || !monster) return;
 
-        // 強制更新血條與名稱 (解決 1.4.1 神隱問題)
-        battleArea.innerHTML = `
-            <div class="monster-info">
+        // 僅更新怪物資訊區，不觸動其他按鈕
+        displayArea.innerHTML = `
+            <div class="monster-card">
                 <div class="monster-icon">${monster.icon || '👾'}</div>
-                <div class="monster-name">${monster.isBoss ? '<b style="color:#f1c40f">【領主】</b>' : ''}${monster.name}</div>
+                <div class="monster-name">
+                    ${monster.isBoss ? '<span style="color:#f1c40f; font-weight:bold;">【領主】</span>' : ''}
+                    ${monster.name}
+                </div>
                 <div class="hp-bar-container">
                     <div class="hp-bar" style="width: ${(monster.hp / monster.maxHp) * 100}%"></div>
                     <span class="hp-text">${Math.ceil(monster.hp)} / ${monster.maxHp}</span>
                 </div>
             </div>
-            <div id="battle-logs"></div>
         `;
         
-        // 1.5 新增：檢查是否達到 Boss 挑戰門檻
+        // 更新 Boss 按鈕狀態
         this.updateBossButton();
     },
 
-    // --- 2. 挑戰領主按鈕邏輯 (1.5 新增) ---
+    // --- 2. 挑戰領主按鈕邏輯 ---
     updateBossButton: function() {
         const btn = document.getElementById('boss-btn');
         if (!btn) return;
 
+        // 檢查是否滿足擊殺數 (來自 player.js)
         if (player.data.killCount >= GAMEDATA.CONFIG.BOSS_KILL_REQUIRE) {
             btn.style.display = 'block';
-            btn.innerText = `挑戰區域領主 (${GAMEDATA.MONSTERS[GAMEDATA.REGIONS.find(r => r.id === player.data.currentRegion).bossId].name})`;
+            const region = GAMEDATA.REGIONS.find(r => r.id === player.data.currentRegion);
+            const bossName = GAMEDATA.MONSTERS[region.bossId].name;
+            btn.innerText = `挑戰區域領主 (${bossName})`;
         } else {
             btn.style.display = 'none';
         }
     },
 
-    // --- 3. 地圖選擇彈窗 (1.5 更新：區域分頁化) ---
+    // --- 3. 地圖選擇彈窗 (保持不變) ---
     showMapSelector: function() {
-        // 創建彈窗 HTML
         let html = `
             <div class="modal-overlay">
                 <div class="modal-content">
                     <h3>請選擇歷練區域</h3>
-                    <div class="region-tabs">
+                    <div class="region-tabs" style="display:flex; gap:10px; margin-bottom:15px;">
                         ${GAMEDATA.REGIONS.map(r => `
                             <button class="tab-btn ${player.data.currentRegion === r.id ? 'active' : ''}" 
                                     onclick="UI_Battle.switchRegion('${r.id}')"
@@ -55,33 +59,42 @@ const UI_Battle = {
                             </button>
                         `).join('')}
                     </div>
-                    <div class="map-list">
+                    <div id="map-list">
                         ${this.renderMapsForRegion(player.data.currentRegion)}
                     </div>
-                    <button onclick="UI_Battle.closeModal()">關閉</button>
+                    <br>
+                    <button class="nav-btn" onclick="UI_Battle.closeModal()">離開</button>
                 </div>
             </div>
         `;
         document.body.insertAdjacentHTML('beforeend', html);
     },
 
+    // 區域切換邏輯 (新增：支持彈窗內換分頁)
+    switchRegion: function(regionId) {
+        const region = GAMEDATA.REGIONS.find(r => r.id === regionId);
+        if (player.data.unlockedRegions.includes(regionId)) {
+            player.data.currentRegion = regionId;
+            document.getElementById('map-list').innerHTML = this.renderMapsForRegion(regionId);
+        }
+    },
+
     renderMapsForRegion: function(regionId) {
         const region = GAMEDATA.REGIONS.find(r => r.id === regionId);
         return region.maps.map(m => `
-            <div class="map-card ${player.data.currentMapId === m.id ? 'current' : ''}" 
-                 onclick="UI_Battle.selectMap(${m.id})">
-                <h4>${m.name} (Lv.${m.level})</h4>
-                <p>掉落：${m.drops.join(', ')}</p>
+            <div class="map-card" onclick="UI_Battle.selectMap(${m.id})" style="padding:10px; border:1px solid #555; margin-bottom:5px; cursor:pointer;">
+                <strong>${m.name}</strong> <small>(Lv.${m.level})</small>
+                <div style="font-size:12px; color:#888;">掉落：${m.drops.join(', ')}</div>
             </div>
         `).join('');
     },
 
     selectMap: function(mapId) {
         player.data.currentMapId = mapId;
-        player.data.killCount = 0; // 切換地圖重置擊殺數
+        player.data.killCount = 0;
         this.closeModal();
-        Combat.initBattle(); // 重新開始戰鬥 (下一動檔案)
-        console.log(`✅ 已前往：${mapId}`);
+        Combat.initBattle();
+        console.log(`✅ 已前往地圖 ID: ${mapId}`);
     },
 
     closeModal: function() {
@@ -89,5 +102,3 @@ const UI_Battle = {
         if (modal) modal.remove();
     }
 };
-
-console.log("✅ [V1.5 戰鬥視覺] ui_battle.js 已裝載，彈窗地圖系統就緒。");
