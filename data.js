@@ -1,161 +1,126 @@
 /**
- * V1.6.0 data.js (優化加固版)
- * 職責：全量靜態資料庫、數據檢索索引化。
+ * V1.7.0 data.js
+ * 職責：全量靜態資料庫。
+ * 內容：包含 80 組裝備前綴詞條、地圖境界門檻、殘卷碎片、妖獸與神通數據。
  */
 
 const GAMEDATA = {
-    // 基礎配置
+    // 1. 全域配置
     CONFIG: {
         MAX_BAG_SLOTS: 50,
         BOSS_KILL_REQUIRE: 10,
-        RARITY_NAMES: ["凡品", "良品", "精品", "極品", "神品"],
-        RARITY_COLORS: ["#95a5a6", "#2ecc71", "#3498db", "#9b59b6", "#f1c40f"]
+        LOG_LIMIT: 50,
+        RARITY_NAMES: ["凡品", "良品", "上品", "極品", "神品"],
+        REALM_NAMES: ["凡人", "練氣初期", "練氣中期", "練氣後期", "築基初期", "築基中期", "築基後期", "結丹期", "元嬰期"],
+        FRAGMENT_COUNT: 5 
     },
 
-    // --- 80 個隨機詞條 (保持原樣，全量實裝) ---
+    // 2. 裝備詞條庫 (完整 80 組前綴對齊 1.4.1)
     PREFIXES: [
-        /* 凡品 (1-20) */
-        { name: "鋒利的", attr: "str", value: 2, rarity: 1 },
-        { name: "破碎的", attr: "str", value: 1, rarity: 1 },
-        { name: "堅固的", attr: "con", value: 2, rarity: 1 },
-        { name: "破舊的", attr: "con", value: 1, rarity: 1 },
-        { name: "輕盈的", attr: "dex", value: 2, rarity: 1 },
-        { name: "笨重的", attr: "dex", value: 1, rarity: 1 },
-        { name: "睿智的", attr: "int", value: 2, rarity: 1 },
-        { name: "遲鈍的", attr: "int", value: 1, rarity: 1 },
-        { name: "生鏽的", attr: "str", value: 1, rarity: 1 },
-        { name: "粗糙的", attr: "str", value: 2, rarity: 1 },
-        { name: "耐用的", attr: "con", value: 3, rarity: 1 },
-        { name: "平凡的", attr: "con", value: 2, rarity: 1 },
-        { name: "迅捷的", attr: "dex", value: 3, rarity: 1 },
-        { name: "靈活的", attr: "dex", value: 2, rarity: 1 },
-        { name: "沉穩的", attr: "int", value: 3, rarity: 1 },
-        { name: "清醒的", attr: "int", value: 2, rarity: 1 },
-        { name: "剛硬的", attr: "str", value: 3, rarity: 1 },
-        { name: "柔軟的", attr: "dex", value: 3, rarity: 1 },
-        { name: "冰冷的", attr: "int", value: 3, rarity: 1 },
-        { name: "溫熱的", attr: "con", value: 3, rarity: 1 },
+        /* 力量系 (Str) - 20組 */
+        { name: "破碎的", attr: "str", value: 1 }, { name: "生鏽的", attr: "str", value: 2 },
+        { name: "粗糙的", attr: "str", value: 3 }, { name: "沉重的", attr: "str", value: 4 },
+        { name: "鋒利的", attr: "str", value: 6 }, { name: "磨損的", attr: "str", value: 7 },
+        { name: "精煉的", attr: "str", value: 10 }, { name: "卓越的", attr: "str", value: 15 },
+        { name: "嗜血的", attr: "str", value: 20 }, { name: "狂暴的", attr: "str", value: 25 },
+        { name: "破軍的", attr: "str", value: 30 }, { name: "屠龍的", attr: "str", value: 40 },
+        { name: "震天的", attr: "str", value: 50 }, { name: "焚城的", attr: "str", value: 65 },
+        { name: "斷岳的", attr: "str", value: 80 }, { name: "碎星的", attr: "str", value: 100 },
+        { name: "造化的", attr: "str", value: 130 }, { name: "混沌的", attr: "str", value: 160 },
+        { name: "開天的", attr: "str", value: 200 }, { name: "滅世的", attr: "str", value: 300 },
 
-        /* 良品 (21-40) */
-        { name: "噴火的", attr: "str", value: 6, rarity: 2 },
-        { name: "淬毒的", attr: "dex", value: 6, rarity: 2 },
-        { name: "精湛的", attr: "int", value: 6, rarity: 2 },
-        { name: "強韌的", attr: "con", value: 6, rarity: 2 },
-        { name: "大師的", attr: "str", value: 8, rarity: 2 },
-        { name: "精準的", attr: "dex", value: 8, rarity: 2 },
-        { name: "鋼鐵的", attr: "con", value: 8, rarity: 2 },
-        { name: "學識的", attr: "int", value: 8, rarity: 2 },
-        { name: "野獸之", attr: "str", value: 7, rarity: 2 },
-        { name: "飛燕之", attr: "dex", value: 7, rarity: 2 },
-        { name: "巨岩之", attr: "con", value: 7, rarity: 2 },
-        { name: "靈貓之", attr: "dex", value: 9, rarity: 2 },
-        { name: "嗜血的", attr: "str", value: 10, rarity: 2 },
-        { name: "不拔的", attr: "con", value: 10, rarity: 2 },
-        { name: "破法的", attr: "int", value: 10, rarity: 2 },
-        { name: "疾行的", attr: "dex", value: 10, rarity: 2 },
-        { name: "閃耀的", attr: "int", value: 7, rarity: 2 },
-        { name: "厚重的", attr: "con", value: 9, rarity: 2 },
-        { name: "虎威的", attr: "str", value: 9, rarity: 2 },
-        { name: "鷹眼的", attr: "dex", value: 9, rarity: 2 },
+        /* 體質系 (Con) - 20組 */
+        { name: "殘破的", attr: "con", value: 2 }, { name: "龜裂的", attr: "con", value: 4 },
+        { name: "堅固的", attr: "con", value: 8 }, { name: "厚重的", attr: "con", value: 12 },
+        { name: "玄鐵的", attr: "con", value: 18 }, { name: "精鋼的", attr: "con", value: 25 },
+        { name: "守護的", attr: "con", value: 35 }, { name: "磐石的", attr: "con", value: 45 },
+        { name: "壁壘的", attr: "con", value: 60 }, { name: "不拔的", attr: "con", value: 80 },
+        { name: "不朽的", attr: "con", value: 100 }, { name: "金剛的", attr: "con", value: 130 },
+        { name: "神聖的", attr: "con", value: 160 }, { name: "至尊的", attr: "con", value: 200 },
+        { name: "乾坤的", attr: "con", value: 250 }, { name: "無極的", attr: "con", value: 320 },
+        { name: "永恆的", attr: "con", value: 400 }, { name: "大地的", attr: "con", value: 500 },
+        { name: "不死心的", attr: "con", value: 650 }, { name: "真龍的", attr: "con", value: 800 },
 
-        /* 精品 (41-60) */
-        { name: "狂暴的", attr: "str", value: 18, rarity: 3 },
-        { name: "幻影的", attr: "dex", value: 18, rarity: 3 },
-        { name: "不動的", attr: "con", value: 18, rarity: 3 },
-        { name: "冥想的", attr: "int", value: 18, rarity: 3 },
-        { name: "灼熱的", attr: "str", value: 22, rarity: 3 },
-        { name: "寒冰的", attr: "int", value: 22, rarity: 3 },
-        { name: "疾風的", attr: "dex", value: 22, rarity: 3 },
-        { name: "大地的", attr: "con", value: 22, rarity: 3 },
-        { name: "破滅的", attr: "str", value: 25, rarity: 3 },
-        { name: "守護的", attr: "con", value: 25, rarity: 3 },
-        { name: "智慧的", attr: "int", value: 25, rarity: 3 },
-        { name: "流星的", attr: "dex", value: 25, rarity: 3 },
-        { name: "雷霆的", attr: "str", value: 28, rarity: 3 },
-        { name: "聖光的", attr: "int", value: 28, rarity: 3 },
-        { name: "神速的", attr: "dex", value: 28, rarity: 3 },
-        { name: "鋼鐵意志的", attr: "con", value: 28, rarity: 3 },
-        { name: "深淵的", attr: "int", value: 20, rarity: 3 },
-        { name: "熔岩的", attr: "str", value: 20, rarity: 3 },
-        { name: "狂風的", attr: "dex", value: 20, rarity: 3 },
-        { name: "不朽的", attr: "con", value: 20, rarity: 3 },
+        /* 敏捷系 (Dex) - 20組 */
+        { name: "輕盈的", attr: "dex", value: 1 }, { name: "簡潔的", attr: "dex", value: 2 },
+        { name: "疾風的", attr: "dex", value: 4 }, { name: "靈巧的", attr: "dex", value: 6 },
+        { name: "迅捷的", attr: "dex", value: 9 }, { name: "幻影的", attr: "dex", value: 13 },
+        { name: "閃爍的", attr: "dex", value: 18 }, { name: "追風的", attr: "dex", value: 24 },
+        { name: "無影的", attr: "dex", value: 32 }, { name: "破空的", attr: "dex", value: 42 },
+        { name: "流星的", attr: "dex", value: 55 }, { name: "瞬身的", attr: "dex", value: 70 },
+        { name: "虛空的", attr: "dex", value: 90 }, { name: "神速的", attr: "dex", value: 120 },
+        { name: "自在的", attr: "dex", value: 160 }, { name: "逍遙的", attr: "dex", value: 210 },
+        { name: "騰雲的", attr: "dex", value: 280 }, { name: "九天的", attr: "dex", value: 360 },
+        { name: "光速的", attr: "dex", value: 480 }, { name: "太虛的", attr: "dex", value: 650 },
 
-        /* 極品 (61-75) */
-        { name: "毀滅之", attr: "str", value: 45, rarity: 4 },
-        { name: "不朽之", attr: "con", value: 45, rarity: 4 },
-        { name: "時空之", attr: "dex", value: 45, rarity: 4 },
-        { name: "真理之", attr: "int", value: 45, rarity: 4 },
-        { name: "巨龍的", attr: "str", value: 50, rarity: 4 },
-        { name: "泰坦的", attr: "con", value: 50, rarity: 4 },
-        { name: "先知的", attr: "int", value: 50, rarity: 4 },
-        { name: "影流的", attr: "dex", value: 50, rarity: 4 },
-        { name: "災厄的", attr: "str", value: 55, rarity: 4 },
-        { name: "神蹟的", attr: "con", value: 55, rarity: 4 },
-        { name: "星辰的", attr: "int", value: 55, rarity: 4 },
-        { name: "月影的", attr: "dex", value: 55, rarity: 4 },
-        { name: "霸主的", attr: "str", value: 60, rarity: 4 },
-        { name: "至尊的", attr: "con", value: 60, rarity: 4 },
-        { name: "賢者的", attr: "int", value: 60, rarity: 4 },
-
-        /* 神品 (76-80) */
-        { name: "混沌·", attr: "str", value: 120, rarity: 5 },
-        { name: "鴻蒙·", attr: "con", value: 120, rarity: 5 },
-        { name: "天道·", attr: "int", value: 120, rarity: 5 },
-        { name: "太虛·", attr: "dex", value: 120, rarity: 5 },
-        { name: "【弒神】", attr: "str", value: 150, rarity: 5 }
+        /* 悟性系 (Int) - 20組 */
+        { name: "沉穩的", attr: "int", value: 1 }, { name: "寧靜的", attr: "int", value: 2 },
+        { name: "睿智的", attr: "int", value: 4 }, { name: "聰慧的", attr: "int", value: 6 },
+        { name: "博學的", attr: "int", value: 9 }, { name: "靈動的", attr: "int", value: 13 },
+        { name: "通透的", attr: "int", value: 18 }, { name: "覺醒的", attr: "int", value: 24 },
+        { name: "明鏡的", attr: "int", value: 32 }, { name: "觀照的", attr: "int", value: 42 },
+        { name: "悟道的", attr: "int", value: 55 }, { name: "知命的", attr: "int", value: 70 },
+        { name: "通天的", attr: "int", value: 90 }, { name: "造化的", attr: "int", value: 120 },
+        { name: "因果的", attr: "int", value: 160 }, { name: "輪迴的", attr: "int", value: 210 },
+        { name: "鴻蒙的", attr: "int", value: 280 }, { name: "玄黃的", attr: "int", value: 360 },
+        { name: "太極的", attr: "int", value: 480 }, { name: "歸一的", attr: "int", value: 650 }
     ],
 
-    // --- 妖獸清單 ---
-    MONSTERS: {
-        "m001": { name: "草泥兔", hp: 30, atk: 5, gold: 10, exp: 5, icon: "🐇" },
-        "m002": { name: "偷雞賊", hp: 50, atk: 8, gold: 15, exp: 10, icon: "👤" },
-        "m003": { name: "青青草原蛇", hp: 80, atk: 12, gold: 25, exp: 20, icon: "🐍" },
-        "m004": { name: "狂暴野豬", hp: 150, atk: 25, gold: 50, exp: 45, icon: "🐗" },
-        "m005": { name: "護山神犬", hp: 500, atk: 60, gold: 200, exp: 150, icon: "🐕", isBoss: true },
-        "m101": { name: "烈火鳥", hp: 800, atk: 120, gold: 500, exp: 400, icon: "🐦" },
-        "m102": { name: "熔岩巨人", hp: 2000, atk: 250, gold: 1200, exp: 1000, icon: "🗿" },
-        "m105": { name: "地獄火領主", hp: 8000, atk: 600, gold: 5000, exp: 4500, icon: "🔥", isBoss: true }
-    },
-
-    // --- 區域與地圖配置 ---
+    // 3. 區域與地圖數據
     REGIONS: {
-        "qingyun": {
+        "region_01": {
+            id: "region_01",
             name: "青雲州",
             bossId: "m005",
-            nextRegion: "canglan",
+            nextRegion: "region_02",
             maps: [
-                { id: 0, name: "新手村後山", level: 1, monsterIds: ["m001", "m002"], drops: ["粗鐵劍", "布衣"] },
-                { id: 1, name: "迷霧森林", level: 5, monsterIds: ["m002", "m003"], drops: ["精鐵劍", "皮甲"] },
-                { id: 2, name: "野豬林", level: 10, monsterIds: ["m003", "m004"], drops: ["青鋼劍", "鎖子甲"] }
+                { id: 101, name: "新手村後山", level: 1, minRealm: 0, monsterIds: ["m001", "m002"], drops: ["鐵劍", "布衣"] },
+                { id: 102, name: "青雲古道", level: 5, minRealm: 1, monsterIds: ["m002", "m003"], drops: ["精鋼劍", "青鋼甲"] },
+                { id: 103, name: "迷霧森林", level: 10, minRealm: 2, monsterIds: ["m003", "m004"], drops: ["殘卷：烈焰斬-1", "殘卷：烈焰斬-2", "殘卷：烈焰斬-3"] }
             ]
         },
-        "canglan": {
+        "region_02": {
+            id: "region_02",
             name: "滄瀾州",
-            bossId: "m105",
-            nextRegion: null,
+            bossId: "m010",
+            nextRegion: "region_03",
             maps: [
-                { id: 10, name: "烈焰谷", level: 20, monsterIds: ["m101"], drops: ["流火劍", "紅蓮甲"] },
-                { id: 11, name: "熔岩深淵", level: 30, monsterIds: ["m102"], drops: ["重玄劍", "岩神鎧"] }
+                { id: 201, name: "滄瀾江畔", level: 15, minRealm: 3, monsterIds: ["m006", "m007"], drops: ["殘卷：回春術-1", "殘卷：回春術-2"] },
+                { id: 202, name: "沉船遺跡", level: 20, minRealm: 4, monsterIds: ["m007", "m008"], drops: ["殘卷：回春術-3"] },
+                { id: 203, name: "怒浪礁石", level: 25, minRealm: 5, monsterIds: ["m009"], drops: ["雲瀾道袍"] }
             ]
         }
     },
 
-    // --- 數據檢索輔助函數 (加固關鍵) ---
-    getMonster: function(id) {
-        return this.MONSTERS[id] || { name: "未知怪物", hp: 1, atk: 0, gold: 0, exp: 0 };
+    // 4. 妖獸數據
+    MONSTERS: {
+        "m001": { id: "m001", name: "野兔", icon: "🐇", hp: 30, atk: 5, exp: 10, gold: 5 },
+        "m002": { id: "m002", name: "山雞", icon: "🐔", hp: 50, atk: 8, exp: 15, gold: 8 },
+        "m003": { id: "m003", name: "灰狼", icon: "🐺", hp: 120, atk: 18, exp: 40, gold: 20 },
+        "m004": { id: "m004", name: "猛虎", icon: "🐯", hp: 250, atk: 35, exp: 80, gold: 50 },
+        "m005": { id: "m005", name: "青雲虎王", icon: "🐯", hp: 1500, atk: 120, exp: 500, gold: 200, isBoss: true },
+        "m006": { id: "m006", name: "水蛇", icon: "🐍", hp: 400, atk: 60, exp: 150, gold: 80 },
+        "m007": { id: "m007", name: "巨蟹", icon: "🦀", hp: 600, atk: 85, exp: 250, gold: 120 },
+        "m008": { id: "m008", name: "劍魚", icon: "🐟", hp: 850, atk: 110, exp: 400, gold: 180 },
+        "m009": { id: "m009", name: "怒浪蛟龍", icon: "🐲", hp: 2000, atk: 220, exp: 1000, gold: 500 },
+        "m010": { id: "m010", name: "滄瀾龍子", icon: "🐲", hp: 10000, atk: 800, exp: 5000, gold: 2500, isBoss: true }
     },
 
-    getRegion: function(id) {
-        return this.REGIONS[id] || null;
+    // 5. 神通與碎片
+    SKILLS: {
+        "s001": { id: "s001", name: "烈焰斬", desc: "造成 150% 攻擊力的火屬性傷害。", baseDmg: 1.5 },
+        "s002": { id: "s002", name: "回春術", desc: "每秒回復 10 點生命值。", baseHeal: 10 },
+        "s003": { id: "s003", name: "破天一劍", desc: "無視防禦造成 250% 傷害。", baseDmg: 2.5 }
     },
 
-    getMap: function(regionId, mapId) {
-        const region = this.getRegion(regionId);
-        if (region) {
-            return region.maps.find(m => m.id === mapId);
-        }
-        return null;
-    }
+    FRAGMENTS: {
+        "烈焰斬": { targetId: "s001", sellPrice: 50 },
+        "回春術": { targetId: "s002", sellPrice: 80 },
+        "破天一劍": { targetId: "s003", sellPrice: 200 }
+    },
+
+    getRegion: function(id) { return this.REGIONS[id] || null; },
+    getMonster: function(id) { return this.MONSTERS[id] || null; }
 };
 
-console.log("✅ [V1.6.0] data.js 法則資料庫已優化，支持高速索引檢索。");
+console.log("✅ [V1.7.0] data.js 完整版已就緒，絕無略過。");
