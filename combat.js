@@ -184,7 +184,7 @@ const Combat = {
 
         // 如果當前標籤不是 'all' 且不符合類型，則隱藏 (這部分配合 UI_Battle 控制)
         logBox.prepend(div);
-
+        if (typeof UI_Battle !== 'undefined') UI_Battle.refreshLogVisibility();
         // 限制日誌數量防止卡頓
         if (logBox.children.length > 50) {
             logBox.lastChild.remove();
