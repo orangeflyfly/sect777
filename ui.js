@@ -1,154 +1,145 @@
-/**
- * 宗門修仙錄 - 畫面渲染模組 (ui.js)
- */
 class UIManager {
-    constructor(core) { 
-        this.core = core; 
-        this.tab = 'all'; 
+    constructor(core) {
+        this.core = core;
+        this.tab = 'all';
     }
 
-    // 1. 更新血量與數值 (修復了怪物消失時的顯示)
+    // 更新血條與基本數值
     updateHPs(p, m) {
-        // 玩家部分
-        const pBar = document.getElementById('p-hp-bar');
-        const pTxt = document.getElementById('p-hp-txt');
-        if (pBar && pTxt) {
-            pBar.style.width = (p.battle.hp / p.battle.maxHp * 100) + "%";
-            pTxt.innerText = `${Math.floor(p.battle.hp)} / ${Math.floor(p.battle.maxHp)}`;
-        }
-
+        document.getElementById('p-hp-bar').style.width = (p.battle.hp / p.battle.maxHp * 100) + "%";
+        document.getElementById('p-hp-txt').innerText = `${Math.floor(p.battle.hp)} / ${Math.floor(p.battle.maxHp)}`;
         document.getElementById('val-atk').innerText = Math.floor(p.battle.atk);
         document.getElementById('val-def').innerText = Math.floor(p.battle.def);
         document.getElementById('val-power').innerText = p.battle.power;
-
-        // 怪物部分
+        
         const mName = document.getElementById('monster-name');
         const mBar = document.getElementById('m-hp-bar');
         const mTxt = document.getElementById('m-hp-txt');
-
-        if (m && m.hp > 0) {
+        if (m) {
             mBar.style.width = (m.hp / m.maxHp * 100) + "%";
             mTxt.innerText = `${Math.floor(m.hp)} / ${Math.floor(m.maxHp)}`;
             mName.innerText = m.name;
         } else {
             mBar.style.width = "0%";
-            mTxt.innerText = "0 / 0";
-            mName.innerText = "尋找對手中...";
+            mTxt.innerText = "搜尋中...";
+            mName.innerText = "歷練中...";
         }
     }
 
-    renderMonster(m) { 
-        document.getElementById('monster-pic').innerText = m ? m.pic : "⏳"; 
-    }
+    renderMonster(m) { document.getElementById('monster-pic').innerText = m ? m.pic : "⏳"; }
 
     toast(msg, color = 'gold') {
-        const div = document.createElement('div'); 
-        div.className = 'toast'; 
-        div.style.color = color; 
-        div.innerText = msg;
-        document.getElementById('toast-container').appendChild(div); 
+        const div = document.createElement('div');
+        div.className = 'toast'; div.style.color = color; div.innerText = msg;
+        document.getElementById('toast-container').appendChild(div);
         setTimeout(() => div.remove(), 1500);
     }
 
     log(msg, type = 'system', color = '#eee') {
-        const list = document.getElementById('log-list'); 
+        const list = document.getElementById('log-list');
         const div = document.createElement('div');
-        div.className = `log-item log-type-${type}`; 
+        div.className = `log-item log-type-${type}`;
         div.style.color = color;
-        div.innerHTML = `[${new Date().toLocaleTimeString([], {hour12:false})}] ${msg}`;
-        
+        div.innerHTML = `[${new Date().toLocaleTimeString([], { hour12: false })}] ${msg}`;
         if (this.tab !== 'all' && this.tab !== type) div.style.display = 'none';
-        list.prepend(div); 
+        list.prepend(div);
         if (list.children.length > 50) list.lastChild.remove();
     }
 
-    // 2. 修復：分頁標籤點擊後會正確發亮
     switchLog(tab) {
         this.tab = tab;
-        // 先去掉所有標籤的亮光
-        const tabs = document.querySelectorAll('.log-tab');
-        tabs.forEach(t => t.classList.remove('active'));
-        
-        // 讓點擊的那個標籤亮起來 (根據文字判定)
-        const tabNames = { all: '全部', combat: '戰鬥', loot: '獲取', exp: '修為' };
-        tabs.forEach(t => {
-            if (t.innerText === tabNames[tab]) t.classList.add('active');
-        });
-
+        document.querySelectorAll('.log-tab').forEach(t => t.classList.remove('active'));
         const items = document.getElementById('log-list').children;
-        for (let i of items) {
-            i.style.display = (tab === 'all' || i.classList.contains(`log-type-${tab}`)) ? 'block' : 'none';
-        }
+        for (let i of items) i.style.display = (tab === 'all' || i.classList.contains(`log-type-${tab}`)) ? 'block' : 'none';
     }
 
     switchPage(id) {
         document.querySelectorAll('.stage').forEach(s => s.style.display = 'none');
-        document.getElementById(`p-${id}`).style.display = 'flex'; 
+        document.getElementById(`p-${id}`).style.display = 'flex';
         this.renderAll();
     }
 
+    // 總渲染：補回所有缺失細節
     renderAll() {
         const p = this.core.player;
-        const rarityName = GAME_DATA.RARITY[Math.min(4, Math.floor(p.data.lv/10))].n;
-        document.getElementById('val-level').innerText = `境界：${rarityName} (Lv.${p.data.lv})`;
+        document.getElementById('val-level').innerText = `境界：${GAME_DATA.RARITY[Math.min(4, Math.floor(p.data.lv / 10))].n} (Lv.${p.data.lv})`;
         document.getElementById('val-money').innerText = `🪙 ${p.data.money}`;
         document.getElementById('val-exp-bar').style.width = (p.data.exp / (p.data.lv * 100) * 100) + "%";
-        this.renderBag(p); 
-        this.renderStats(p); 
-        this.renderMaps(p);
+        
+        this.renderMapDropdown(p);
+        this.renderActiveSkills(p);
+        this.renderBag(p);
+        this.renderDetailedStats(p);
+        this.renderStats(p); // 基礎加點
+    }
+
+    // 1. 地圖下拉選單 (回歸)
+    renderMapDropdown(p) {
+        const select = document.getElementById('map-select-dropdown');
+        if (select.children.length > 0) return; // 避免重複填充
+        GAME_DATA.MAPS.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.innerText = `${m.name} (Lv.${m.lv})`;
+            if (p.data.mapId === m.id) opt.selected = true;
+            select.appendChild(opt);
+        });
+    }
+
+    // 2. 戰鬥功法格子 (回歸)
+    renderActiveSkills(p) {
+        const container = document.getElementById('active-skill-slots');
+        container.innerHTML = '';
+        p.data.skills.forEach(id => {
+            const slot = document.createElement('div');
+            slot.className = 'skill-slot-mini' + (id !== null ? ' equipped' : '');
+            if (id !== null) {
+                const s = GAME_DATA.SKILLS[id];
+                slot.innerText = s.type === 'passive' ? '🧘' : '🔥';
+                slot.title = s.name;
+            }
+            container.appendChild(slot);
+        });
+    }
+
+    // 3. 詳細屬性列表 (回歸)
+    renderDetailedStats(p) {
+        const list = document.getElementById('detail-stats-list');
+        const b = p.battle;
+        list.innerHTML = `
+            <div class="stat-row"><span>閃避率</span><span class="stat-val">${(b.dodge * 100).toFixed(1)}%</span></div>
+            <div class="stat-row"><span>吸血</span><span class="stat-val">${(b.lifeSteal * 100).toFixed(0)}%</span></div>
+            <div class="stat-row"><span>秒回血</span><span class="stat-val">${(p.data.baseStats.vit * 0.1 + b.regen).toFixed(1)}</span></div>
+            <div class="stat-row"><span>天道保底</span><span class="stat-val">${(b.dmgFloor * 100).toFixed(1)}%</span></div>
+        `;
     }
 
     renderBag(p) {
-        const grid = document.getElementById('bag-grid'); 
-        grid.innerHTML = '';
+        const grid = document.getElementById('bag-grid'); grid.innerHTML = '';
         document.getElementById('bag-count').innerText = p.data.bag.length;
         p.data.bag.forEach((item, i) => {
-            const slot = document.createElement('div'); 
+            const slot = document.createElement('div');
             slot.className = `item-slot rarity-${item.rarity || 0}`;
             slot.innerText = item.itemType === 'equip' ? (item.type === 'weapon' ? '🗡️' : '👕') : '📜';
-            slot.onclick = () => this.core.inventory.equip(i); 
+            slot.onclick = () => this.core.inventory.equip(i);
             grid.appendChild(slot);
         });
     }
 
-    renderMaps(p) {
-        const list = document.getElementById('map-list'); 
-        list.innerHTML = '';
-        GAME_DATA.MAPS.forEach(m => {
-            const btn = document.createElement('button'); 
-            btn.innerText = `${m.name} (建議 Lv.${m.lv})`;
-            btn.style.margin = "5px";
-            btn.style.color = p.data.mapId === m.id ? "gold" : "white";
-            btn.onclick = () => { 
-                p.data.mapId = m.id; 
-                this.toast(`前往：${m.name}`); 
-                this.renderAll(); 
-            };
-            list.appendChild(btn);
-        });
-    }
-
-    // 3. 修復：內部的加點按鈕指向更穩定的 this.core
     renderStats(p) {
         document.getElementById('val-pts').innerText = p.data.pts;
-        const list = document.getElementById('stat-list'); 
-        list.innerHTML = '';
+        const list = document.getElementById('stat-list'); list.innerHTML = '';
         const names = { str: '力量', vit: '體質', agi: '身法', int: '悟性' };
-        
-        Object.entries(p.data.baseStats).forEach(([k, v]) => {
-            const div = document.createElement('div'); 
-            div.style.padding = "5px 0";
-            div.innerHTML = `${names[k]}: <b>${v}</b> <button onclick="_X_CORE.addStat('${k}')">＋</button>`;
+        for (let [k, v] of Object.entries(p.data.baseStats)) {
+            const div = document.createElement('div');
+            div.className = 'stat-item';
+            div.innerHTML = `${names[k]}: <b>${v}</b> <button class="add-btn" onclick="_X_CORE.addStat('${k}')">＋</button>`;
             list.appendChild(div);
-        });
-
-        const weaponName = p.data.equips.weapon ? p.data.equips.weapon.name : '空';
-        const bodyName = p.data.equips.body ? p.data.equips.body.name : '空';
-        
+        }
         document.getElementById('equipment-slots').innerHTML = `
-            <div style="padding:10px; background:#222; border-radius:5px;">
-                武器: <span style="color:var(--gold)" onclick="_X_CORE.inventory.unequip('weapon')">${weaponName}</span> | 
-                法衣: <span style="color:var(--gold)" onclick="_X_CORE.inventory.unequip('body')">${bodyName}</span>
+            <div style="display:flex; gap:10px;">
+                <button onclick="_X_CORE.inventory.unequip('weapon')">卸下武器: ${p.data.equips.weapon ? p.data.equips.weapon.name : '空'}</button>
+                <button onclick="_X_CORE.inventory.unequip('body')">卸下法衣: ${p.data.equips.body ? p.data.equips.body.name : '空'}</button>
             </div>
         `;
     }
