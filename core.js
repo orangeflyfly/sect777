@@ -1,135 +1,98 @@
 /**
- * 宗門修仙錄 - 核心啟動器 (core.js) V1.4.1
- * 職責：大陣總調度、自動化循環、屬性分配、地圖切換
+ * V1.5 core.js
+ * 職責：遊戲主入口、檔案關聯初始化、介面切換邏輯、自動存檔定時器。
+ * 狀態：全量完整版，負責連結所有模組。
  */
-var _X_CORE = null;
 
-function GameCore() {
-    _X_CORE = this;
-    
-    // 初始化各個子模組
-    this.player = new Player(this);
-    this.inventory = new Inventory(this);
-    this.combat = new Combat(this);
-    this.ui = new UIManager(this);
-    this.shop = new Shop(this);
+const GameCore = {
+    // --- 1. 大陣啟動 (1.5 新增：模組化初始化流程) ---
+    init: function() {
+        console.log("🌀 正在啟動 V1.5 大乘飛升大陣...");
 
-    this.auto = true;
-    this.timer = null;
-}
+        // A. 讀取存檔並嘗試獲取離線收益
+        const hasSave = player.load();
+        
+        // B. 啟動戰鬥引擎 (內含離線結算彈窗邏輯)
+        Combat.init();
 
-/**
- * 啟動大陣：掛載地圖選單並開啟時間軸
- */
-GameCore.prototype.init = function() {
-    var self = this;
-    var sel = document.getElementById('map-select-dropdown');
-    
-    if (sel) {
-        // 清空並重新填入地圖
-        sel.innerHTML = "";
-        for (var i = 0; i < GAME_DATA.MAPS.length; i++) {
-            var m = GAME_DATA.MAPS[i];
-            var opt = document.createElement('option');
-            opt.value = m.id;
-            opt.innerText = m.name + " (Lv." + m.lv + ")";
-            if (m.id === self.player.data.mapId) {
-                opt.selected = true;
+        // C. 初始化介面顯示
+        this.switchTab('battle'); 
+        
+        // D. 啟動 UI 刷新定時器 (確保數據強同步)
+        this.startUIUpdater();
+
+        // E. 啟動自動存檔 (每 30 秒一次)
+        this.startAutoSave();
+
+        console.log("✅ 大陣運作正常。歡迎回來，" + player.data.name);
+    },
+
+    // --- 2. 介面切換邏輯 (1.4.1 繼承並優化) ---
+    switchTab: function(tabId) {
+        // 隱藏所有畫面
+        const screens = ['battle-screen', 'stats-screen', 'bag-screen', 'shop-screen'];
+        screens.forEach(s => {
+            const el = document.getElementById(s);
+            if (el) el.style.display = 'none';
+        });
+
+        // 顯示目標畫面並執行對應渲染
+        const target = document.getElementById(tabId + '-screen');
+        if (target) {
+            target.style.display = 'block';
+            
+            // 根據切換的標籤，執行該模組的渲染函式
+            switch(tabId) {
+                case 'stats': UI_Stats.renderStats(); break;
+                case 'bag':   UI_Bag.renderBag(); break;
+                case 'shop':  UI_Shop.renderShop(); break;
+                case 'battle': /* Combat 模組會自動更新 */ break;
             }
-            sel.appendChild(opt);
         }
-    }
 
-    // 渲染全介面
-    this.ui.renderAll();
-    
-    // 生成第一隻妖獸
-    this.combat.spawn();
+        // 更新導航按鈕樣式 (1.5 視覺項)
+        this.updateNavButtons(tabId);
+    },
 
-    // 啟動主計時器 (每秒一次)
-    if (this.timer) {
-        clearInterval(this.timer);
-    }
-    this.timer = setInterval(function() {
-        self.update();
-    }, GAME_DATA.CONFIG.REGEN_TICK);
-};
+    updateNavButtons: function(activeTab) {
+        const btns = document.querySelectorAll('.nav-btn');
+        btns.forEach(btn => {
+            if (btn.getAttribute('onclick').includes(activeTab)) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    },
 
-/**
- * 陣法脈動：處理自動歷練與秒回邏輯
- */
-GameCore.prototype.update = function() {
-    // 1. 自動歷練邏輯
-    if (this.auto && !this.player.battle.isDead) {
-        // 若當前無怪，嘗試尋找新妖獸
-        if (!this.combat.m || this.combat.m.hp <= 0) {
-            this.combat.spawn();
-        } else {
-            // 自動攻擊 (傳入 false 代表非手動點擊)
-            this.combat.playerAtk(false);
-        }
-    }
+    // --- 3. 全局計時器 (1.5 核心：數據強同步) ---
+    startUIUpdater: function() {
+        // 每 500 毫秒強制刷新一次當前顯示的介面，確保數值不神隱
+        setInterval(() => {
+            const activeScreen = this.getActiveScreen();
+            if (activeScreen === 'stats') UI_Stats.renderStats();
+            if (activeScreen === 'bag') UI_Bag.renderBag();
+            // 戰鬥畫面由 Combat 模組獨立推動，故不在此重複渲染
+        }, 500);
+    },
 
-    // 2. 生命回氣邏輯 (秒回)
-    if (this.player.battle.hp < this.player.battle.maxHp && !this.player.battle.isDead) {
-        var regenVal = this.player.battle.regen || 0;
-        this.player.battle.hp = Math.min(this.player.battle.maxHp, this.player.battle.hp + regenVal);
-        // 更新血條顯示
-        this.ui.updateHPs(this.player, this.combat.m);
-    }
-};
+    getActiveScreen: function() {
+        if (document.getElementById('stats-screen').style.display === 'block') return 'stats';
+        if (document.getElementById('bag-screen').style.display === 'block') return 'bag';
+        if (document.getElementById('shop-screen').style.display === 'block') return 'shop';
+        return 'battle';
+    },
 
-/**
- * 挪移大陣：更換歷練地圖
- */
-GameCore.prototype.changeMap = function(id) {
-    var mapId = parseInt(id);
-    this.player.data.mapId = mapId;
-    
-    // 在日誌留下傳送紀錄
-    this.ui.log("轉場前往：【" + GAME_DATA.MAPS[mapId].name + "】", 'system', 'cyan');
-    
-    // 強制重置戰鬥狀態，防止舊怪遺留
-    this.combat.m = null;
-    this.player.save();
-    
-    // 重新生成新區域妖獸
-    this.combat.spawn();
-    this.ui.renderAll();
-};
-
-/**
- * 潛能開發：手動分配屬性點
- */
-GameCore.prototype.addStat = function(key) {
-    if (this.player.data.pts > 0) {
-        this.player.data.pts--;
-        this.player.data.baseStats[key]++;
-        
-        // 數值洗髓並重新渲染
-        this.player.refresh();
-        this.player.save();
-        this.ui.renderAll();
-        
-        this.ui.toast("靈覺提升！", "gold");
-    } else {
-        this.ui.toast("潛能不足，多加修煉。", "red");
+    // --- 4. 自動存檔系統 ---
+    startAutoSave: function() {
+        setInterval(() => {
+            player.save();
+            console.log("💾 靈力穩固，自動存檔完成。");
+        }, 30000); // 30秒
     }
 };
 
-/**
- * 自動/手動開關
- */
-GameCore.prototype.toggleAuto = function(val) {
-    this.auto = val;
-    this.ui.log(val ? "開啟【自動歷練】模式" : "關閉【自動歷練】，進入手動修煉", "system");
+// --- 最終宣告：網頁載入後立即啟動 ---
+window.onload = () => {
+    GameCore.init();
 };
-
-/**
- * 萬脈歸宗：當天機（網頁）加載完成，啟動大陣
- */
-document.addEventListener('DOMContentLoaded', function() {
-    // 建立唯一核心實例
-    var game = new GameCore();
-    game.init();
-});
