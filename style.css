@@ -1,199 +1,163 @@
-/* ============================================================
-   V1.6.0 style.css - 宗門修仙錄：完美對齊加固版
-   職責：視覺氛圍、品級發光、局部更新過渡、滾動條美化
-   ============================================================ */
+/**
+ * V1.7.0 style.css
+ * 職責：視覺氛圍加固、動態特效、摺疊交互、手機版 UI 優化。
+ */
 
-/* --- 1. 全域變數與滾動條 --- */
+/* --- 1. 基礎核心與玻璃擬態 --- */
 :root {
     --bg-dark: #0a0a0a;
-    --bg-panel: #161616;
+    --bg-panel: rgba(22, 22, 22, 0.85);
     --gold: #d4af37;
-    --gold-glow: rgba(212, 175, 55, 0.4);
-    --silver: #bdc3c7;
-    --hp-red: linear-gradient(90deg, #c0392b, #e74c3c);
-    --exp-green: linear-gradient(90deg, #27ae60, #2ecc71);
+    --gold-glow: rgba(212, 175, 55, 0.5);
+    --hp-red: #c0392b;
+    --exp-green: #27ae60;
     --common: #95a5a6;
     --uncommon: #2ecc71;
     --rare: #3498db;
     --epic: #9b59b6;
     --legend: #f1c40f;
     --text-main: #e0e0e0;
-    --text-dim: #888;
 }
 
-/* 自定義暗金滾動條 */
 ::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: #000; }
-::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: var(--gold); }
-
-* {
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
-    user-select: none;
-    outline: none;
-}
+::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
 
 body {
     background-color: #000;
     color: var(--text-main);
-    font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+    font-family: "Microsoft JhengHei", sans-serif;
     margin: 0; padding: 0;
-    display: flex; justify-content: center; align-items: center;
-    height: 100vh; overflow: hidden;
+    display: flex; justify-content: center; height: 100vh; overflow: hidden;
 }
 
 #game-container {
     width: 100vw; max-width: 500px; height: 100vh;
-    background: var(--bg-dark);
+    background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
     display: flex; flex-direction: column; position: relative;
     border-left: 1px solid #222; border-right: 1px solid #222;
 }
 
-/* --- 2. 狀態欄與進度條 --- */
-.header-info {
-    padding: 15px 20px;
-    background: linear-gradient(180deg, #000 0%, #111 100%);
-    border-bottom: 2px solid var(--gold);
-    z-index: 1000;
+/* --- 2. 戰鬥浮動傷害數字 (V1.7 新增) --- */
+.dmg-popup {
+    position: absolute;
+    pointer-events: none;
+    font-weight: 900;
+    font-family: 'Arial Black', sans-serif;
+    z-index: 2000;
+    animation: dmg-float 1s ease-out forwards;
+    text-shadow: 2px 2px 0px #000;
 }
 
-.header-line {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 10px;
+.dmg-normal { color: #fff; font-size: 1.2em; }
+.dmg-crit { 
+    color: #f1c40f; font-size: 2em; 
+    text-shadow: 0 0 10px rgba(241, 196, 15, 0.8), 2px 2px 0px #000;
+}
+.dmg-monster { color: #ff4d4d; font-size: 1.1em; }
+
+@keyframes dmg-float {
+    0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
+    20% { transform: translate(-50%, -40px) scale(1.2); opacity: 1; }
+    100% { transform: translate(-50%, -100px) scale(1); opacity: 0; }
 }
 
-.realm-text {
-    color: var(--gold); font-weight: bold; font-size: 1.15em;
-    text-shadow: 0 0 8px var(--gold-glow);
-}
-
-.coin-text { color: #f1c40f; font-weight: bold; font-size: 1.1em; }
-
-.bar-container {
-    height: 12px; background: #111; border-radius: 6px;
-    border: 1px solid #333; position: relative;
-    margin-bottom: 8px; overflow: hidden;
-}
-
-.bar-fill {
-    height: 100%; width: 0%;
-    transition: width 0.3s ease-out; /* 加快響應感 */
-}
-
-.bar-fill.hp { background: var(--hp-red); }
-.bar-fill.exp { background: var(--exp-green); }
-
-.bar-text {
-    position: absolute; width: 100%; top: 0; text-align: center;
-    font-size: 9px; line-height: 12px; color: #fff; font-weight: bold;
-    text-shadow: 1px 1px 2px #000;
-}
-
-/* --- 3. 氣泡訊息 (Toast) --- */
-#toast-container {
-    position: fixed; top: 20%; left: 50%;
-    transform: translateX(-50%); z-index: 9999;
-}
-
-.toast {
-    background: rgba(0, 0, 0, 0.9); color: var(--gold);
-    padding: 10px 20px; border-radius: 4px; border-left: 4px solid var(--gold);
-    margin-bottom: 8px; font-size: 13px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    animation: toast-fly 2.5s forwards;
-}
-
-@keyframes toast-fly {
-    0% { opacity: 0; transform: translateY(20px); }
-    10% { opacity: 1; transform: translateY(0); }
-    90% { opacity: 1; }
-    100% { opacity: 0; transform: translateY(-20px); }
-}
-
-/* --- 4. 分頁切換 (與 JS 高度對齊) --- */
-.stage {
-    flex: 1; display: none;
-    flex-direction: column; padding: 15px; overflow-y: auto;
-}
-
-.stage.active {
-    display: flex !important;
-    animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* --- 5. 戰鬥核心視覺 --- */
+/* --- 3. 怪物展示與消散動畫 --- */
 .monster-card {
-    background: var(--bg-panel); border: 1px solid #333;
-    border-radius: 12px; padding: 25px; text-align: center;
-    transition: 0.2s;
+    background: var(--bg-panel);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 16px; padding: 25px; text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    transition: transform 0.3s, opacity 0.3s;
 }
 
-.monster-icon {
-    font-size: 4em; margin-bottom: 10px; cursor: pointer;
-    transition: transform 0.1s;
+/* 怪物死亡消散 */
+.monster-die {
+    opacity: 0; transform: scale(0.8) translateY(20px);
+    filter: grayscale(1) brightness(0.5);
 }
 
-.monster-icon:active { transform: scale(0.85); }
-
-/* 打擊抖動動畫 */
-.shake { animation: monster-shake 0.15s ease-in-out; }
-@keyframes monster-shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-5px); }
-    75% { transform: translateX(5px); }
+/* 搜尋中提示 */
+.searching-box {
+    padding: 20px; color: var(--gold); font-style: italic;
+    letter-spacing: 2px; animation: pulse 1s infinite;
 }
 
-.boss-active-btn {
-    width: 100%; margin-top: 15px; padding: 12px;
-    background: linear-gradient(135deg, #c0392b, #8e44ad);
-    color: #fff; border: 1px solid var(--legend);
-    border-radius: 8px; font-weight: bold;
-    animation: boss-glow 1s infinite alternate;
+@keyframes pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
 }
 
-@keyframes boss-glow {
-    from { box-shadow: 0 0 5px #c0392b; }
-    to { box-shadow: 0 0 15px #f1c40f; }
+/* --- 4. 日誌系統 (含摺疊交互) --- */
+.log-system {
+    margin-top: 15px; background: rgba(0,0,0,0.8);
+    border: 1px solid #222; border-radius: 10px;
+    position: relative; overflow: hidden;
+    transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* --- 6. 儲物袋網格與品級發光 --- */
-.bag-grid { 
-    display: grid; 
-    grid-template-columns: repeat(5, 1fr); 
-    gap: 8px; 
-    padding: 5px;
+/* 摺疊狀態控制 */
+.log-system.expanded { height: 180px; }
+.log-system.collapsed { height: 45px; }
+
+.log-toggle-btn {
+    position: absolute; right: 10px; top: 8px;
+    background: none; border: none; color: var(--gold);
+    cursor: pointer; z-index: 10; font-size: 14px;
 }
 
-.item-slot {
-    aspect-ratio: 1; background: #111; border: 1px solid #333;
-    border-radius: 6px; display: flex; justify-content: center;
-    align-items: center; font-size: 1.5em; cursor: pointer;
+.log-list { height: calc(100% - 35px); overflow-y: auto; padding: 10px; font-size: 12px; }
+
+/* --- 5. 儲物袋分類 Tab (V1.7 新增) --- */
+.bag-tabs {
+    display: flex; gap: 5px; margin-bottom: 10px;
 }
 
-/* 品級邊框與發光 */
+.bag-tab {
+    flex: 1; padding: 6px; background: #111; border: 1px solid #333;
+    color: #666; font-size: 11px; border-radius: 4px; cursor: pointer;
+}
+
+.bag-tab.active {
+    background: var(--gold); color: #000; border-color: var(--gold);
+    font-weight: bold;
+}
+
+/* --- 6. 裝備欄與修為介面藝術化 --- */
+.equip-circle-layout {
+    display: flex; justify-content: center; align-items: center;
+    padding: 20px; background: radial-gradient(circle, rgba(212,175,55,0.1) 0%, transparent 70%);
+}
+
+.stat-astrolabe {
+    border: 2px solid var(--gold); border-radius: 50%;
+    width: 200px; height: 200px; position: relative;
+    margin: 20px auto; animation: rotate-slow 20s linear infinite;
+}
+
+@keyframes rotate-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* --- 7. 品級發光加固 --- */
 .r-1 { border-color: var(--common); }
 .r-2 { border-color: var(--uncommon); }
-.r-3 { border-color: var(--rare); box-shadow: inset 0 0 5px var(--rare); }
+.r-3 { border-color: var(--rare); box-shadow: inset 0 0 10px var(--rare); }
 .r-4 { border-color: var(--epic); animation: glow-purple 2s infinite alternate; }
 .r-5 { border-color: var(--legend); animation: glow-gold 1.5s infinite alternate; }
 
 @keyframes glow-purple {
-    from { box-shadow: 0 0 2px #9b59b6; }
-    to { box-shadow: 0 0 10px #9b59b6; }
+    from { box-shadow: 0 0 5px #9b59b6; }
+    to { box-shadow: 0 0 20px #9b59b6; }
 }
 
 @keyframes glow-gold {
-    from { box-shadow: 0 0 2px #f1c40f; }
-    to { box-shadow: 0 0 15px #f1c40f; }
+    from { box-shadow: 0 0 5px #f1c40f; }
+    to { box-shadow: 0 0 25px #f1c40f; }
 }
 
-/* --- 7. 導航與交互 --- */
+/* --- 8. 導航欄與 Toast --- */
 .nav-bar {
     height: 70px; background: #000; border-top: 1px solid #222;
     display: flex; justify-content: space-around; align-items: center;
@@ -204,17 +168,4 @@ body {
     display: flex; flex-direction: column; align-items: center; flex: 1;
 }
 
-.nav-btn.active { color: var(--gold); }
-.nav-btn span { font-size: 1.6em; margin-bottom: 2px; }
-
-/* 彈窗樣式 */
-.modal-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.8); z-index: 2000;
-    display: flex; justify-content: center; align-items: center;
-}
-
-.modal-content {
-    background: #111; border: 1px solid var(--gold);
-    border-radius: 12px; padding: 20px; width: 85%; max-width: 350px;
-}
+.nav-btn.active { color: var(--gold); text-shadow: 0 0 10px var(--gold-glow); }
