@@ -3,23 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
-    <title>宗門修仙錄 V1.4.1 - 靈動版</title>
+    <title>宗門修仙錄 V1.5 - 大乘飛升版</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="toast-container"></div>
-
-    <div id="item-modal" class="modal" style="display:none;">
-        <div class="modal-content">
-            <div id="modal-item-name" class="modal-title"></div>
-            <div id="modal-item-desc" class="modal-body"></div>
-            <div class="modal-footer">
-                <button id="modal-action-btn" class="btn-primary">執行</button>
-                <button id="modal-melt-btn" class="btn-danger">熔煉</button>
-                <button onclick="_X_CORE.ui.closeModal()" class="btn-close">關閉</button>
-            </div>
-        </div>
-    </div>
+    <div id="item-modal" class="modal" style="display:none;"></div>
 
     <div id="game-container">
         <header class="header-info">
@@ -33,104 +22,33 @@
             </div>
         </header>
 
-        <section id="p-battle" class="stage">
-            <div class="map-selector">
-                <select id="map-select-dropdown" onchange="_X_CORE.changeMap(this.value)"></select>
-            </div>
-            
-            <div class="battle-main">
-                <div class="monster-card">
-                    <div id="monster-name" class="m-name">搜尋妖獸...</div>
-                    <div class="hp-container monster-hp">
-                        <div id="m-hp-bar" class="hp-bar-fill"></div>
-                        <div id="m-hp-txt" class="hp-text">0 / 0</div>
-                    </div>
-                    <div class="monster-visual">
-                        <div id="monster-pic" class="monster-pic" onclick="_X_CORE.combat.playerAtk(true)">⏳</div>
-                    </div>
-                </div>
+        <section id="battle-screen" class="stage">
+            </section>
 
-                <div class="player-card">
-                    <div class="battle-controls">
-                        <label class="auto-btn">
-                            <input type="checkbox" id="auto-battle-toggle" checked onchange="_X_CORE.toggleAuto(this.checked)">
-                            <span>自動歷練</span>
-                        </label>
-                    </div>
-                    <div class="hp-container player-hp">
-                        <div id="p-hp-bar" class="hp-bar-fill p-hp"></div>
-                        <div id="p-hp-txt" class="hp-text">0 / 0</div>
-                    </div>
-                    <div id="active-skill-slots" class="active-skills-row"></div>
-                </div>
-            </div>
+        <section id="bag-screen" class="stage" style="display:none;">
+            </section>
 
-            <div class="log-system">
-                <div class="log-tabs">
-                    <button class="log-tab active" onclick="_X_CORE.ui.switchLog('all', event)">全部</button>
-                    <button class="log-tab" onclick="_X_CORE.ui.switchLog('combat', event)">鬥法</button>
-                    <button class="log-tab" onclick="_X_CORE.ui.switchLog('loot', event)">獲取</button>
-                </div>
-                <div id="log-list" class="log-list"></div>
-            </div>
-        </section>
+        <section id="stats-screen" class="stage" style="display:none;">
+            </section>
 
-        <section id="p-bag" class="stage" style="display:none;">
-            <div class="bag-header">
-                <h4>儲物袋 (<span id="bag-count">0</span>/50)</h4>
-                <button class="btn-auto-melt" onclick="_X_CORE.inventory.autoMelt()">一鍵熔煉(凡/良)</button>
-            </div>
-            <div class="tab-filters">
-                <button class="filter-btn active" onclick="_X_CORE.ui.setBagFilter('all', event)">全部</button>
-                <button class="filter-btn" onclick="_X_CORE.ui.setBagFilter('equip', event)">法寶</button>
-                <button class="filter-btn" onclick="_X_CORE.ui.setBagFilter('scroll', event)">殘卷</button>
-                <button class="filter-btn" onclick="_X_CORE.ui.setBagFilter('material', event)">材料</button>
-            </div>
-            <div id="bag-grid" class="bag-grid"></div>
-        </section>
-
-        <section id="p-stats" class="stage" style="display:none;">
-            <div class="stats-section">
-                <h4>本命命牌</h4>
-                <div id="detail-stats-list" class="stats-grid-v2"></div>
-                <div class="pts-box">
-                    <span>可用潛能: <b id="val-pts" style="color:gold;">0</b></span>
-                    <div id="stat-list" class="stat-allocate-list"></div>
-                </div>
-            </div>
-            
-            <div class="skills-section">
-                <h4>藏經閣 (點擊裝備)</h4>
-                <div id="learned-skills-list" class="skills-grid"></div>
-            </div>
-
-            <div class="equip-section">
-                <h4>穿戴中</h4>
-                <div id="equipment-slots" class="equip-display"></div>
-            </div>
-        </section>
-
-        <section id="p-shop" class="stage" style="display:none;">
-            <h4>萬寶閣</h4>
-            <div id="shop-list" class="shop-grid"></div>
-        </section>
+        <section id="shop-screen" class="stage" style="display:none;">
+            </section>
 
         <nav class="nav-bar">
-            <button onclick="_X_CORE.ui.switchPage('battle')">⚔️ 歷練</button>
-            <button onclick="_X_CORE.ui.switchPage('bag')">🎒 儲物</button>
-            <button onclick="_X_CORE.ui.switchPage('stats')">🧘 修為</button>
-            <button onclick="_X_CORE.ui.switchPage('shop')">🏪 坊市</button>
+            <button class="nav-btn active" onclick="GameCore.switchTab('battle')">⚔️ 歷練</button>
+            <button class="nav-btn" onclick="GameCore.switchTab('bag')">🎒 儲物</button>
+            <button class="nav-btn" onclick="GameCore.switchTab('stats')">🧘 修為</button>
+            <button class="nav-btn" onclick="GameCore.switchTab('shop')">🏪 坊市</button>
         </nav>
     </div>
 
     <script src="data.js"></script>
-<script src="player.js"></script>
-
-<script src="ui_battle.js"></script>
-<script src="ui_stats.js"></script>
-<script src="ui_bag.js"></script>
-<script src="ui_shop.js"></script>
-
-<script src="core.js"></script>
+    <script src="player.js"></script>
+    <script src="combat.js"></script>
+    <script src="ui_battle.js"></script>
+    <script src="ui_stats.js"></script>
+    <script src="ui_bag.js"></script>
+    <script src="ui_shop.js"></script>
+    <script src="core.js"></script>
 </body>
 </html>
