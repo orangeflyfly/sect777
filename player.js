@@ -1,90 +1,44 @@
 /**
- * 宗門修仙錄 - 玩家模組 (player.js) V1.3.1
- * 職責：管理屬性計算、經驗升級、數據存檔與容錯校正
+ * 宗門修仙錄 - 玩家模組 (player.js) V1.4
  */
 function Player(core) {
     this.core = core;
-    // 讀取存檔並進行數據洗髓，確保新舊版本相容
-    const rawData = this.load();
-    this.data = this.validateData(rawData);
-    this.battle = {}; // 存放戰鬥時的最終計算數值
+    this.data = this.validateData(this.load());
+    this.battle = {}; 
     this.refresh();
 }
 
-/**
- * 數據洗髓：檢查存檔欄位，若有缺失則補齊預設值
- */
 Player.prototype.validateData = function(d) {
-    const base = this.initData();
+    const base = {
+        lv: 1, exp: 0, money: 0, pts: 0,
+        realmIdx: 0, // 境界索引
+        baseStats: { str: 10, vit: 10, agi: 10, int: 10 },
+        equips: { weapon: null, body: null },
+        bag: [],
+        skills: [null, null, null], // 裝備中的 3 個技能槽
+        learnedSkills: [],          // 已學會的技能 ID
+        mapId: 0
+    };
     if (!d) return base;
-    
-    // 確保關鍵欄位存在，防止 forEach 或存取時崩潰
-    d.learnedSkills = d.learnedSkills || [];
-    d.skills = d.skills || [null, null, null];
-    d.baseStats = d.baseStats || base.baseStats;
-    d.equips = d.equips || base.equips;
-    d.bag = d.bag || [];
-    d.pts = (d.pts === undefined) ? base.pts : d.pts;
-    d.money = (d.money === undefined) ? base.money : d.money;
-    d.mapId = (d.mapId === undefined) ? base.mapId : d.mapId;
-    
+    // 確保新舊欄位補齊
+    for (let key in base) { if (d[key] === undefined) d[key] = base[key]; }
     return d;
 };
 
-/**
- * 初始化全新角色數據
- */
-Player.prototype.initData = function() {
-    return {
-        lv: 1,
-        exp: 0,
-        money: 0,
-        pts: 0, // 潛能點
-        baseStats: {
-            str: 10, // 力量 -> 攻擊
-            vit: 10, // 體質 -> 生命、防禦、回血
-            agi: 10, // 身法 -> 閃避
-            int: 10  // 悟性 -> 經驗倍率
-        },
-        equips: {
-            weapon: null,
-            body: null
-        },
-        bag: [],
-        skills: [null, null, null], // 當前裝備的主動技能
-        learnedSkills: [],          // 已參透學會的所有技能 ID
-        mapId: 0
-    };
-};
-
-/**
- * 存檔與讀取邏輯 (使用 V13 專用標籤)
- */
+Player.prototype.save = function() { localStorage.setItem('X_C_S_V14', JSON.stringify(this.data)); };
 Player.prototype.load = function() { 
-    try { 
-        const s = localStorage.getItem('X_C_S_V13'); 
-        return s ? JSON.parse(s) : null; 
-    } catch (e) { 
-        console.error("讀取存檔失敗:", e);
-        return null; 
-    } 
+    try { return JSON.parse(localStorage.getItem('X_C_S_V14')); } catch(e) { return null; } 
 };
 
-Player.prototype.save = function() { 
-    localStorage.setItem('X_C_S_V13', JSON.stringify(this.data)); 
-};
-
-/**
- * 刷新戰鬥屬性 (將基礎屬性、裝備加成、被動功法加成合併計算)
- */
 Player.prototype.refresh = function() {
     const d = this.data;
-    // 基礎換算公式
     const b = {
         atk: d.baseStats.str * 2,
         maxHp: d.baseStats.vit * 20,
         def: d.baseStats.vit * 1,
         dodge: d.baseStats.agi * 0.001,
+        crit: 0.05,        // 基礎暴擊 5%
+        critDmg: 1.5,      // 基礎暴傷 150%
         lifeSteal: 0,
         regen: d.baseStats.vit * 0.1,
         expMul: 1 + (d.baseStats.int * 0.01),
@@ -92,68 +46,77 @@ Player.prototype.refresh = function() {
         isDead: false
     };
 
-    // 加上裝備屬性
-    ['weapon', 'body'].forEach(t => {
-        const e = d.equips[t];
-        if (e) { 
-            if (e.atk) b.atk += e.atk;
-            if (e.def) b.def += e.def;
-            if (e.hp) b.maxHp += e.hp;
-            if (e.dodge) b.dodge += e.dodge;
-            if (e.lifeSteal) b.lifeSteal += e.lifeSteal;
-            if (e.regen) b.regen += e.regen;
-            // 經驗與金錢倍率處理 (假設裝備存的是 1.2 這種形式)
-            if (e.exp) b.expMul += (e.exp - 1);
-            if (e.money) b.moneyMul += (e.money - 1);
+    // 裝備屬性加成 (支持多詞條疊加)
+    ['weapon', 'body'].forEach(slot => {
+        const eq = d.equips[slot];
+        if (eq) {
+            // 1. 本體屬性
+            if (eq.atk) b.atk += eq.atk;
+            if (eq.def) b.def += eq.def;
+            if (eq.hp) b.maxHp += eq.hp;
+            // 2. 多詞條屬性 (affixes 陣列)
+            if (eq.affixes) {
+                eq.affixes.forEach(aff => {
+                    if (aff.atk) b.atk *= aff.atk; // 詞條通常是倍率
+                    if (aff.hp) b.maxHp *= aff.hp;
+                    if (aff.def) b.def *= aff.def;
+                    if (aff.crit) b.crit += aff.crit;
+                    if (aff.dodge) b.dodge += aff.dodge;
+                    if (aff.lifeSteal) b.lifeSteal += aff.lifeSteal;
+                    if (aff.exp) b.expMul *= aff.exp;
+                    if (aff.money) b.moneyMul *= aff.money;
+                });
+            }
         }
     });
 
-    // 加上被動技能加成 (掃描已學會的技能中是否有被動屬性)
-    if (d.learnedSkills) {
-        d.learnedSkills.forEach(sId => {
-            const s = GAME_DATA.SKILLS[sId];
-            if (s && s.type === "passive") {
-                if (s.effect.hpMul) b.maxHp *= s.effect.hpMul;
-                if (s.effect.atkMul) b.atk *= s.effect.atkMul;
-                if (s.effect.defMul) b.def *= s.effect.defMul;
-            }
-        });
-    }
+    // 被動技能加成
+    d.learnedSkills.forEach(sId => {
+        const s = GAME_DATA.SKILLS[sId];
+        if (s && s.type === 'passive') {
+            if (s.effect.hpMul) b.maxHp *= s.effect.hpMul;
+            if (s.effect.regenAdd) b.regen += s.effect.regenAdd;
+        }
+    });
 
-    // 數值取整與下限保護
     b.atk = Math.max(1, Math.floor(b.atk));
     b.maxHp = Math.max(10, Math.floor(b.maxHp));
-    b.def = Math.floor(b.def);
-    
-    // 生命值同步邏輯：若目前生命超過最大生命或未初始化，則設為最大值
-    if (this.battle.hp === undefined || this.battle.hp > b.maxHp) {
-        b.hp = b.maxHp;
-    } else {
-        b.hp = this.battle.hp;
-    }
-
+    b.hp = (this.battle.hp === undefined || this.battle.hp > b.maxHp) ? b.maxHp : this.battle.hp;
     this.battle = b;
 };
 
-/**
- * 獲得經驗值與升級判定
- */
 Player.prototype.addExp = function(v) {
-    const earned = Math.floor(v * this.battle.expMul);
-    this.data.exp += earned;
-    let isLeveledUp = false;
+    const d = this.data;
+    const nextBreak = GAME_DATA.CONFIG.BREAK_LV[d.realmIdx];
     
-    // 升級門檻公式：當前等級 * 100
-    while (this.data.exp >= (this.data.lv * 100)) {
-        this.data.exp -= (this.data.lv * 100);
-        this.data.lv++;
-        this.data.pts += 5; // 每級獲得 5 點潛能點
-        isLeveledUp = true;
+    // 檢查是否到達瓶頸
+    if (d.lv >= nextBreak) {
+        this.core.ui.log(`⚠️ 到達 ${GAME_DATA.REALMS[d.realmIdx]} 瓶頸，請手動突破！`, 'system', 'orange');
+        return false;
     }
-    
-    if (isLeveledUp) {
-        this.refresh();
+
+    d.exp += Math.floor(v * this.battle.expMul);
+    let up = false;
+    while (d.exp >= d.lv * 100) {
+        d.exp -= d.lv * 100;
+        d.lv++;
+        d.pts += 5;
+        up = true;
+        // 升級時再次檢查瓶頸
+        if (d.lv >= GAME_DATA.CONFIG.BREAK_LV[d.realmIdx]) break;
     }
-    this.save();
-    return isLeveledUp;
+    if (up) { this.refresh(); this.save(); }
+    return up;
+};
+
+Player.prototype.breakthrough = function() {
+    const d = this.data;
+    const nextBreak = GAME_DATA.CONFIG.BREAK_LV[d.realmIdx];
+    if (d.lv >= nextBreak) {
+        d.realmIdx++;
+        d.baseStats.str += 10; d.baseStats.vit += 10; // 突破獎勵
+        this.core.ui.toast(`✨ 突破成功！進入 ${GAME_DATA.REALMS[d.realmIdx]}`, 'gold');
+        this.refresh(); this.save();
+        this.core.ui.renderAll();
+    }
 };
