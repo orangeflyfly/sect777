@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
-    <title>宗門修仙錄 V1.5.12 - 穩定重鑄版</title>
+    <title>宗門修仙錄 V1.5.15 - 大乘圓滿版</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -25,13 +25,14 @@
             </div>
         </header>
 
-        <section id="battle-screen" class="stage">
+        <section id="battle-screen" class="stage active">
             <div class="stage-header">
                 <button class="map-btn" onclick="UI_Battle.showMapSelector()">🗺️ 選擇區域</button>
                 <button id="btn-auto-combat" class="auto-btn" onclick="GameCore.toggleAuto()">自動練功：關</button>
             </div>
             
-            <div id="monster-display" class="battle-main"></div>
+            <div id="monster-display" class="battle-main">
+                </div>
 
             <button id="boss-btn" class="boss-btn" onclick="Combat.initBattle(true)" style="display:none;">挑戰區域領主</button>
 
@@ -46,14 +47,16 @@
         </section>
 
         <section id="bag-screen" class="stage" style="display:none;"></section>
+
         <section id="stats-screen" class="stage" style="display:none;"></section>
+
         <section id="shop-screen" class="stage" style="display:none;"></section>
 
         <nav class="nav-bar">
-            <button class="nav-btn active" onclick="GameCore.switchTab('battle')">⚔️ 歷練</button>
-            <button class="nav-btn" onclick="GameCore.switchTab('bag')">🎒 儲物</button>
-            <button class="nav-btn" onclick="GameCore.switchTab('stats')">🧘 修為</button>
-            <button class="nav-btn" onclick="GameCore.switchTab('shop')">🏪 坊市</button>
+            <button class="nav-btn active" onclick="GameCore.switchTab('battle')"><span>⚔️</span>歷練</button>
+            <button class="nav-btn" onclick="GameCore.switchTab('bag')"><span>🎒</span>儲物</button>
+            <button class="nav-btn" onclick="GameCore.switchTab('stats')"><span>🧘</span>修為</button>
+            <button class="nav-btn" onclick="GameCore.switchTab('shop')"><span>🏪</span>坊市</button>
         </nav>
     </div>
 
