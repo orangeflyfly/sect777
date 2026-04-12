@@ -1,330 +1,266 @@
 /**
- * 宗門修仙錄 - 畫面渲染模組 (ui.js) V1.3.1
- * 職責：同步數據與介面、處理分頁切換、過濾儲物袋與日誌
+ * 宗門修仙錄 - 介面模組 (ui.js) V1.4
+ * 職責：處理所有 DOM 更新、雙色渲染、頁籤切換與日誌過濾
  */
 function UIManager(core) {
     this.core = core;
-    this.bagFilter = 'all'; // 儲物袋過濾狀態：all, equip, scroll, material
+    this.currentBagFilter = 'all';
+    this.currentLogFilter = 'all';
 }
 
 /**
- * 總渲染入口：更新所有可見數值
+ * 核心渲染：同步所有數據至畫面
  */
 UIManager.prototype.renderAll = function() {
     const p = this.core.player;
-    if(!p || !p.data) return;
-
-    // 1. 更新頂部狀態列
-    const rarity = GAME_DATA.RARITY[Math.min(4, Math.floor(p.data.lv / 10))];
-    document.getElementById('val-level').innerText = `${rarity.n} (Lv.${p.data.lv})`;
-    document.getElementById('val-money').innerText = "🪙 " + Math.floor(p.data.money);
+    // 頂部資訊
+    document.getElementById('val-level').innerText = `${GAME_DATA.REALMS[p.data.realmIdx]} (Lv.${p.data.lv})`;
+    document.getElementById('val-money').innerText = `🪙 ${p.data.money}`;
+    document.getElementById('val-exp-bar').style.width = `${(p.data.exp / (p.data.lv * 100)) * 100}%`;
     
-    // 經驗條
-    const expNeeded = p.data.lv * 100;
-    const expPercent = Math.min(100, (p.data.exp / expNeeded) * 100);
-    document.getElementById('val-exp-bar').style.width = expPercent + "%";
-
-    // 2. 呼叫各分頁專屬渲染
-    this.renderBag(p); 
-    this.renderDetailedStats(p); 
-    this.renderStats(p); 
-    this.renderActiveSkills(p); 
-    this.renderMapDropdown(p);
-
-    // 3. 如果在商店頁面，更新商店貨架
-    if (document.getElementById('p-shop').style.display !== 'none') {
-        this.renderShop();
-    }
+    // 渲染各個分頁
+    this.renderBag();
+    this.renderStats();
+    this.renderSkills();
+    this.renderShop();
+    this.updateActiveSkillSlots();
 };
 
 /**
- * 修為頁面：詳細屬性表 (嚴格 Grid 對齊)
+ * 暴力美學：渲染 [詞條]·名稱
  */
-UIManager.prototype.renderDetailedStats = function(p) {
-    const container = document.getElementById('detail-stats-list');
-    if (!container) return;
-    const b = p.battle;
-    
-    const stats = [
-        { n: "總攻擊", v: b.atk, c: "#eee" },
-        { n: "總防禦", v: b.def, c: "#eee" },
-        { n: "閃避率", v: (b.dodge * 100).toFixed(1) + "%", c: "cyan" },
-        { n: "吸血率", v: (b.lifeSteal * 100).toFixed(0) + "%", c: "#ff4d4d" },
-        { n: "秒回血", v: b.regen.toFixed(1), c: "#4caf50" },
-        { n: "經驗倍率", v: "x" + b.expMul.toFixed(2), c: "gold" }
-    ];
-
+UIManager.prototype.getItemNameHTML = function(item) {
+    if (item.itemType !== 'equip') return item.name;
     let html = "";
-    stats.forEach(s => {
-        html += `<div class="stat-row-flex"><span>${s.n}</span><b style="color:${s.c}">${s.v}</b></div>`;
+    item.affixes.forEach(aff => {
+        html += `<span class="affix-tag r-${aff.r}">[${aff.n}]</span>`;
     });
-    container.innerHTML = html;
+    html += `<span class="r-${item.baseRarity}">·${item.name}</span>`;
+    return html;
 };
 
-/**
- * 儲物袋：支援分類篩選與疊加顯示 (xN)
- */
-UIManager.prototype.renderBag = function(p) {
+UIManager.prototype.renderBag = function() {
+    const p = this.core.player;
     const grid = document.getElementById('bag-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-    
-    // 執行分類過濾
-    const filteredItems = p.data.bag.filter(item => {
-        if (this.bagFilter === 'all') return true;
-        return item.itemType === this.bagFilter;
-    });
-
+    grid.innerHTML = "";
     document.getElementById('bag-count').innerText = p.data.bag.length;
 
-    filteredItems.forEach((item) => {
-        // 找到該物品在原始陣列中的索引，確保彈窗能正確操作
-        const realIdx = p.data.bag.indexOf(item);
-        const slot = document.createElement('div');
-        slot.className = `item-slot rarity-${item.rarity || 0}`;
-        
-        let icon = "📦";
-        let typeTag = "";
-        if (item.itemType === 'equip') {
-            icon = item.type === 'weapon' ? '🗡️' : '👕';
-            typeTag = "【裝備】";
-        } else if (item.itemType === 'scroll') {
-            icon = "📜";
-            typeTag = "【殘卷】";
-        } else {
-            icon = "💎";
-            typeTag = "【材料】";
-        }
+    p.data.bag.forEach((item, idx) => {
+        // 分類過濾
+        if (this.currentBagFilter !== 'all' && item.itemType !== this.currentBagFilter) return;
 
-        const countTag = (item.count > 1) ? ` <span style="color:#4caf50">x${item.count}</span>` : '';
+        const slot = document.createElement('div');
+        slot.className = `item-slot r-border-${item.baseRarity || 0}`;
+        slot.style.borderLeftColor = GAME_DATA.RARITY[item.baseRarity || 0].c;
+        slot.onclick = () => this.core.inventory.showItemDetail(idx, false);
+
+        const icon = (item.itemType === 'equip') ? (item.type === 'weapon' ? "⚔️" : "🛡️") : 
+                     (item.itemType === 'scroll' ? "📜" : "💎");
         
         slot.innerHTML = `
             <div class="item-icon">${icon}</div>
-            <div class="item-info-main">
-                <div class="item-name-text">${typeTag}${item.name}${countTag}</div>
-                <div class="item-stats-text">${item.itemType === 'equip' ? '點擊查看詳情' : '疊加物品'}</div>
-            </div>`;
-        
-        slot.onclick = () => this.core.inventory.showItemDetail(realIdx, false);
+            <div class="item-info">
+                <div class="item-name">${this.getItemNameHTML(item)} ${item.count > 1 ? 'x'+item.count : ''}</div>
+            </div>
+        `;
         grid.appendChild(slot);
     });
 };
 
-/**
- * 設定儲物袋過濾器
- */
-UIManager.prototype.setBagFilter = function(filter, event) {
-    this.bagFilter = filter;
-    // 更新按鈕樣式
-    const btns = document.querySelectorAll('.filter-btn');
-    btns.forEach(b => b.classList.remove('active'));
-    if(event) event.target.classList.add('active');
-    
-    this.renderBag(this.core.player);
-};
+UIManager.prototype.renderStats = function() {
+    const p = this.core.player;
+    const list = document.getElementById('detail-stats-list');
+    list.innerHTML = `
+        <div class="stat-row-flex"><span>攻擊</span><b>${p.battle.atk}</b></div>
+        <div class="stat-row-flex"><span>防禦</span><b>${p.battle.def}</b></div>
+        <div class="stat-row-flex"><span>生命</span><b>${p.battle.maxHp}</b></div>
+        <div class="stat-row-flex"><span>閃避</span><b>${(p.battle.dodge*100).toFixed(1)}%</b></div>
+        <div class="stat-row-flex"><span>暴擊</span><b>${(p.battle.crit*100).toFixed(0)}%</b></div>
+        <div class="stat-row-flex"><span>吸血</span><b>${(p.battle.lifeSteal*100).toFixed(0)}%</b></div>
+        <div class="stat-row-flex"><span>秒回</span><b>${p.battle.regen.toFixed(1)}</b></div>
+        <div class="stat-row-flex"><span>靈石加成</span><b>x${p.battle.moneyMul.toFixed(1)}</b></div>
+    `;
 
-/**
- * 修為頁面：潛能加點與當前武裝
- */
-UIManager.prototype.renderStats = function(p) {
+    // 潛能點與突破按鈕
     document.getElementById('val-pts').innerText = p.data.pts;
-    const statList = document.getElementById('stat-list');
-    if (statList) {
-        statList.innerHTML = '';
-        const names = { str: '力量', vit: '體質', agi: '身法', int: '悟性' };
-        ['str', 'vit', 'agi', 'int'].forEach(k => {
-            const div = document.createElement('div');
-            div.className = 'stat-row-flex';
-            div.innerHTML = `
-                <span>${names[k]}: <b>${p.data.baseStats[k]}</b></span>
-                <button onclick="_X_CORE.addStat('${k}')">修煉 +</button>`;
-            statList.appendChild(div);
-        });
+    const statBox = document.getElementById('stat-list');
+    statBox.innerHTML = "";
+    
+    // 如果到達瓶頸，顯示突破按鈕
+    const nextBreak = GAME_DATA.CONFIG.BREAK_LV[p.data.realmIdx];
+    if (p.data.lv >= nextBreak) {
+        const btn = document.createElement('button');
+        btn.className = "btn-primary";
+        btn.style.width = "100%";
+        btn.style.marginTop = "10px";
+        btn.style.background = "linear-gradient(45deg, #ff4500, #ff8c00)";
+        btn.innerText = `突破至 ${GAME_DATA.REALMS[p.data.realmIdx + 1]}`;
+        btn.onclick = () => p.breakthrough();
+        statBox.appendChild(btn);
+    } else {
+        const stats = { str: "力量", vit: "體質", agi: "敏捷", int: "悟性" };
+        for (let k in stats) {
+            const row = document.createElement('div');
+            row.className = "stat-row-flex";
+            row.innerHTML = `<span>${stats[k]} (${p.data.baseStats[k]})</span><button onclick="_X_CORE.addStat('${k}')">+</button>`;
+            statBox.appendChild(row);
+        }
     }
 
-    const eqArea = document.getElementById('equipment-slots');
-    if (eqArea) {
-        eqArea.innerHTML = '<h5 style="margin:10px 0; color:gold;">▶ 當前穿戴</h5>';
-        ['weapon', 'body'].forEach(type => {
-            const eq = p.data.equips[type];
-            const div = document.createElement('div');
-            div.className = `item-slot ${eq ? 'rarity-' + eq.rarity : ''}`;
-            const icon = type === 'weapon' ? '⚔️' : '🛡️';
-            div.innerHTML = `
-                <div class="item-icon">${icon}</div>
-                <div class="item-info-main">
-                    <div class="item-name-text">${eq ? eq.name : '（空位）'}</div>
-                    <div class="item-stats-text">${eq ? '點擊可卸下' : '尚未裝備'}</div>
-                </div>`;
-            div.onclick = () => { if(eq) this.core.inventory.showItemDetail(type, true); };
-            eqArea.appendChild(div);
-        });
-    }
-};
-
-/**
- * 萬寶閣渲染
- */
-UIManager.prototype.renderShop = function() {
-    const shopGrid = document.getElementById('shop-list');
-    if(!shopGrid) return;
-    shopGrid.innerHTML = '';
-
-    GAME_DATA.SHOP_ITEMS.forEach(item => {
-        const slot = document.createElement('div');
-        slot.className = "item-slot rarity-2"; // 商店商品統一使用藍色精品框
-        slot.innerHTML = `
-            <div class="item-icon">💰</div>
-            <div class="item-info-main">
-                <div class="item-name-text">${item.name}</div>
-                <div class="item-stats-text">價格: 🪙${item.price}</div>
-            </div>`;
-        slot.onclick = () => this.core.shop.buy(item);
-        shopGrid.appendChild(slot);
+    // 渲染裝備位
+    const eSlot = document.getElementById('equipment-slots');
+    eSlot.innerHTML = "";
+    ['weapon', 'body'].forEach(slot => {
+        const item = p.data.equips[slot];
+        const div = document.createElement('div');
+        div.className = "item-slot";
+        div.style.marginBottom = "5px";
+        if (item) {
+            div.innerHTML = `<div class="item-icon">${slot==='weapon'?'⚔️':'🛡️'}</div><div>${this.getItemNameHTML(item)}</div>`;
+            div.onclick = () => this.core.inventory.showItemDetail(slot, true);
+        } else {
+            div.innerHTML = `<div class="item-icon" style="opacity:0.3">${slot==='weapon'?'⚔️':'🛡️'}</div><div style="color:#444">未穿戴</div>`;
+        }
+        eSlot.appendChild(div);
     });
 };
 
-/**
- * 切換分頁
- */
-UIManager.prototype.switchPage = function(id) {
-    const stages = document.querySelectorAll('.stage');
-    stages.forEach(s => s.style.display = 'none');
-    
-    const target = document.getElementById("p-" + id);
-    if (target) {
-        target.style.display = 'flex';
-        // 若切換到商店，強制重新繪製一次商品
-        if (id === 'shop') this.renderShop();
+UIManager.prototype.renderSkills = function() {
+    const p = this.core.player;
+    const list = document.getElementById('learned-skills-list');
+    list.innerHTML = "";
+    p.data.learnedSkills.forEach(sId => {
+        const s = GAME_DATA.SKILLS[sId];
+        const isEquipped = p.data.skills.includes(sId);
+        const card = document.createElement('div');
+        card.className = `skill-card ${isEquipped ? 'equipped' : ''}`;
+        card.innerHTML = `<div>${s.name}</div><div style="font-size:10px; color:#888">${s.type==='passive'?'被動':'主動'}</div>`;
+        card.onclick = () => this.showSkillEquipMenu(sId);
+        list.appendChild(card);
+    });
+};
+
+UIManager.prototype.showSkillEquipMenu = function(sId) {
+    const s = GAME_DATA.SKILLS[sId];
+    if (s.type === 'passive') {
+        this.toast("被動技能無需裝備，參悟後永久生效", "gold");
+        return;
     }
+    const body = `${s.desc}<br><br>請選擇裝備槽位：`;
+    this.showModal(`裝備神通：${s.name}`, body, "放入槽位1", () => this.equipSkill(sId, 0), null);
+    // 這裡為了簡化，彈窗內可手動擴展多個按鈕，目前邏輯先裝在 slot 0
+};
+
+UIManager.prototype.equipSkill = function(sId, slotIdx) {
+    const p = this.core.player;
+    // 移除其他槽位的相同技能
+    p.data.skills = p.data.skills.map(id => id === sId ? null : id);
+    p.data.skills[slotIdx] = sId;
+    p.save(); this.renderAll(); this.closeModal();
+    this.toast(`已將 ${GAME_DATA.SKILLS[sId].name} 裝備至槽位 ${slotIdx+1}`);
+};
+
+UIManager.prototype.updateActiveSkillSlots = function() {
+    const p = this.core.player;
+    const row = document.getElementById('active-skill-slots');
+    row.innerHTML = "";
+    p.data.skills.forEach(sId => {
+        const slot = document.createElement('div');
+        slot.className = "skill-icon-sm";
+        if (sId !== null) {
+            slot.innerText = GAME_DATA.SKILLS[sId].name[0];
+            slot.style.borderColor = "orange";
+            slot.title = GAME_DATA.SKILLS[sId].name;
+        } else {
+            slot.style.opacity = "0.2";
+            slot.innerText = "空";
+        }
+        row.appendChild(slot);
+    });
+};
+
+UIManager.prototype.updateHPs = function(player, monster) {
+    const pHP = document.getElementById('p-hp-bar');
+    const mHP = document.getElementById('m-hp-bar');
+    if (pHP) {
+        const pPer = (player.battle.hp / player.battle.maxHp) * 100;
+        pHP.style.width = pPer + "%";
+        document.getElementById('p-hp-txt').innerText = `${Math.floor(player.battle.hp)} / ${player.battle.maxHp}`;
+    }
+    if (mHP && monster) {
+        const mPer = (monster.hp / monster.maxHp) * 100;
+        mHP.style.width = mPer + "%";
+        document.getElementById('m-hp-txt').innerText = `${Math.floor(monster.hp)} / ${monster.maxHp}`;
+        document.getElementById('monster-name').innerText = monster.name;
+        document.getElementById('monster-pic').innerText = monster.pic;
+    } else {
+        if (mHP) mHP.style.width = "0%";
+        document.getElementById('m-hp-txt').innerText = "搜尋中...";
+        document.getElementById('monster-pic').innerText = "⏳";
+    }
+};
+
+UIManager.prototype.log = function(msg, type, color) {
+    const list = document.getElementById('log-list');
+    const div = document.createElement('div');
+    div.className = `log-item ${type}`;
+    if (color) div.style.color = color;
+    div.innerHTML = `[${new Date().toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'})}] ${msg}`;
+    list.prepend(div);
+    if (list.childNodes.length > 50) list.lastChild.remove();
+};
+
+UIManager.prototype.toast = function(msg, color) {
+    const container = document.getElementById('toast-container');
+    const div = document.createElement('div');
+    div.className = 'toast';
+    if (color) div.style.borderColor = color; div.style.color = color || 'gold';
+    div.innerText = msg;
+    container.appendChild(div);
+    setTimeout(() => div.remove(), 1800);
+};
+
+UIManager.prototype.showModal = function(title, body, btnText, btnFn, meltFn) {
+    const m = document.getElementById('item-modal');
+    document.getElementById('modal-item-name').innerHTML = title;
+    document.getElementById('modal-item-desc').innerHTML = body;
+    const actionBtn = document.getElementById('modal-action-btn');
+    actionBtn.innerText = btnText;
+    actionBtn.onclick = () => { btnFn(); this.closeModal(); };
+    
+    const meltBtn = document.getElementById('modal-melt-btn');
+    if (meltFn) {
+        meltBtn.style.display = "block";
+        meltBtn.onclick = () => { meltFn(); this.closeModal(); };
+    } else { meltBtn.style.display = "none"; }
+    
+    m.style.display = "flex";
+};
+
+UIManager.prototype.closeModal = function() { document.getElementById('item-modal').style.display = "none"; };
+
+UIManager.prototype.switchPage = function(pageId) {
+    document.querySelectorAll('.stage').forEach(s => s.style.display = 'none');
+    document.getElementById('p-' + pageId).style.display = 'flex';
     this.renderAll();
 };
 
-/**
- * 通用彈窗顯示
- */
-UIManager.prototype.showModal = function(title, body, actionText, actionFn, meltFn) {
-    const modal = document.getElementById('item-modal');
-    modal.style.display = 'flex';
-    document.getElementById('modal-item-name').innerHTML = title;
-    document.getElementById('modal-item-desc').innerHTML = body;
-    
-    const btnAct = document.getElementById('modal-action-btn');
-    btnAct.innerText = actionText;
-    btnAct.onclick = () => { actionFn(); this.closeModal(); };
-    
-    const btnMelt = document.getElementById('modal-melt-btn');
-    if (meltFn) { 
-        btnMelt.style.display = 'block'; 
-        btnMelt.onclick = () => { meltFn(); this.closeModal(); }; 
-    } else { 
-        btnMelt.style.display = 'none'; 
-    }
+UIManager.prototype.setBagFilter = function(f, e) {
+    this.currentBagFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    this.renderBag();
 };
 
-UIManager.prototype.closeModal = function() {
-    document.getElementById('item-modal').style.display = 'none';
-};
-
-/**
- * 日誌紀錄
- */
-UIManager.prototype.log = function(msg, type, color) {
-    const list = document.getElementById('log-list');
-    if(!list) return;
-    const div = document.createElement('div');
-    div.className = `log-item log-type-${type || 'system'}`;
-    div.style.color = color || '#eee';
-    div.innerHTML = `<small>[${new Date().toLocaleTimeString([], { hour12: false })}]</small> ${msg}`;
-    list.prepend(div);
-    if (list.children.length > 50) list.lastChild.remove();
-};
-
-/**
- * 日誌分類過濾
- */
-UIManager.prototype.switchLog = function(tab, event) {
-    const items = document.getElementById('log-list').children;
-    const tabs = document.querySelectorAll('.log-tab');
-    tabs.forEach(t => t.classList.remove('active'));
-    if(event) event.target.classList.add('active');
-    
-    for (let i = 0; i < items.length; i++) {
-        items[i].style.display = (tab === 'all' || items[i].classList.contains('log-type-' + tab)) ? 'block' : 'none';
-    }
-};
-
-/**
- * 畫面頂部通知 (Toast)
- */
-UIManager.prototype.toast = function(msg, color) {
-    // 同步發送到系統日誌
-    this.log(msg, 'system', color);
-    
-    const box = document.getElementById('toast-container');
-    const div = document.createElement('div');
-    div.className = 'toast';
-    div.style.color = color || 'gold';
-    div.innerText = msg;
-    box.appendChild(div);
-    
-    // 1.5秒後自動消失
-    setTimeout(() => div.remove(), 1500);
-};
-
-/**
- * 血條同步更新
- */
-UIManager.prototype.updateHPs = function(p, m) {
-    // 1. 玩家血條
-    const pFill = document.getElementById('p-hp-bar');
-    const pTxt = document.getElementById('p-hp-txt');
-    if (pFill) pFill.style.width = (p.battle.hp / p.battle.maxHp * 100) + "%";
-    if (pTxt) pTxt.innerText = `${Math.floor(p.battle.hp)} / ${p.battle.maxHp}`;
-    
-    // 2. 怪物血條
-    const mFill = document.getElementById('m-hp-bar');
-    const mTxt = document.getElementById('m-hp-txt');
-    const mName = document.getElementById('monster-name');
-    
-    if (m && m.hp > 0) {
-        if (mFill) mFill.style.width = (m.hp / m.maxHp * 100) + "%";
-        if (mTxt) mTxt.innerText = `${Math.floor(m.hp)} / ${m.maxHp}`;
-        if (mName) mName.innerText = m.name;
-    } else {
-        if (mFill) mFill.style.width = "0%";
-        if (mTxt) mTxt.innerText = "搜尋妖獸中...";
-        if (mName) mName.innerText = "歷練中...";
-    }
-};
-
-UIManager.prototype.renderMonster = function(m) {
-    document.getElementById('monster-pic').innerText = m ? m.pic : "⏳";
-};
-
-UIManager.prototype.renderActiveSkills = function(p) {
-    const box = document.getElementById('active-skill-slots');
-    if (!box) return; box.innerHTML = '';
-    p.data.skills.forEach(sId => {
-        const slot = document.createElement('div');
-        slot.style = "width:30px; height:30px; border:1px solid #444; border-radius:4px; display:inline-flex; align-items:center; justify-content:center; margin-right:5px; font-size:16px; background:#222;";
-        if (sId !== null) {
-            const s = GAME_DATA.SKILLS[sId];
-            slot.innerText = s.type === 'passive' ? '🧘' : '🔥';
-            slot.title = s.name;
-        }
-        box.appendChild(slot);
-    });
-};
-
-UIManager.prototype.renderMapDropdown = function(p) {
-    const sel = document.getElementById('map-select-dropdown');
-    if (!sel || sel.children.length > 0) return;
-    GAME_DATA.MAPS.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m.id;
-        opt.innerText = `${m.name} (Lv.${m.lv})`;
-        if (p.data.mapId === m.id) opt.selected = true;
-        sel.appendChild(opt);
+UIManager.prototype.renderShop = function() {
+    const list = document.getElementById('shop-list');
+    list.innerHTML = "";
+    GAME_DATA.SHOP_ITEMS.forEach(item => {
+        const div = document.createElement('div');
+        div.className = "item-slot";
+        div.style.justifyContent = "space-between";
+        div.innerHTML = `<div>${item.name}</div><button class="btn-primary" style="padding:4px 8px">🪙${item.price}</button>`;
+        div.onclick = () => this.core.shop.buy(item);
+        list.appendChild(div);
     });
 };
