@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
-    <title>宗門修仙錄 V1.4 - 金丹大改版</title>
+    <title>宗門修仙錄 V1.4.1 - 靈動版</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,7 +15,7 @@
             <div id="modal-item-desc" class="modal-body"></div>
             <div class="modal-footer">
                 <button id="modal-action-btn" class="btn-primary">執行</button>
-                <button id="modal-melt-btn" class="btn-danger">熔煉/強化</button>
+                <button id="modal-melt-btn" class="btn-danger">熔煉</button>
                 <button onclick="_X_CORE.ui.closeModal()" class="btn-close">關閉</button>
             </div>
         </div>
@@ -24,11 +24,12 @@
     <div id="game-container">
         <header class="header-info">
             <div class="header-line">
-                <span id="val-level" class="realm-text">感應天機中...</span>
+                <span id="val-level" class="realm-text">感應中...</span>
                 <span id="val-money" class="coin-text">🪙 0</span>
             </div>
             <div class="exp-bar-container">
                 <div id="val-exp-bar" class="exp-bar-fill"></div>
+                <div id="val-exp-txt" class="exp-text-overlay">0%</div>
             </div>
         </header>
 
@@ -39,7 +40,7 @@
             
             <div class="battle-main">
                 <div class="monster-card">
-                    <div id="monster-name" class="m-name">尋找妖獸中...</div>
+                    <div id="monster-name" class="m-name">搜尋妖獸...</div>
                     <div class="hp-container monster-hp">
                         <div id="m-hp-bar" class="hp-bar-fill"></div>
                         <div id="m-hp-txt" class="hp-text">0 / 0</div>
@@ -67,7 +68,7 @@
             <div class="log-system">
                 <div class="log-tabs">
                     <button class="log-tab active" onclick="_X_CORE.ui.switchLog('all', event)">全部</button>
-                    <button class="log-tab" onclick="_X_CORE.ui.switchLog('combat', event)">戰鬥</button>
+                    <button class="log-tab" onclick="_X_CORE.ui.switchLog('combat', event)">鬥法</button>
                     <button class="log-tab" onclick="_X_CORE.ui.switchLog('loot', event)">獲取</button>
                 </div>
                 <div id="log-list" class="log-list"></div>
@@ -99,13 +100,12 @@
             </div>
             
             <div class="skills-section">
-                <h4>藏經閣 (神通管理)</h4>
-                <div class="skill-equip-hint">點擊已領悟功法即可裝備</div>
+                <h4>藏經閣 (點擊裝備)</h4>
                 <div id="learned-skills-list" class="skills-grid"></div>
             </div>
 
             <div class="equip-section">
-                <h4>目前穿戴</h4>
+                <h4>穿戴中</h4>
                 <div id="equipment-slots" class="equip-display"></div>
             </div>
         </section>
