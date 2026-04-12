@@ -1,174 +1,109 @@
 /**
- * V1.6.0 ui_shop.js (專業坊市版)
- * 職責：買賣交易、神通進化、局部 UI 校驗。
+ * V1.7.0 ui_shop.js
+ * 職責：渲染坊市買賣介面、處理分頁切換、調用商店邏輯。
+ * 核心：與 ShopLogic (shop.js) 聯動，確保交易數據準確。
  */
 
 const UI_Shop = {
-    currentTab: 'buy',
+    currentTab: 'buy', // 預設為購買分頁
 
+    // 坊市固定販售商品清單
     shopItems: [
-        { id: 's001', name: '殘卷：烈焰斬', type: 'skill', price: 500, rarity: 2 },
-        { id: 's002', name: '殘卷：回春術', type: 'skill', price: 800, rarity: 2 },
-        { id: 's003', name: '殘卷：破天一劍', type: 'skill', price: 5000, rarity: 3 },
-        { id: 'i001', name: '洗髓丹', type: 'material', price: 1000, rarity: 3 },
-        { id: 'i002', name: '聚靈散', type: 'material', price: 300, rarity: 2 }
+        { id: 's001', name: '殘卷：烈焰斬-1', type: 'fragment', price: 500, rarity: 2 },
+        { id: 's002', name: '殘卷：回春術-1', type: 'fragment', price: 800, rarity: 2 },
+        { id: 's003', name: '殘卷：烈焰斬-2', type: 'fragment', price: 500, rarity: 2 },
+        { id: 'i001', name: '低階靈石袋', type: 'special', price: 1000, rarity: 3 },
+        { id: 'i002', name: '粗糙的布衣', type: 'armor', price: 200, rarity: 1, stats: { con: 2 } }
     ],
 
-    // 1. 渲染坊市主介面
-    renderShop: function() {
-        const shopArea = document.getElementById('shop-screen');
+    // 1. 渲染坊市主介面 (由 core.js 調用)
+    renderShop() {
+        const shopArea = document.getElementById('shop-list');
         if (!shopArea) return;
 
+        // 構建佈局結構
         shopArea.innerHTML = `
-            <div class="shop-container" style="animation: fade-in 0.3s ease;">
-                <div class="shop-header">
-                    <h3 style="margin:0; color:var(--gold); letter-spacing:2px;">仙家坊市</h3>
-                    <p style="margin:8px 0 0 0; font-size:14px; color:var(--text-dim);">
-                        持有靈石: <span id="shop-money-val" style="color:#f1c40f; font-weight:bold;">🪙 ${Math.floor(player.data.money)}</span>
-                    </p>
+            <div class="shop-header" style="margin-bottom:15px; text-align:center;">
+                <h3 style="color:var(--accent-color);">仙家坊市</h3>
+                <p style="font-size:12px; color:#888;">當前持有：<span style="color:#f1c40f;">💰 ${Math.floor(Player.data.coin)}</span></p>
+                <div class="bag-tabs" style="margin-top:10px;">
+                    <button class="${this.currentTab === 'buy' ? 'active' : ''}" onclick="UI_Shop.switchTab('buy')">坊市購買</button>
+                    <button class="${this.currentTab === 'sell' ? 'active' : ''}" onclick="UI_Shop.switchTab('sell')">清空儲物</button>
                 </div>
-                
-                <div class="shop-tabs">
-                    <button onclick="UI_Shop.switchTab('buy')" class="log-tab ${this.currentTab === 'buy' ? 'active' : ''}">洞府購買</button>
-                    <button onclick="UI_Shop.switchTab('sell')" class="log-tab ${this.currentTab === 'sell' ? 'active' : ''}">清空儲物</button>
-                </div>
-
-                <div id="shop-content">
-                    ${this.currentTab === 'buy' ? this.renderBuyList() : this.renderSellList()}
-                </div>
+            </div>
+            <div id="shop-content-inner">
+                ${this.currentTab === 'buy' ? this.renderBuyList() : this.renderSellList()}
             </div>
         `;
     },
 
-    switchTab: function(tab) {
+    // 2. 分頁切換
+    switchTab(tab) {
         this.currentTab = tab;
         this.renderShop();
     },
 
-    // 2. 渲染購買清單 (加固樣式標籤)
-    renderBuyList: function() {
+    // 3. 生成購買列表
+    renderBuyList() {
+        if (this.shopItems.length === 0) return `<div class="empty-msg">坊市目前空無一物...</div>`;
+
         return `
-            <div class="shop-grid">
+            <div class="shop-grid" style="display:grid; gap:10px;">
                 ${this.shopItems.map(item => `
-                    <div class="shop-item r-${item.rarity}">
+                    <div class="shop-item r-${item.rarity || 1}" style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
                         <div class="item-info">
-                            <span class="item-name">${item.name}</span>
-                            <span class="item-price">靈石 ${item.price}</span>
+                            <div class="item-name" style="font-weight:bold;">${item.name}</div>
+                            <div class="item-price" style="font-size:12px; color:#f1c40f;">💰 ${item.price}</div>
                         </div>
-                        <button class="buy-btn" onclick="UI_Shop.buyItem('${item.id}')">購買</button>
+                        <button class="buy-btn" onclick="UI_Shop.buyAction('${item.id}')" style="background:var(--accent-color); border:none; padding:5px 12px; border-radius:4px; cursor:pointer;">購買</button>
                     </div>
                 `).join('')}
             </div>
         `;
     },
 
-    // 3. 購買邏輯 (加強安全性與背包檢查)
-    buyItem: function(itemId) {
+    // 4. 生成出售列表 (讀取玩家背包)
+    renderSellList() {
+        const inv = Player.data.inventory;
+        if (inv.length === 0) return `<div class="empty-msg">儲物袋空空如也，沒什麼好賣的。</div>`;
+
+        return `
+            <div class="shop-grid" style="display:grid; gap:10px;">
+                ${inv.map(item => `
+                    <div class="shop-item r-${item.rarity || 1}" style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                        <div class="item-info">
+                            <div class="item-name" style="font-weight:bold;">${item.name}</div>
+                            <div class="item-price" style="font-size:12px; color:#888;">回收價: 💰 ${item.price || 10}</div>
+                        </div>
+                        <button class="sell-btn" onclick="UI_Shop.sellAction('${item.uuid}')" style="background:#e74c3c; color:white; border:none; padding:5px 12px; border-radius:4px; cursor:pointer;">出售</button>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    },
+
+    // 5. 觸發購買動作
+    buyAction(itemId) {
         const item = this.shopItems.find(i => i.id === itemId);
         if (!item) return;
 
-        if (player.data.money < item.price) {
-            player.showToast("靈石不足，仙友請回吧。");
-            return;
-        }
-
-        // 背包檢查 (非技能物品)
-        if (item.type !== 'skill' && player.data.inventory.length >= (GAMEDATA.CONFIG?.MAX_BAG_SLOTS || 50)) {
-            player.showToast("儲物袋空間不足！");
-            return;
-        }
-
-        // 交易執行
-        player.data.money -= item.price;
+        // 調用 ShopLogic (shop.js) 進行實際交易
+        const success = ShopLogic.buy(item);
         
-        if (item.type === 'skill') {
-            this.learnSkill(item.id);
-        } else {
-            player.data.inventory.push({
-                uid: "shop_" + Date.now() + Math.floor(Math.random()*100),
-                name: item.name,
-                type: item.type,
-                rarity: item.rarity,
-                price: Math.floor(item.price * 0.5),
-                prefix: { name: "", attr: "none", value: 0 } 
-            });
-            player.showToast(`成功購買：${item.name}`);
+        if (success) {
+            this.renderShop(); // 交易成功刷新介面
         }
-        
-        player.save();
-        this.syncMoneyUI(); // 局部刷新靈石顯示
-        this.renderShop(); // 刷新列表內容
     },
 
-    // 4. 渲染出售清單 (優化：顯示物品品級顏色)
-    renderSellList: function() {
-        const inv = player.data.inventory;
-        if (inv.length === 0) {
-            return `<div class="empty-msg">儲物袋空空如也...</div>`;
-        }
-
-        return `
-            <div class="shop-grid">
-                ${inv.map(item => `
-                    <div class="shop-item r-${item.rarity}" style="border-left: 4px solid var(--r${item.rarity}-color, #444);">
-                        <div class="item-info">
-                            <span class="item-name">${item.name}</span>
-                            <span class="sell-price">回收價值: 💰 ${item.price}</span>
-                        </div>
-                        <button class="sell-btn" onclick="UI_Shop.sellItem('${item.uid}')">出售</button>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-    },
-
-    // 5. 出售邏輯 (加強索引精確度)
-    sellItem: function(uid) {
-        const inv = player.data.inventory;
-        const idx = inv.findIndex(i => i.uid === uid);
-        if (idx === -1) return;
-
-        const item = inv[idx];
-        
-        // 增加一個極品以上裝備的警告 (非必要可自行刪除)
-        if (item.rarity >= 4 && !confirm(`此乃【${item.name}】，確定要變賣嗎？`)) {
-            return;
-        }
-
-        player.data.money += item.price;
-        inv.splice(idx, 1);
-        
-        player.save();
-        this.syncMoneyUI();
-        this.renderShop();
-        player.showToast(`售出成功，獲得 🪙 ${item.price}`);
-    },
-
-    // 6. 靈石局部同步 (加固 UI 體驗)
-    syncMoneyUI: function() {
-        const el = document.getElementById('shop-money-val');
-        if (el) el.innerText = `🪙 ${Math.floor(player.data.money)}`;
-    },
-
-    // 7. 神通習得 (1.4.1 轉化邏輯)
-    learnSkill: function(skillId) {
-        const skills = player.data.skills;
-        const exists = skills.find(s => s.id === skillId);
-        
-        if (!exists) {
-            skills.push({ id: skillId, level: 1, mastery: 0, maxMastery: 100 });
-            player.showToast(`✨ 成功領悟神通！`, "gold");
-        } else {
-            exists.mastery += 50;
-            if (exists.mastery >= 100) {
-                exists.level++;
-                exists.mastery -= 100;
-                player.showToast(`🔥 神通突破！提升至 Lv.${exists.level}`, "gold");
-            } else {
-                player.showToast("已習得此神通，殘卷已轉化為熟練度！");
-            }
+    // 6. 觸發出售動作
+    sellAction(uuid) {
+        // 直接調用 UI_Bag 的出售邏輯，保持代碼一致性
+        if (typeof UI_Bag !== 'undefined') {
+            UI_Bag.sellItem(uuid);
+            this.renderShop(); // 刷新介面
         }
     }
 };
 
-console.log("✅ [V1.6.0] ui_shop.js 坊市系統加固完成。");
+// 確保全域可用
+window.UI_Shop = UI_Shop;
