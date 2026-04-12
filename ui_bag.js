@@ -1,24 +1,19 @@
 /**
  * V1.7.0 ui_bag.js
- * 職責：儲物袋渲染、類別過濾、殘卷合成邏輯、物品處置。
+ * 職責：儲物袋渲染、類別過濾、殘卷合成邏輯、裝備/出售處理。
+ * 核心：與 Player.js 數據對齊，確保 50 格固定佈局美觀。
  */
 
 const UI_Bag = {
-    currentFilter: 'all', // 當前過濾標籤
+    currentFilter: 'all', // 當前標籤狀態
 
     init() {
         this.render();
     },
 
-    // 1. 執行過濾切換
+    // 1. 分籤切換 (由 index.html 的 onclick="UI_Bag.filter('...')" 調用)
     filter(type) {
         this.currentFilter = type;
-        // 更新 Tab 視覺狀態
-        document.querySelectorAll('.bag-tab').forEach(btn => {
-            const btnText = btn.innerText;
-            const typeMap = { '全部': 'all', '裝備': 'equip', '殘卷': 'fragment', '材料': 'item' };
-            btn.classList.toggle('active', typeMap[btnText] === type);
-        });
         this.render();
     },
 
@@ -30,9 +25,11 @@ const UI_Bag = {
 
         grid.innerHTML = '';
         const inventory = Player.data.inventory;
-        countEl.innerText = inventory.length;
+        
+        // 更新當前容量顯示
+        if (countEl) countEl.innerText = inventory.length;
 
-        // 執行邏輯過濾 (不影響原始數據)
+        // 執行篩選邏輯
         const filteredList = inventory.filter(item => {
             if (this.currentFilter === 'all') return true;
             if (this.currentFilter === 'equip') return item.type === 'weapon' || item.type === 'armor';
@@ -41,13 +38,15 @@ const UI_Bag = {
             return true;
         });
 
-        // 生成 50 個格子 (固定格數保持美觀)
-        for (let i = 0; i < GAMEDATA.CONFIG.MAX_BAG_SLOTS; i++) {
+        // 恆定生成 50 個格子，保持視覺整齊
+        const maxSlots = GAMEDATA.CONFIG.MAX_BAG_SLOTS || 50;
+        for (let i = 0; i < maxSlots; i++) {
             const slot = document.createElement('div');
             slot.className = 'bag-slot';
             
             const item = filteredList[i];
             if (item) {
+                // 品階顏色對應 style.css 中的 r-1 ~ r-5
                 slot.innerHTML = `
                     <div class="item-icon r-${item.rarity || 1}">${this.getItemIcon(item)}</div>
                     ${item.count > 1 ? `<span class="item-count">${item.count}</span>` : ''}
@@ -60,31 +59,31 @@ const UI_Bag = {
 
     // 取得物品圖標邏輯
     getItemIcon(item) {
-        if (item.name.includes("殘卷")) return "📜";
+        if (item.name && item.name.includes("殘卷")) return "📜";
         if (item.type === "weapon") return "⚔️";
         if (item.type === "armor") return "👕";
         return "📦";
     },
 
-    // 3. 顯示物品詳情 (含殘卷合成檢查)
+    // 3. 顯示物品詳情彈窗
     showDetail(item) {
         const modal = document.getElementById('modal-detail');
         const content = document.getElementById('item-detail-content');
-        const useBtn = document.getElementById('btn-use-item');
-        const sellBtn = document.getElementById('btn-sell-item');
+        if (!modal || !content) return;
 
         modal.style.display = 'flex';
         
+        // 構建詳情 HTML
         let html = `
             <div class="detail-header r-${item.rarity || 1}">
                 <span class="detail-name">${item.name}</span>
                 <span class="detail-rarity">${GAMEDATA.CONFIG.RARITY_NAMES[(item.rarity || 1) - 1]}</span>
             </div>
             <div class="detail-body">
-                <p class="detail-desc">${item.desc || '這是一件神祕的物品。'}</p>
+                <p class="detail-desc">${item.desc || '一件散發著靈氣的物品。'}</p>
         `;
 
-        // 裝備屬性顯示
+        // 顯示屬性加成
         if (item.stats) {
             html += `<div class="detail-stats">`;
             for (let s in item.stats) {
@@ -93,42 +92,37 @@ const UI_Bag = {
             html += `</div>`;
         }
 
-        // 殘卷拼圖進度檢查
+        // 殘卷專屬進度顯示
         let canCombine = false;
-        let fragmentInfo = null;
-        if (item.name.includes("殘卷：")) {
-            fragmentInfo = this.checkFragmentProgress(item.name);
+        if (item.name && item.name.includes("殘卷：")) {
+            const progress = this.checkFragmentProgress(item.name);
             html += `
                 <div class="fragment-progress">
-                    <h4>合成進度 (${fragmentInfo.count}/5)</h4>
-                    <div class="fragment-list">${fragmentInfo.listHtml}</div>
+                    <h4 style="color:var(--accent-color); margin-top:10px;">合成進度 (${progress.count}/5)</h4>
+                    <div class="frag-dots-container" style="display:flex; gap:5px; margin-top:5px;">
+                        ${progress.listHtml}
+                    </div>
                 </div>
             `;
-            if (fragmentInfo.count >= 5) canCombine = true;
+            if (progress.count >= 5) canCombine = true;
         }
+
+        // 按鈕區塊
+        html += `
+            <div class="detail-actions" style="margin-top:20px; display:flex; gap:10px;">
+                ${canCombine ? `<button class="btn-primary" onclick="UI_Bag.combineSkill('${item.name}')">領悟神通</button>` : ''}
+                ${(item.type === 'weapon' || item.type === 'armor') ? `<button class="btn-primary" onclick="UI_Bag.equipItem('${item.uuid}')">裝備</button>` : ''}
+                <button class="btn-danger" onclick="UI_Bag.sellItem('${item.uuid}')">出售 (💰 ${item.price || 10})</button>
+                <button class="btn-secondary" onclick="UI_Bag.closeDetail()">關閉</button>
+            </div>
+        `;
 
         html += `</div>`;
         content.innerHTML = html;
-
-        // 按鈕功能邏輯
-        sellBtn.onclick = () => this.sellItem(item);
-
-        if (canCombine) {
-            useBtn.innerText = "合成修煉";
-            useBtn.style.display = "block";
-            useBtn.onclick = () => this.combineSkill(item.name);
-        } else if (item.type === 'weapon' || item.type === 'armor') {
-            useBtn.innerText = "裝備";
-            useBtn.style.display = "block";
-            useBtn.onclick = () => this.equipItem(item);
-        } else {
-            useBtn.style.display = "none";
-        }
     },
 
-    // 4. 檢查殘卷拼圖進度
+    // 4. 殘卷拼圖進度檢查
     checkFragmentProgress(fullName) {
-        // fullName 格式: "殘卷：烈焰斬-1"
         const skillName = fullName.split("：")[1].split("-")[0];
         let count = 0;
         let listHtml = "";
@@ -137,9 +131,8 @@ const UI_Bag = {
             const targetName = `殘卷：${skillName}-${i}`;
             const exists = Player.data.inventory.some(it => it.name === targetName);
             if (exists) count++;
-            listHtml += `<span class="frag-dot ${exists ? 'owned' : ''}">${i}</span>`;
+            listHtml += `<span class="frag-dot ${exists ? 'owned' : ''}" style="width:20px; height:20px; border-radius:50%; background:${exists ? '#f1c40f':'#333'}; display:flex; align-items:center; justify-content:center; font-size:10px;">${i}</span>`;
         }
-
         return { count, listHtml, skillName };
     },
 
@@ -150,19 +143,21 @@ const UI_Bag = {
 
         if (!skillData) return;
 
-        // 1. 扣除 1-5 號碎片
+        // 扣除 1-5 號碎片
         for (let i = 1; i <= 5; i++) {
             const targetName = `殘卷：${skillName}-${i}`;
             const index = Player.data.inventory.findIndex(it => it.name === targetName);
             if (index > -1) Player.data.inventory.splice(index, 1);
         }
 
-        // 2. 學習技能 (加入玩家技能庫)
-        if (!Player.data.skills.some(s => s.id === skillData.id)) {
-            Player.data.skills.push(skillData);
+        // 學習/升級神通
+        const existingSkill = Player.data.skills.find(s => s.id === skillData.id);
+        if (!existingSkill) {
+            Player.data.skills.push({ ...skillData, level: 1 });
             UI_Battle.log(`✨ 成功集齊殘卷！你領悟了神通：【${skillName}】`, 'reward');
         } else {
-            UI_Battle.log(`✨ 成功集齊殘卷！你的神通【${skillName}】感悟加深了（後續實裝升級）。`, 'reward');
+            existingSkill.level++;
+            UI_Battle.log(`✨ 神通【${skillName}】領悟更深一層，提升至 Lv.${existingSkill.level}`, 'reward');
         }
 
         Player.save();
@@ -170,32 +165,41 @@ const UI_Bag = {
         this.render();
     },
 
-    // 6. 裝備物品邏輯
-    equipItem(item) {
+    // 6. 裝備邏輯
+    equipItem(uuid) {
+        const index = Player.data.inventory.findIndex(i => i.uuid === uuid);
+        if (index === -1) return;
+        
+        const item = Player.data.inventory[index];
         const type = item.type; // weapon 或 armor
         Player.data.equipped[type] = item;
+        
         UI_Battle.log(`裝備了 [${item.name}]`, 'system');
         Player.save();
         this.closeDetail();
         this.render();
     },
 
-    // 7. 出售物品邏輯
-    sellItem(item) {
-        const price = item.price || 10;
-        Player.data.coin += price;
-        const index = Player.data.inventory.findIndex(i => i.uuid === item.uuid);
-        if (index > -1) {
-            Player.data.inventory.splice(index, 1);
-        }
+    // 7. 出售邏輯
+    sellItem(uuid) {
+        const index = Player.data.inventory.findIndex(i => i.uuid === uuid);
+        if (index === -1) return;
+
+        const item = Player.data.inventory[index];
+        const sellPrice = item.price || 10;
+        
+        Player.data.coin += sellPrice;
+        Player.data.inventory.splice(index, 1);
+        
+        UI_Battle.log(`售出了 [${item.name}]，獲得靈石 x${sellPrice}`, 'system');
         Player.save();
         this.closeDetail();
         this.render();
-        UI_Battle.log(`出售了 [${item.name}]，獲得靈石 x${price}`, 'system');
     },
 
     closeDetail() {
-        document.getElementById('modal-detail').style.display = 'none';
+        const modal = document.getElementById('modal-detail');
+        if (modal) modal.style.display = 'none';
     }
 };
 
