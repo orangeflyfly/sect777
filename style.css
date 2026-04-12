@@ -1,162 +1,208 @@
-/* 宗門修仙錄 V1.4.1 - 視覺與特效總綱 */
+/* ============================================================
+   V1.5 修仙大陣 - 全量視覺樣式表
+   職責：品級發光、前綴分色、彈窗佈局、極致中文化介面
+   ============================================================ */
+
 :root {
-    --bg-dark: #0a0a0a;
-    --card-bg: #161616;
-    --border: #2a2a2a;
-    --gold: #ffd700;
-    --rarity-0: #888;
-    --rarity-1: #4caf50;
-    --rarity-2: #2196f3;
-    --rarity-3: #a333c8;
-    --rarity-4: #ff4500;
+    --bg-color: #1a1a1a;
+    --card-bg: #2a2a2a;
+    --text-color: #e0e0e0;
+    --accent-color: #f1c40f; /* 靈石/金光色 */
+    --prefix-color: #5dade2; /* 詞條專用：青藍色 */
 }
 
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body {
-    margin: 0; background: var(--bg-dark); color: #ddd;
-    font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
-    overflow: hidden; height: 100vh;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: "Microsoft JhengHei", sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
-/* 🚀 通知系統 */
-#toast-container {
-    position: fixed; top: 12%; left: 50%; transform: translateX(-50%);
-    z-index: 9999; pointer-events: none; display: flex; flex-direction: column; gap: 8px;
-}
-.toast {
-    background: rgba(0,0,0,0.9); border: 1px solid var(--gold);
-    padding: 8px 16px; border-radius: 20px; font-size: 13px; color: var(--gold);
-    box-shadow: 0 0 10px rgba(255,215,0,0.3); animation: toastFade 1.8s forwards;
-}
-@keyframes toastFade {
-    0% { opacity: 0; transform: translateY(10px); }
-    15% { opacity: 1; transform: translateY(0); }
-    85% { opacity: 1; }
-    100% { opacity: 0; transform: translateY(-15px); }
+/* --- 1. 導航與介面切換 --- */
+.nav-bar {
+    display: flex;
+    gap: 10px;
+    padding: 20px;
+    background: #000;
+    width: 100%;
+    justify-content: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
-/* 主容器 */
-#game-container {
-    max-width: 500px; margin: 0 auto; height: 100vh;
-    display: grid; grid-template-rows: 70px 1fr 65px; background: #111;
+.nav-btn {
+    background: #444;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: 0.3s;
 }
 
-/* 頂部資訊：含經驗值數值顯示 */
-.header-info { padding: 10px 15px; background: #1a1a1a; border-bottom: 1px solid var(--border); }
-.header-line { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.realm-text { color: var(--gold); font-weight: bold; font-size: 15px; }
-.exp-bar-container { 
-    width: 100%; height: 16px; background: #222; border-radius: 8px; 
-    overflow: hidden; position: relative; border: 1px solid #333;
-}
-.exp-bar-fill { height: 100%; background: linear-gradient(90deg, #2e7d32, #4caf50); width: 0%; transition: width 0.3s; }
-.exp-text-overlay {
-    position: absolute; width: 100%; text-align: center; top: 0;
-    font-size: 10px; line-height: 14px; color: #fff; text-shadow: 1px 1px 1px #000;
+.nav-btn.active {
+    background: var(--accent-color);
+    color: #000;
+    font-weight: bold;
 }
 
-/* 分頁核心 */
-.stage { overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
-
-/* ⚔️ 歷練區與血條文字 */
-.battle-main { display: flex; flex-direction: column; gap: 10px; }
-.monster-card, .player-card {
-    background: var(--card-bg); border: 1px solid var(--border);
-    padding: 12px; border-radius: 10px; text-align: center; position: relative;
-}
-.m-name { font-weight: bold; margin-bottom: 8px; height: 20px; color: #ff6b6b; }
-
-.hp-container {
-    height: 22px; background: #000; border-radius: 11px;
-    position: relative; overflow: hidden; border: 1px solid #444; margin: 5px 0;
-}
-.hp-bar-fill { height: 100%; width: 0%; transition: width 0.3s ease-out; }
-.monster-hp .hp-bar-fill { background: linear-gradient(90deg, #8b0000, #ff4d4d); }
-.player-hp .hp-bar-fill { background: linear-gradient(90deg, #1b5e20, #4caf50); }
-.hp-text {
-    position: absolute; width: 100%; text-align: center; font-size: 11px;
-    line-height: 20px; color: #fff; font-weight: bold; text-shadow: 1px 1px 2px #000; z-index: 5;
+.screen {
+    width: 90%;
+    max-width: 600px;
+    padding: 20px;
+    display: none; /* 預設隱藏，由 core.js 控制 */
 }
 
-/* 💥 戰鬥抖動與傷害數字 */
-.shake { animation: shakeAnim 0.2s ease-in-out; }
-@keyframes shakeAnim {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-5px); }
-    75% { transform: translateX(5px); }
+/* --- 2. 品級發光核心 (V1.5 重點) --- */
+.bag-item, .slot, .shop-item, .skill-item {
+    background: var(--card-bg);
+    border: 2px solid #444;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 10px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.damage-popup {
-    position: absolute; color: #ff4d4d; font-weight: bold; font-size: 24px;
-    pointer-events: none; animation: dmgFloat 0.8s ease-out forwards;
-    text-shadow: 2px 2px 2px #000; z-index: 100; top: 20%; left: 45%;
-}
-@keyframes dmgFloat {
-    0% { opacity: 1; transform: translateY(0) scale(1); }
-    100% { opacity: 0; transform: translateY(-60px) scale(1.5); }
-}
+/* 凡品 (r-1) */
+.r-1 { border-color: #9e9e9e !important; }
 
-.monster-visual { height: 100px; display: flex; align-items: center; justify-content: center; }
-.monster-pic { font-size: 60px; cursor: pointer; user-select: none; }
-
-/* 🌀 手動技能與 CD 遮罩 */
-.active-skills-row { display: flex; justify-content: center; gap: 12px; margin-top: 8px; height: 40px; }
-.skill-icon-sm {
-    width: 40px; height: 40px; border: 2px solid var(--border);
-    background: #222; border-radius: 8px; display: flex; align-items: center; 
-    justify-content: center; cursor: pointer; position: relative; overflow: hidden;
-}
-.skill-cd-mask {
-    position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.7);
-    height: 0%; pointer-events: none;
+/* 良品 (r-2) */
+.r-2 { 
+    border-color: #2ecc71 !important; 
+    box-shadow: inset 0 0 8px rgba(46, 204, 113, 0.3);
 }
 
-/* 日誌系統 */
-.log-system {
-    flex: 1; min-height: 160px; background: #080808;
-    border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column;
+/* 精品 (r-3) */
+.r-3 { 
+    border-color: #3498db !important; 
+    box-shadow: inset 0 0 12px rgba(52, 152, 219, 0.4);
 }
-.log-tabs { display: flex; border-bottom: 1px solid var(--border); }
-.log-tab { flex: 1; background: none; border: none; color: #666; padding: 8px; font-size: 12px; cursor: pointer; }
-.log-tab.active { color: var(--gold); border-bottom: 2px solid var(--gold); }
-.log-list { flex: 1; overflow-y: auto; padding: 8px; font-size: 12px; line-height: 1.6; }
 
-/* 🎒 儲物袋頁籤 */
-.tab-filters { display: flex; gap: 5px; margin-bottom: 10px; }
-.filter-btn { flex: 1; background: #222; border: 1px solid var(--border); color: #888; padding: 6px; border-radius: 4px; font-size: 11px; cursor: pointer; }
-.filter-btn.active { border-color: var(--gold); color: var(--gold); background: #2a2a2a; }
-
-.bag-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
-.item-slot {
-    display: flex; align-items: center; background: #1a1a1a;
-    padding: 10px; border-radius: 6px; border-left: 4px solid #444; cursor: pointer;
+/* 仙品 (r-4)：帶有呼吸效果 */
+.r-4 { 
+    border-color: #9b59b6 !important; 
+    box-shadow: 0 0 10px rgba(155, 89, 182, 0.6);
+    animation: purple-pulse 2s infinite alternate;
 }
-.affix-tag { font-weight: bold; margin-right: 2px; }
-.r-0 { color: var(--rarity-0); } .r-1 { color: var(--rarity-1); }
-.r-2 { color: var(--rarity-2); } .r-3 { color: var(--rarity-3); }
-.r-4 { color: var(--rarity-4); text-shadow: 0 0 5px rgba(255,69,0,0.5); }
 
-/* 🧘 修為 UI 加強 */
-.stats-grid-v2 {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-    background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%); 
-    padding: 12px; border-radius: 8px; border: 2px solid #3d3d3d;
+/* 神品 (r-5)：極致金光 */
+.r-5 { 
+    border-color: #f1c40f !important; 
+    box-shadow: 0 0 15px rgba(241, 196, 15, 0.8);
+    animation: gold-pulse 1.5s infinite alternate;
 }
-.stat-row-flex { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; border-bottom: 1px solid #222; }
-.stat-row-flex b { color: #00ffcc; }
 
-.skills-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.skill-card {
-    background: #222; padding: 8px; border-radius: 6px; text-align: center;
-    border: 1px solid var(--border); font-size: 11px; cursor: pointer;
+@keyframes purple-pulse {
+    from { box-shadow: 0 0 5px rgba(155, 89, 182, 0.4); }
+    to { box-shadow: 0 0 15px rgba(155, 89, 182, 0.8); }
 }
-.skill-card.equipped { border-color: var(--gold); box-shadow: 0 0 5px var(--gold); }
 
-/* 底部導航 */
-.nav-bar { display: flex; background: #1a1a1a; border-top: 1px solid var(--border); height: 65px; }
-.nav-bar button { flex: 1; background: none; border: none; color: #777; font-size: 12px; cursor: pointer; }
+@keyframes gold-pulse {
+    from { box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
+    to { box-shadow: 0 0 25px rgba(241, 196, 15, 1); }
+}
 
-/* 彈窗 */
-.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 10000; }
-.modal-content { background: #1a1a1a; width: 85%; max-width: 360px; padding: 20px; border-radius: 12px; border: 1px solid var(--gold); }
-.modal-footer { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; }
+/* --- 3. 雙色文字 (V1.5 重點) --- */
+.prefix-text {
+    color: var(--prefix-color);
+    font-weight: bold;
+    font-size: 0.9em;
+    margin-right: 5px;
+    text-shadow: 0 0 2px rgba(0,0,0,0.5);
+}
+
+.name-text {
+    color: #ffffff;
+    font-weight: 500;
+}
+
+/* --- 4. 戰鬥與 Boss 按鈕 --- */
+#boss-btn {
+    width: 100%;
+    padding: 15px;
+    margin-top: 15px;
+    background: linear-gradient(135deg, #c0392b, #8e44ad);
+    border: 2px solid gold;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 10px;
+    animation: button-glow 1s infinite alternate;
+}
+
+@keyframes button-glow {
+    from { opacity: 0.8; transform: scale(1); }
+    to { opacity: 1; transform: scale(1.02); }
+}
+
+/* --- 5. 彈窗地圖介面 (Modal) --- */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: var(--card-bg);
+    width: 90%;
+    max-width: 500px;
+    padding: 25px;
+    border-radius: 15px;
+    border: 1px solid var(--accent-color);
+}
+
+.region-tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 20px;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 8px;
+    background: #333;
+    border: none;
+    color: #999;
+}
+
+.tab-btn.active {
+    background: #555;
+    color: white;
+}
+
+.map-card {
+    background: #333;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-left: 4px solid #777;
+    cursor: pointer;
+}
+
+.map-card.current {
+    border-left-color: var(--accent-color);
+    background: #444;
+}
+
+/* --- 6. 熟練度進度條 --- */
+.mastery-bar-container {
+    height: 6px;
+    background: #111;
+    border-radius: 3px;
+    margin: 8px 0;
+    overflow: hidden;
+}
+
+.mastery-fill {
+    height: 100%;
+    background: linear-gradient(to right, #3498db, #2ecc71);
+    transition: width 0.5s ease;
+}
