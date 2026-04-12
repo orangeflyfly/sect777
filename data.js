@@ -1,6 +1,7 @@
 /**
- * V1.5.10 data.js (真·大乘圓滿版)
- * 職責：存儲 80+ 全量詞條、全量妖獸與地圖數據
+ * V1.5.12 data.js
+ * 職責：全量靜態資料庫 (80+ 詞條、全怪物、全地圖)
+ * 狀態：全量實裝，禁止簡化。
  */
 
 const GAMEDATA = {
@@ -11,9 +12,9 @@ const GAMEDATA = {
         RARITY_COLORS: ["#95a5a6", "#2ecc71", "#3498db", "#9b59b6", "#f1c40f"]
     },
 
-    // 80 個詞條庫（全量實裝，絕無簡寫）
+    // --- 80 個隨機詞條 (全量列出，絕無刪減) ---
     PREFIXES: [
-        // --- 凡品 (1-20) ---
+        /* 凡品 (1-20) */
         { name: "鋒利的", attr: "str", value: 2, rarity: 1 }, { name: "破碎的", attr: "str", value: 1, rarity: 1 },
         { name: "堅固的", attr: "con", value: 2, rarity: 1 }, { name: "破舊的", attr: "con", value: 1, rarity: 1 },
         { name: "輕盈的", attr: "dex", value: 2, rarity: 1 }, { name: "笨重的", attr: "dex", value: 1, rarity: 1 },
@@ -25,7 +26,7 @@ const GAMEDATA = {
         { name: "剛硬的", attr: "str", value: 3, rarity: 1 }, { name: "柔軟的", attr: "dex", value: 3, rarity: 1 },
         { name: "冰冷的", attr: "int", value: 3, rarity: 1 }, { name: "溫熱的", attr: "con", value: 3, rarity: 1 },
 
-        // --- 良品 (21-40) ---
+        /* 良品 (21-40) */
         { name: "噴火的", attr: "str", value: 6, rarity: 2 }, { name: "淬毒的", attr: "dex", value: 6, rarity: 2 },
         { name: "精湛的", attr: "int", value: 6, rarity: 2 }, { name: "強韌的", attr: "con", value: 6, rarity: 2 },
         { name: "大師的", attr: "str", value: 8, rarity: 2 }, { name: "精準的", attr: "dex", value: 8, rarity: 2 },
@@ -37,7 +38,7 @@ const GAMEDATA = {
         { name: "閃耀的", attr: "int", value: 7, rarity: 2 }, { name: "厚重的", attr: "con", value: 9, rarity: 2 },
         { name: "虎威的", attr: "str", value: 9, rarity: 2 }, { name: "鷹眼的", attr: "dex", value: 9, rarity: 2 },
 
-        // --- 精品 (41-60) ---
+        /* 精品 (41-60) */
         { name: "狂暴的", attr: "str", value: 18, rarity: 3 }, { name: "幻影的", attr: "dex", value: 18, rarity: 3 },
         { name: "不動的", attr: "con", value: 18, rarity: 3 }, { name: "冥想的", attr: "int", value: 18, rarity: 3 },
         { name: "灼熱的", attr: "str", value: 22, rarity: 3 }, { name: "寒冰的", attr: "int", value: 22, rarity: 3 },
@@ -45,11 +46,11 @@ const GAMEDATA = {
         { name: "破滅的", attr: "str", value: 25, rarity: 3 }, { name: "守護的", attr: "con", value: 25, rarity: 3 },
         { name: "智慧的", attr: "int", value: 25, rarity: 3 }, { name: "流星的", attr: "dex", value: 25, rarity: 3 },
         { name: "雷霆的", attr: "str", value: 28, rarity: 3 }, { name: "聖光的", attr: "int", value: 28, rarity: 3 },
-        { name: "神速的", attr: "dex", value: 28, rarity: 3 }, { name: "鋼鐵意意志的", attr: "con", value: 28, rarity: 3 },
+        { name: "神速的", attr: "dex", value: 28, rarity: 3 }, { name: "鋼鐵意志的", attr: "con", value: 28, rarity: 3 },
         { name: "深淵的", attr: "int", value: 20, rarity: 3 }, { name: "熔岩的", attr: "str", value: 20, rarity: 3 },
         { name: "狂風的", attr: "dex", value: 20, rarity: 3 }, { name: "不朽的", attr: "con", value: 20, rarity: 3 },
 
-        // --- 極品 (61-75) ---
+        /* 極品 (61-75) */
         { name: "毀滅之", attr: "str", value: 45, rarity: 4 }, { name: "不朽之", attr: "con", value: 45, rarity: 4 },
         { name: "時空之", attr: "dex", value: 45, rarity: 4 }, { name: "真理之", attr: "int", value: 45, rarity: 4 },
         { name: "巨龍的", attr: "str", value: 50, rarity: 4 }, { name: "泰坦的", attr: "con", value: 50, rarity: 4 },
@@ -59,7 +60,7 @@ const GAMEDATA = {
         { name: "霸主的", attr: "str", value: 60, rarity: 4 }, { name: "至尊的", attr: "con", value: 60, rarity: 4 },
         { name: "賢者的", attr: "int", value: 60, rarity: 4 },
 
-        // --- 神品 (76-80+) ---
+        /* 神品 (76-80+) */
         { name: "混沌·", attr: "str", value: 120, rarity: 5 },
         { name: "鴻蒙·", attr: "con", value: 120, rarity: 5 },
         { name: "天道·", attr: "int", value: 120, rarity: 5 },
@@ -71,6 +72,7 @@ const GAMEDATA = {
         { name: "核心·", attr: "str", value: 200, rarity: 5 }
     ],
 
+    // --- 妖獸資料 ---
     MONSTERS: {
         "m001": { name: "草泥兔", hp: 30, atk: 5, gold: 10, exp: 5, icon: "🐇" },
         "m002": { name: "偷雞賊", hp: 50, atk: 8, gold: 15, exp: 10, icon: "👤" },
@@ -82,6 +84,7 @@ const GAMEDATA = {
         "m105": { name: "地獄火領主", hp: 8000, atk: 600, gold: 5000, exp: 4500, icon: "🔥", isBoss: true }
     },
 
+    // --- 地圖與掉落 ---
     REGIONS: [
         {
             id: "qingyun",
@@ -106,6 +109,7 @@ const GAMEDATA = {
         }
     ],
 
+    // --- 神通資料 ---
     SKILLS: {
         "s001": { name: "烈焰斬", desc: "附帶火焰傷害，威力不俗", type: "active", baseDmg: 20 },
         "s002": { name: "回春術", desc: "調動靈氣，修復肉身傷勢", type: "heal", baseHeal: 15 },
@@ -113,4 +117,4 @@ const GAMEDATA = {
     }
 };
 
-console.log("✅ [V1.5.10] data.js 80+ 詞條全量注入成功！");
+console.log("✅ [V1.5.12] data.js 全量資料載入完成，80+ 詞條無一遺漏。");
