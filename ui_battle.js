@@ -1,22 +1,25 @@
-/**
- * V1.5.7 ui_battle.js
- * 職責：渲染怪物資訊、血條、地圖彈窗。
- */
 const UI_Battle = {
-    // 渲染怪物核心區域
+    // 渲染戰鬥介面
     renderBattle: function(monster) {
+        // 1. 抓取 HTML 裡的容器
         const displayArea = document.getElementById('monster-display');
-        if (!displayArea || !monster) return;
+        
+        // 2. 防呆檢查：如果 HTML 沒寫好 ID，這裡就會報錯（打X）
+        if (!displayArea) {
+            console.error("❌ 找不到 monster-display 容器！請檢查 index.html");
+            return;
+        }
 
-        // 計算血量百分比
+        if (!monster) return;
+
         const hpPercent = (monster.hp / monster.maxHp) * 100;
 
-        // 重新構建怪物卡片 (包含手動點擊攻擊功能)
+        // 3. 注入 1.4.1 的怪物卡片結構
         displayArea.innerHTML = `
             <div class="monster-card ${monster.isBoss ? 'r-5' : 'r-2'}">
-                <div class="monster-icon" onclick="Combat.playerAttack(true)">
+                <div class="monster-icon" onclick="Combat.playerAttack(true)" style="cursor:pointer;">
                     ${monster.icon || '👾'}
-                    <div class="click-hint">點擊斬妖</div>
+                    <div class="click-hint" style="font-size:12px; color:gold;">[點擊斬妖]</div>
                 </div>
                 <div class="monster-name">
                     ${monster.isBoss ? '<b style="color:gold;">【領主】</b>' : ''}${monster.name}
@@ -34,24 +37,24 @@ const UI_Battle = {
     updateBossButton: function() {
         const btn = document.getElementById('boss-btn');
         if (!btn) return;
-        // 只有在歷練頁且滿足擊殺數時才顯示
-        if (player.data.killCount >= (GAMEDATA.CONFIG.BOSS_KILL_REQUIRE || 10)) {
+        // 判斷擊殺數是否達標 (1.5 版新邏輯)
+        if (player.data.killCount >= 10) {
             btn.style.display = 'block';
         } else {
             btn.style.display = 'none';
         }
     },
 
-    // 地圖選擇彈窗
     showMapSelector: function() {
+        // 此處保持之前的彈窗邏輯
         let html = `
             <div class="modal-overlay">
                 <div class="modal-content">
                     <h3 style="color:gold;">選擇歷練區域</h3>
-                    <div class="map-list" style="max-height:300px; overflow-y:auto;">
+                    <div class="map-list">
                         ${this.renderMaps()}
                     </div>
-                    <button class="nav-btn" onclick="UI_Battle.closeModal()" style="margin-top:15px; width:100%;">關閉</button>
+                    <button class="nav-btn" onclick="UI_Battle.closeModal()" style="margin-top:15px; width:100%;">離開</button>
                 </div>
             </div>
         `;
@@ -61,9 +64,8 @@ const UI_Battle = {
     renderMaps: function() {
         const region = GAMEDATA.REGIONS.find(r => r.id === player.data.currentRegion);
         return region.maps.map(m => `
-            <div class="map-card" onclick="UI_Battle.selectMap(${m.id})">
+            <div class="map-card" onclick="UI_Battle.selectMap(${m.id})" style="border:1px solid #444; margin:5px; padding:10px; cursor:pointer;">
                 <b>${m.name}</b> <small>(Lv.${m.level})</small>
-                <div style="font-size:11px; color:#888;">掉落: ${m.drops.join('、')}</div>
             </div>
         `).join('');
     },
@@ -72,7 +74,7 @@ const UI_Battle = {
         player.data.currentMapId = mapId;
         player.data.killCount = 0;
         this.closeModal();
-        Combat.initBattle(); // 重新開始戰鬥
+        Combat.initBattle();
     },
 
     closeModal: function() {
