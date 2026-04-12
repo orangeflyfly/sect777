@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
-    <title>宗門修仙錄 V1.1 - 靈魂回歸版</title>
+    <title>宗門修仙錄 V1.3 - 萬象更新</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -24,7 +24,7 @@
     <div id="game-container">
         <div class="header-info">
             <div class="header-line">
-                <span id="val-level">載入中...</span>
+                <span id="val-level">境界載入中...</span>
                 <span id="val-money">🪙 0</span>
             </div>
             <div class="exp-bar-container">
@@ -38,13 +38,12 @@
             </div>
             
             <div class="monster-area">
-                <div id="monster-name">尋找對手中...</div>
-                <div id="monster-pic" class="monster-pic" style="cursor:pointer;" onclick="_X_CORE.combat.playerAtk(true)">⏳</div>
+                <div id="monster-name">尋找妖獸中...</div>
+                <div id="monster-pic" class="monster-pic" onclick="_X_CORE.combat.playerAtk(true)">⏳</div>
                 <div class="hp-container">
                     <div id="m-hp-bar" class="hp-bar-fill"></div>
                     <div id="m-hp-txt" class="hp-text">0 / 0</div>
                 </div>
-                <p style="font-size:10px; color:#666; margin:2px 0;">(提示：點擊怪物圖示可手動攻擊)</p>
             </div>
 
             <div class="player-status-area">
@@ -66,6 +65,7 @@
                     <button class="log-tab active" onclick="_X_CORE.ui.switchLog('all')">全部</button>
                     <button class="log-tab" onclick="_X_CORE.ui.switchLog('combat')">戰鬥</button>
                     <button class="log-tab" onclick="_X_CORE.ui.switchLog('loot')">獲取</button>
+                    <button class="log-tab" onclick="_X_CORE.ui.switchLog('system')">系統</button>
                 </div>
                 <div id="log-list" class="log-list"></div>
             </div>
@@ -81,21 +81,30 @@
 
         <div id="p-stats" class="stage" style="display:none;">
             <h4>本命命牌</h4>
-            <div id="detail-stats-list" class="detailed-stats-box"></div>
+            <div id="detail-stats-list" class="detailed-stats-grid"></div>
             <hr>
             <div class="points-allocation">
-                <p>可用點數：<b id="val-pts" style="color:gold;">0</b></p>
+                <p>可用潛能：<b id="val-pts" style="color:gold;">0</b></p>
                 <div id="stat-list"></div>
             </div>
             <hr>
-            <h5>當前裝備</h5>
-            <div id="equipment-slots" class="eq-grid"></div>
+            <div id="equipment-slots"></div>
+        </div>
+
+        <div id="p-shop" class="stage" style="display:none;">
+            <div class="shop-header">
+                <h4>萬寶閣</h4>
+                <div id="shop-timer" style="font-size: 12px; color: #888;">刷新時間: --:--</div>
+            </div>
+            <div id="shop-list" class="bag-grid">
+                </div>
         </div>
 
         <div class="nav-bar">
             <button onclick="_X_CORE.ui.switchPage('battle')">⚔️ 歷練</button>
             <button onclick="_X_CORE.ui.switchPage('bag')">🎒 儲物</button>
             <button onclick="_X_CORE.ui.switchPage('stats')">🧘 修為</button>
+            <button onclick="_X_CORE.ui.switchPage('shop')">🏪 坊市</button>
         </div>
     </div>
 
