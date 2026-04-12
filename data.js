@@ -3,15 +3,13 @@
  * 職責：定義世界觀、怪物、物品、技能與商店配置
  */
 var GAME_DATA = {
-    // --- 全域配置 ---
     CONFIG: {
-        NEED_SCROLLS: 5,      // 殘卷合成所需數量
-        MAX_BAG_SIZE: 50,     // 儲物袋上限
-        REGEN_INTERVAL: 1000, // 每秒回血頻率
+        NEED_SCROLLS: 5,
+        MAX_BAG_SIZE: 50,
+        REGEN_INTERVAL: 1000,
         VERSION: "1.3.1"
     },
 
-    // --- 稀有度定義 ---
     RARITY: [
         { n: "凡品", c: "#aaa" }, 
         { n: "良品", c: "#4caf50" },
@@ -20,14 +18,12 @@ var GAME_DATA = {
         { n: "神品", c: "#ffd700" }
     ],
 
-    // --- 地圖配置 ---
     MAPS: [
         { id: 0, name: "青雲後山", lv: 1, monsters: [0, 1], drops: [100, 101] },
         { id: 1, name: "亂葬崗", lv: 10, monsters: [2, 3], drops: [102, 103] },
         { id: 2, name: "萬妖谷", lv: 25, monsters: [4, 5], drops: [104, 105] }
     ],
 
-    // --- 妖獸清單 ---
     MONSTERS: [
         { id: 0, name: "野豬", hp: 80, atk: 12, exp: 15, coin: 5, pic: "🐗" },
         { id: 1, name: "吸血蝙蝠", hp: 60, atk: 18, exp: 20, coin: 8, pic: "🦇" },
@@ -37,7 +33,6 @@ var GAME_DATA = {
         { id: 5, name: "雙頭蛇", hp: 1000, atk: 250, exp: 600, coin: 200, pic: "🐍" }
     ],
 
-    // --- 物品定義 (分類修正) ---
     ITEMS: [
         { id: 100, name: "殘卷：長生功", type: "scroll", target: 0 },
         { id: 101, name: "野豬獠牙", type: "material", desc: "野豬掉落的堅硬獠牙，可出售換錢。" },
@@ -47,7 +42,6 @@ var GAME_DATA = {
         { id: 105, name: "劇毒蛇膽", type: "material", desc: "散發幽光的蛇膽，珍貴的藥材。" }
     ],
 
-    // --- 萬寶閣 (商店) 配置 ---
     SHOP_ITEMS: [
         { name: "殘卷：長生功", price: 200, type: "scroll" },
         { name: "殘卷：烈焰斬", price: 1000, type: "scroll" },
@@ -55,14 +49,12 @@ var GAME_DATA = {
         { name: "小回春丹", price: 50, type: "material", desc: "雖然標記為材料，但未來可作為消耗品。" }
     ],
 
-    // --- 神通技能 ---
     SKILLS: [
         { id: 0, name: "長生功", type: "passive", effect: { hpMul: 1.3 }, desc: "增加 30% 生命上限" },
         { id: 1, name: "烈焰斬", type: "active", proc: 0.2, effect: { dmgMul: 3 }, desc: "攻擊時 20% 機率造成 3 倍傷害" },
         { id: 2, name: "回春術", type: "active", proc: 0.15, effect: { healMul: 0.4 }, desc: "攻擊時 15% 機率恢復 40% 生命" }
     ],
 
-    // --- 裝備詞條 (維持 60 種組合潛力) ---
     AFFIX: {
         PREFIX: [
             { n: "生鏽的", atk: 0.8 }, { n: "凡人的", atk: 1.1 }, { n: "鋒利的", atk: 1.5 }, { n: "百鍊的", atk: 2.2 }, { n: "寒霜的", atk: 3.5 },
@@ -79,8 +71,12 @@ var GAME_DATA = {
             { n: "虛空的", dodge: 0.2, atk: 5.0 }, { n: "荒古的", hp: 20.0, atk: 10.0 }, { n: "永恆的", regen: 100, hp: 50.0 }, { n: "輪迴的", atk: 50.0, dodge: 0.3 }, { n: "太初", atk: 500, hp: 500, def: 500 }
         ],
         SUFFIX: [
-            { n: "之劍", atk: 10, type: 'weapon' }, { n: "之刃", atk: 12, type: 'weapon' }, { n: "之槍", atk: 15, type: 'weapon' },
-            { n: "之袍", def: 5, hp: 50, type: 'body' }, { n: "之甲", def: 15, hp: 120, type: 'body' }, { n: "之鎧", def: 30, hp: 300, type: 'body' }
+            { n: "之劍", atk: 10, type: "weapon" }, 
+            { n: "之刃", atk: 12, type: "weapon" }, 
+            { n: "之槍", atk: 15, type: "weapon" },
+            { n: "之袍", def: 5, hp: 50, type: "body" }, 
+            { n: "之甲", def: 15, hp: 120, type: "body" }, 
+            { n: "之鎧", def: 30, hp: 300, type: "body" }
         ]
     }
 };
