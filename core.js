@@ -1,101 +1,113 @@
 /**
- * 宗門修仙錄 - 核心控制模組 (core.js) V1.2.2
- * 【核心修正】：總調度所有模組，實裝天道重生保險
+ * 宗門修仙錄 - 核心控制器 (core.js) V1.3.1
+ * 職責：初始化所有模組、管理遊戲主循環、處理地圖切換與屬性加點
  */
 var _X_CORE = null;
 
 function GameCore() {
-    this.player = new Player(this);
-    this.inventory = new Inventory(this);
-    this.combat = new Combat(this);
-    this.ui = new UIManager(this);
-    // 🆕 冊封萬寶閣長老
-    this.shop = new Shop(this); 
-    
-    this.auto = true;
-    this.timer = null;
-    this.regenTimer = null;
+    // 1. 封裝全域指標，確保 HTML 上的 onclick 能準確抓到此執行個體
+    _X_CORE = this;
+
+    // 2. 依次點亮各功能模組
+    this.player = new Player(this);     // 命魂
+    this.inventory = new Inventory(this); // 寶庫
+    this.combat = new Combat(this);     // 鬥法
+    this.ui = new UIManager(this);       // 顯影
+    this.shop = new Shop(this);         // 坊市
+
+    this.auto = true;    // 自動戰鬥開關
+    this.timer = null;   // 主循環計時器
 }
 
-   
-    
-
-// 1. 初始化遊戲
+/**
+ * 啟動宗門大陣
+ */
 GameCore.prototype.init = function() {
-    _X_CORE = this; // 註冊全域指標，供 HTML 按鈕使用
-    
-    // 初始化 UI 畫面
+    console.log("宗門修仙錄 V1.3.1 啟動中...");
+
+    // 執行初步渲染
     this.ui.renderAll();
     
-    // 刷出第一隻妖獸
+    // 生成第一隻妖獸
     this.combat.spawn();
-    
-    // 開啟自動化循環
-    this.startLoop();
-};
 
-// 2. 開啟天道循環 (戰鬥與回血)
-GameCore.prototype.startLoop = function() {
-    var self = this;
-    
-    // 戰鬥計時器：每秒跳動一次
+    // 啟動主循環 (每秒執行一次)
     if (this.timer) clearInterval(this.timer);
-    this.timer = setInterval(function() {
-        if (self.auto && !self.player.battle.isDead) {
-            // 【天道重生鎖】：若沒怪或怪已死(0血)，強制重新生成
-            if (!self.combat.m || self.combat.m.hp <= 0) {
-                self.combat.spawn();
-            } else {
-                // 有怪則正常發動攻擊
-                self.combat.playerAtk(false);
-            }
-        }
-    }, 1000);
-
-    // 恢復計時器：每秒回血
-    if (this.regenTimer) clearInterval(this.regenTimer);
-    this.regenTimer = setInterval(function() {
-        var p = self.player;
-        if (p.battle.hp < p.battle.maxHp && !p.battle.isDead) {
-            p.battle.hp = Math.min(p.battle.maxHp, p.battle.hp + p.battle.regen);
-            self.ui.updateHPs(p, self.combat.m);
-        }
+    this.timer = setInterval(() => {
+        this.update();
     }, 1000);
 };
 
-// 3. 切換自動模式
+/**
+ * 每秒一次的遊戲更新邏輯
+ */
+GameCore.prototype.update = function() {
+    // 1. 自動戰鬥邏輯
+    if (this.auto && !this.player.battle.isDead) {
+        // 若無怪或怪已死，則生成新怪
+        if (!this.combat.m || this.combat.m.hp <= 0) {
+            this.combat.spawn();
+        } else {
+            // 玩家發動自動攻擊
+            this.combat.playerAtk(false);
+        }
+    }
+
+    // 2. 秒回血邏輯 (戰鬥中或閒置時皆有效)
+    if (this.player.battle.hp < this.player.battle.maxHp && !this.player.battle.isDead) {
+        const heal = this.player.battle.regen;
+        this.player.battle.hp = Math.min(this.player.battle.maxHp, this.player.battle.hp + heal);
+        this.ui.updateHPs(this.player, this.combat.m);
+    }
+};
+
+/**
+ * 切換自動戰鬥狀態
+ */
 GameCore.prototype.toggleAuto = function(val) {
     this.auto = val;
-    this.ui.toast(this.auto ? "開啟自動歷練" : "關閉自動歷練");
+    this.ui.log(this.auto ? "開啟自動歷練" : "關閉自動歷練", "system");
 };
 
-// 4. 切換歷練地圖
+/**
+ * 切換修煉地圖
+ */
 GameCore.prototype.changeMap = function(id) {
-    this.player.data.mapId = parseInt(id);
-    var map = GAME_DATA.MAPS[this.player.data.mapId];
-    this.ui.toast("前往歷練地：" + map.name);
+    const mapId = parseInt(id);
+    this.player.data.mapId = mapId;
+    this.ui.log(`前往修煉地：${GAME_DATA.MAPS[mapId].name}`, "system", "cyan");
     
-    this.combat.spawn(); // 換地圖強制刷怪
+    // 重置怪物
+    this.combat.spawn();
     this.player.save();
 };
 
-// 5. 屬性加點功能
+/**
+ * 屬性加點邏輯
+ */
 GameCore.prototype.addStat = function(key) {
-    if (this.player.data.pts > 0) {
-        this.player.data.pts--;
-        this.player.data.baseStats[key]++;
+    const p = this.player;
+    if (p.data.pts > 0) {
+        p.data.pts--;
+        p.data.baseStats[key]++;
         
-        // 刷新數據並渲染畫面
-        this.player.refresh();
+        // 重新計算最終屬性並刷新畫面
+        p.refresh();
         this.ui.renderAll();
-        this.player.save();
+        p.save();
     } else {
         this.ui.toast("潛能點不足", "#888");
     }
 };
 
-// --- 陣法開啟 ---
-window.onload = function() {
-    var core = new GameCore();
-    core.init();
-};
+/**
+ * 萬法歸一：當頁面 DOM 完全加載後，啟動核心
+ */
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        const game = new GameCore();
+        game.init();
+    } catch (e) {
+        console.error("啟動大陣時發生混亂（程式錯誤）:", e);
+    }
+});
