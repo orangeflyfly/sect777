@@ -1,175 +1,198 @@
 /**
- * V1.6.0 ui_battle.js (戰鬥視覺加固版)
- * 職責：妖獸渲染、抖動特效、地圖導航、日誌過濾。
+ * V1.7.0 ui_battle.js
+ * 職責：戰鬥分頁 UI 渲染、日誌摺疊控制、三級地圖選擇與境界檢查。
  */
 
 const UI_Battle = {
-    currentLogTab: 'all',
-    elements: {}, // UI 元素緩存
+    // 1. 初始化
+    init() {
+        this.renderMapName();
+        // 確保進入頁面時日誌是展開的
+        const logSystem = document.getElementById('log-system');
+        if (logSystem) logSystem.classList.add('expanded');
+    },
 
-    // 1. 渲染妖獸介面
-    renderBattle: function(monster) {
-        const displayArea = document.getElementById('monster-display');
-        if (!displayArea || !monster) return;
-
-        // 骨架防禦性生成
-        if (!document.getElementById('monster-card-container')) {
-            displayArea.innerHTML = `
-                <div id="monster-card-container" class="monster-card">
-                    <div class="monster-visual">
-                        <div id="m-icon" class="monster-icon" onclick="Combat.playerAttack(true)"></div>
-                    </div>
-                    <div id="m-name-txt" class="monster-name"></div>
-                    <div class="hp-container">
-                        <div class="bar-container hp" style="height:20px; border-radius:10px; background:#222; overflow:hidden;">
-                            <div id="m-hp-bar" class="bar-fill hp" style="width:100%; height:100%; background:var(--hp-color, #e74c3c); transition: width 0.2s ease-out;"></div>
-                            <div id="m-hp-txt" class="bar-text" style="position:absolute; width:100%; text-align:center; line-height:20px; font-size:11px; color:#fff; font-weight:bold;"></div>
-                        </div>
-                    </div>
-                    <div style="font-size:11px; color:var(--text-dim); margin-top:10px; letter-spacing:1px;">點擊圖標手動助戰</div>
-                </div>
-            `;
-            this.cacheMonsterUI();
-        }
-
-        const hpPercent = (monster.hp / monster.maxHp) * 100;
-        const el = this.elements;
-
-        // 強制更新動態數據
-        if (el.icon) el.icon.innerText = monster.icon || '👾';
-        if (el.name) {
-            el.name.innerHTML = `${monster.isBoss ? '<span class="boss-tag" style="color:var(--legend, #f1c40f); font-size:0.8em; display:block; margin-bottom:4px;">【區域領主】</span>' : ''}${monster.name}`;
-        }
-        if (el.hpBar) el.hpBar.style.width = Math.max(0, hpPercent) + "%";
-        if (el.hpTxt) el.hpTxt.innerText = `${Math.ceil(Math.max(0, monster.hp))} / ${monster.maxHp}`;
+    // 2. 更新地圖名稱顯示
+    renderMapName() {
+        const mapNameEl = document.getElementById('current-map-name');
+        const mapId = Player.data.currentMap;
         
-        this.updateBossButton();
-    },
-
-    cacheMonsterUI: function() {
-        this.elements = {
-            icon: document.getElementById('m-icon'),
-            name: document.getElementById('m-name-txt'),
-            hpBar: document.getElementById('m-hp-bar'),
-            hpTxt: document.getElementById('m-hp-txt'),
-            card: document.getElementById('monster-card-container')
-        };
-    },
-
-    // 2. 執行打擊抖動
-    triggerShake: function() {
-        const card = this.elements.card || document.getElementById('monster-card-container');
-        if (card) {
-            card.classList.remove('shake');
-            void card.offsetWidth; // 觸發重繪
-            card.classList.add('shake');
-            
-            card.addEventListener('animationend', () => {
-                card.classList.remove('shake');
-            }, { once: true });
-        }
-    },
-
-    // 3. 日誌過濾系統
-    switchLog: function(tab) {
-        this.currentLogTab = tab;
-        
-        // 更新標籤視覺 (優化選擇器)
-        document.querySelectorAll('.log-tab').forEach(t => {
-            const clickAttr = t.getAttribute('onclick') || "";
-            t.classList.toggle('active', clickAttr.includes(`'${tab}'`));
-        });
-
-        this.refreshLogVisibility();
-    },
-
-    refreshLogVisibility: function() {
-        const logs = document.querySelectorAll('.log-item');
-        const tab = this.currentLogTab;
-
-        logs.forEach(log => {
-            if (tab === 'all') {
-                log.style.display = 'block';
-            } else {
-                const hasClass = log.classList.contains(tab) || log.classList.contains('system');
-                log.style.display = hasClass ? 'block' : 'none';
+        // 從資料庫找地圖名稱
+        let name = "未知地域";
+        for (let rId in GAMEDATA.REGIONS) {
+            const map = GAMEDATA.REGIONS[rId].maps.find(m => m.id === mapId);
+            if (map) {
+                name = map.name;
+                break;
             }
+        }
+        if (mapNameEl) mapNameEl.innerText = name;
+    },
+
+    // 3. 更新怪物卡片資訊
+    updateMonster(monster) {
+        const display = document.getElementById('monster-display');
+        const icon = document.getElementById('monster-icon');
+        const name = document.getElementById('monster-name');
+        const hpFill = document.getElementById('monster-hp-fill');
+        const hpText = document.getElementById('monster-hp-text');
+
+        if (!monster) return;
+
+        display.classList.remove('monster-die'); // 確保新怪物沒有死亡效果
+        icon.innerText = monster.icon;
+        name.innerText = monster.name;
+        
+        const hpPercent = (monster.currentHp / monster.hp) * 100;
+        hpFill.style.width = `${hpPercent}%`;
+        hpText.innerText = `${Math.ceil(monster.currentHp)}/${monster.hp}`;
+    },
+
+    // 4. 實裝：日誌摺疊功能
+    toggleLog() {
+        const logSystem = document.getElementById('log-system');
+        const toggleBtn = document.getElementById('log-toggle');
+        
+        if (logSystem.classList.contains('expanded')) {
+            logSystem.classList.remove('expanded');
+            logSystem.classList.add('collapsed');
+            toggleBtn.innerText = "展開 🔽";
+        } else {
+            logSystem.classList.remove('collapsed');
+            logSystem.classList.add('expanded');
+            toggleBtn.innerText = "收合 🔼";
+        }
+    },
+
+    // 5. 實裝：搜尋狀態切換 (解決卡住感)
+    showSearching(active) {
+        const monsterCard = document.getElementById('monster-display');
+        const searchingBox = document.getElementById('searching-display');
+
+        if (active) {
+            monsterCard.style.display = 'none';
+            searchingBox.style.display = 'block';
+        } else {
+            monsterCard.style.display = 'block';
+            searchingBox.style.display = 'none';
+        }
+    },
+
+    // 6. 實裝：死亡消散動畫
+    playMonsterDieAnim() {
+        const monsterCard = document.getElementById('monster-display');
+        monsterCard.classList.add('monster-die');
+    },
+
+    // 7. 戰鬥日誌輸出
+    log(msg, type = 'normal') {
+        const logList = document.getElementById('log-list');
+        if (!logList) return;
+
+        const div = document.createElement('div');
+        div.className = `log-item log-${type}`;
+        
+        const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        div.innerHTML = `<span class="log-time">[${time}]</span> ${msg}`;
+
+        logList.appendChild(div);
+
+        // 自動捲動到底部
+        logList.scrollTop = logList.scrollHeight;
+
+        // 限制日誌數量，防止手機版過卡
+        if (logList.childElementCount > GAMEDATA.CONFIG.LOG_LIMIT) {
+            logList.removeChild(logList.firstChild);
+        }
+    },
+
+    // 8. 實裝：三級地圖選擇器 (區域 -> 地圖)
+    showMapSelector() {
+        const modal = document.getElementById('modal-map');
+        modal.style.display = 'flex';
+        this.renderRegions();
+    },
+
+    // 渲染區域清單 (第一層)
+    renderRegions() {
+        const regionList = document.getElementById('region-list');
+        const mapList = document.getElementById('map-list');
+        regionList.innerHTML = '';
+        mapList.innerHTML = ''; // 清空地圖層
+
+        for (let rId in GAMEDATA.REGIONS) {
+            const region = GAMEDATA.REGIONS[rId];
+            const btn = document.createElement('button');
+            btn.className = 'region-btn';
+            if (Player.data.currentRegion === rId) btn.classList.add('active');
+            
+            btn.innerText = region.name;
+            btn.onclick = () => this.renderMaps(rId);
+            regionList.appendChild(btn);
+        }
+    },
+
+    // 渲染特定區域的地圖 (第二層)
+    renderMaps(regionId) {
+        const mapList = document.getElementById('map-list');
+        mapList.innerHTML = '';
+        
+        // 高亮選中的區域按鈕
+        document.querySelectorAll('.region-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.innerText === GAMEDATA.REGIONS[regionId].name);
+        });
+
+        const region = GAMEDATA.REGIONS[regionId];
+        region.maps.forEach(map => {
+            const btn = document.createElement('button');
+            btn.className = 'map-btn';
+            
+            // 境界檢查 (預覽)
+            const isLocked = Player.data.realm < map.minRealm;
+            const reqRealmName = GAMEDATA.CONFIG.REALM_NAMES[map.minRealm];
+
+            btn.innerHTML = `
+                <div class="map-info">
+                    <span class="map-name">${map.name}</span>
+                    <span class="map-level">建議等級: Lv.${map.level}</span>
+                </div>
+                ${isLocked ? `<span class="map-lock">🔒 需達 ${reqRealmName}</span>` : ''}
+            `;
+
+            if (isLocked) {
+                btn.classList.add('locked');
+            }
+
+            btn.onclick = () => this.selectMap(regionId, map.id);
+            mapList.appendChild(btn);
         });
     },
 
-    // 4. 區域選擇彈窗 (適配 V1.6.0 數據結構)
-    showMapSelector: function() {
-        // 加固：從對象結構中抓取區域
-        const region = GAMEDATA.REGIONS[player.data.currentRegion];
-        if (!region) return;
-
-        let mapHtml = region.maps.map(m => `
-            <div class="map-card" onclick="UI_Battle.selectMap(${m.id})" 
-                 style="background:rgba(255,255,255,0.03); margin-bottom:12px; padding:15px; border-radius:10px; border-left:4px solid var(--gold); cursor:pointer; transition: 0.2s;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <strong style="color:#fff; font-size:1.1em;">${m.name}</strong>
-                    <span style="font-size:12px; color:var(--gold); border:1px solid rgba(212,175,55,0.3); padding:2px 6px; border-radius:4px;">Lv.${m.level}</span>
-                </div>
-                <div style="font-size:11px; color:#666; margin-top:8px; line-height:1.4;">
-                    妖獸出沒: ${m.monsterIds.map(id => {
-                        const mData = GAMEDATA.getMonster(id);
-                        return mData ? mData.name : "未知";
-                    }).join('、')}
-                </div>
-            </div>
-        `).join('');
-
-        let modalHtml = `
-            <div id="map-modal" class="modal-overlay" onclick="if(event.target==this) UI_Battle.closeMapModal()">
-                <div class="modal-content" style="border:1px solid var(--gold); background: linear-gradient(135deg, #111 0%, #0a0a0a 100%); box-shadow: 0 0 30px rgba(212,175,55,0.2);">
-                    <h3 style="color:var(--gold); text-align:center; margin-top:0; letter-spacing:4px;">— 歷練之地 —</h3>
-                    <div class="custom-scroll" style="max-height:350px; overflow-y:auto; padding-right:8px;">
-                        ${mapHtml}
-                    </div>
-                    <button class="close-btn" onclick="UI_Battle.closeMapModal()" style="width:100%; margin-top:15px; padding:12px; background:transparent; color:#888; border:1px solid #333; border-radius:6px; cursor:pointer;">暫且作罷</button>
-                </div>
-            </div>
-        `;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-    },
-
-    selectMap: function(mapId) {
-        player.data.currentMapId = mapId;
-        player.data.killCount = 0;
-        this.closeMapModal();
+    // 執行切換地圖 (實裝硬性攔截)
+    selectMap(regionId, mapId) {
+        const access = Player.canAccessMap(mapId);
         
-        // 視覺反饋：清空當前戰鬥顯示
-        const el = this.elements;
-        if (el.name) el.name.innerText = "轉移陣法中...";
-        
-        Combat.initBattle(); 
-        player.showToast("已成功傳送至新區域", "gold");
-    },
-
-    closeMapModal: function() {
-        const modal = document.getElementById('map-modal');
-        if (modal) modal.remove();
-    },
-
-    // 5. 更新領主挑戰按鈕
-    updateBossButton: function() {
-        const btn = document.getElementById('boss-btn');
-        if (!btn) return;
-        
-        const region = GAMEDATA.REGIONS[player.data.currentRegion];
-        if (!region) return;
-
-        const req = GAMEDATA.CONFIG?.BOSS_KILL_REQUIRE || 10;
-        const isReady = player.data.killCount >= req;
-        
-        btn.style.display = isReady ? 'block' : 'none';
-        
-        if (isReady) {
-            const boss = GAMEDATA.getMonster(region.bossId);
-            btn.innerText = `🔥 挑戰區域領主：${boss.name}`;
-            btn.className = "boss-active-btn"; // 建議在 CSS 中加入發光動畫
+        if (!access.can) {
+            alert(access.reason); // 後續可換成更漂亮的 Toast
+            return;
         }
+
+        // 執行切換
+        Player.data.currentRegion = regionId;
+        Player.data.currentMap = mapId;
+        Player.save();
+
+        this.renderMapName();
+        this.closeMapSelector();
+        this.log(`進入了新的歷練地...`, 'system');
+
+        // 重啟戰鬥循環
+        Combat.init();
+    },
+
+    closeMapSelector() {
+        document.getElementById('modal-map').style.display = 'none';
     }
 };
 
-console.log("✅ [V1.6.0] ui_battle.js 歷練視覺系統加固完成。");
+window.UI_Battle = UI_Battle;
