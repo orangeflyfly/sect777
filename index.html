@@ -3,12 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
-    <title>宗門修仙錄 V1.0 - 經典回歸版</title>
+    <title>宗門修仙錄 V1.1 - 靈魂回歸版</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
     <div id="toast-container"></div>
+
+    <div id="item-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div id="modal-item-name" class="modal-title"></div>
+            <div id="modal-item-desc" class="modal-body"></div>
+            <div class="modal-footer">
+                <button id="modal-action-btn" class="btn-primary">使用/裝備</button>
+                <button id="modal-melt-btn" class="btn-danger">熔煉</button>
+                <button onclick="_X_CORE.ui.closeModal()" class="btn-close">關閉</button>
+            </div>
+        </div>
+    </div>
 
     <div id="game-container">
         <div class="header-info">
@@ -23,19 +34,17 @@
 
         <div id="p-battle" class="stage">
             <div class="map-selector">
-                <select id="map-select-dropdown" onchange="_X_CORE.changeMap(this.value)">
-                    </select>
+                <select id="map-select-dropdown" onchange="_X_CORE.changeMap(this.value)"></select>
             </div>
-
             <div class="monster-area">
                 <div id="monster-name">尋找對手中...</div>
-                <div id="monster-pic" class="monster-pic">⏳</div>
+                <div id="monster-pic" class="monster-pic" onclick="_X_CORE.combat.playerAtk(true)">⏳</div>
                 <div class="hp-container">
                     <div id="m-hp-bar" class="hp-bar-fill"></div>
                     <div id="m-hp-txt" class="hp-text">0 / 0</div>
                 </div>
+                <p style="font-size:10px; color:#666;">(提示：點擊怪物圖示可手動攻擊)</p>
             </div>
-
             <div class="player-status-area">
                 <div class="battle-controls">
                     <label class="switch-label">
@@ -47,14 +56,8 @@
                     <div id="p-hp-bar" class="hp-bar-fill p-hp"></div>
                     <div id="p-hp-txt" class="hp-text">0 / 0</div>
                 </div>
-                
-                <div id="active-skill-slots" class="active-skills">
-                    <div class="skill-slot-mini"></div>
-                    <div class="skill-slot-mini"></div>
-                    <div class="skill-slot-mini"></div>
-                </div>
+                <div id="active-skill-slots" class="active-skills"></div>
             </div>
-
             <div class="log-container">
                 <div class="log-tabs">
                     <button class="log-tab active" onclick="_X_CORE.ui.switchLog('all')">全部</button>
@@ -68,26 +71,22 @@
         <div id="p-bag" class="stage" style="display:none;">
             <div class="bag-header">
                 <h4>儲物袋 (<span id="bag-count">0</span>/50)</h4>
-                <button class="melt-btn" onclick="_X_CORE.inventory.autoMelt()">一鍵熔煉 (精品以下)</button>
+                <button class="melt-btn" onclick="_X_CORE.inventory.autoMelt()">一鍵熔煉(凡/良)</button>
             </div>
-            <div id="bag-grid" class="bag-grid classic-style"></div>
+            <div id="bag-grid" class="bag-grid"></div>
         </div>
 
         <div id="p-stats" class="stage" style="display:none;">
             <h4>本命命牌</h4>
-            <div class="detailed-stats-box">
-                <h5>詳細屬性</h5>
-                <div id="detail-stats-list">
-                    </div>
-            </div>
+            <div id="detail-stats-list" class="detailed-stats-box"></div>
             <hr>
             <div class="points-allocation">
                 <p>可用屬性點：<b id="val-pts" style="color:gold;">0</b></p>
                 <div id="stat-list"></div>
             </div>
             <hr>
-            <h5>裝備位</h5>
-            <div id="equipment-slots"></div>
+            <h5>當前裝備</h5>
+            <div id="equipment-slots" class="eq-grid"></div>
         </div>
 
         <div class="nav-bar">
