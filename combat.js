@@ -1,34 +1,32 @@
 /**
- * 宗門修仙錄 - 戰鬥邏輯模組 (combat.js) V1.2.2
- * 【核心修正】：強效除靈，解決 0 血怪不死之身
+ * 宗門修仙錄 - 戰鬥模組 (combat.js) V1.3.1
+ * 職責：負責怪物生成、戰鬥判定、傷害計算與獎勵發放
  */
 function Combat(core) {
     this.core = core;
-    this.m = null;   // 當前怪物物件
-    this.K = 500;    // 防禦常數
+    this.m = null; // 當前妖獸物件
 }
 
-// 1. 妖獸降臨 (生成怪物)
+/**
+ * 妖獸生成：根據當前地圖等級縮放怪物數值
+ */
 Combat.prototype.spawn = function() {
-    var p = this.core.player;
+    const p = this.core.player;
+    // 如果玩家力竭調息中，不生成怪物
     if (p.battle.isDead) return;
 
-    this.m = null; // 強制清理
+    const map = GAME_DATA.MAPS[p.data.mapId];
+    const monsterPool = map.monsters;
+    const mBase = GAME_DATA.MONSTERS[monsterPool[Math.floor(Math.random() * monsterPool.length)]];
 
-    var map = GAME_DATA.MAPS[p.data.mapId];
-    if (!map) return;
-    
-    var mPool = map.monsters;
-    var mBase = GAME_DATA.MONSTERS[mPool[Math.floor(Math.random() * mPool.length)]];
-    
-    // 根據地圖等級強化怪物數值
-    this.m = { 
-        id: mBase.id,
+    // 怪物數值隨地圖等級成長 (等級越高，血量攻擊越強)
+    const levelScale = map.lv;
+    this.m = {
         name: mBase.name,
         pic: mBase.pic,
-        hp: mBase.hp * map.lv, 
-        maxHp: mBase.hp * map.lv, 
-        atk: mBase.atk * map.lv,
+        maxHp: mBase.hp * levelScale,
+        hp: mBase.hp * levelScale,
+        atk: mBase.atk * levelScale,
         exp: mBase.exp,
         coin: mBase.coin
     };
@@ -37,121 +35,124 @@ Combat.prototype.spawn = function() {
     this.core.ui.updateHPs(p, this.m);
 };
 
-// 2. 施展神通 (玩家攻擊)
+/**
+ * 玩家攻擊邏輯
+ * @param {boolean} isManual 是否為手動點擊觸發
+ */
 Combat.prototype.playerAtk = function(isManual) {
-    var p = this.core.player;
-    
-    // 邏輯護衛：若沒怪或怪已死，手動點擊則強制刷怪
+    const p = this.core.player;
+    // 如果沒怪或怪已死
     if (!this.m || this.m.hp <= 0) {
-        if (isManual) this.spawn();
+        if (isManual) this.spawn(); // 手動點擊時若無怪則生成
         return;
     }
-    
-    if (p.battle.isDead) return;
 
-    // 計算傷害 (計算 60 種詞條帶來的攻擊加成)
-    var dmg = Math.max(1, Math.floor(p.battle.atk * (0.9 + Math.random() * 0.2)));
+    // 傷害計算 (基礎攻擊 * 0.9 ~ 1.1 隨機波動)
+    let dmg = Math.max(1, Math.floor(p.battle.atk * (0.9 + Math.random() * 0.2)));
     
-    // 暴擊判定 (10% 機率雙倍傷害)
-    if (Math.random() < 0.1) {
-        dmg *= 2;
-        this.core.ui.log("【暴擊】對 " + this.m.name + " 造成 " + dmg + " 傷害", 'combat', 'orange');
-    } else {
-        this.core.ui.log("對 " + this.m.name + " 造成 " + dmg, 'combat');
-    }
+    // 檢查主動技能觸發 (烈焰斬等)
+    p.data.skills.forEach(sId => {
+        if (sId !== null) {
+            const s = GAME_DATA.SKILLS[sId];
+            if (s && s.type === "active" && Math.random() < s.proc) {
+                if (s.effect.dmgMul) {
+                    dmg *= s.effect.dmgMul;
+                    this.core.ui.log(`🔥 觸發神通：${s.name}，造成重創！`, 'combat', 'orange');
+                }
+                if (s.effect.healMul) {
+                    const heal = Math.floor(p.battle.maxHp * s.effect.healMul);
+                    p.battle.hp = Math.min(p.battle.maxHp, p.battle.hp + heal);
+                    this.core.ui.log(`✨ 觸發神通：${s.name}，回復 ${heal} 生命`, 'combat', '#4caf50');
+                }
+            }
+        }
+    });
 
     this.m.hp -= dmg;
 
-    // 吸血詞條生效
+    // 吸血判定
     if (p.battle.lifeSteal > 0) {
-        var heal = Math.floor(dmg * p.battle.lifeSteal);
+        const heal = Math.floor(dmg * p.battle.lifeSteal);
         p.battle.hp = Math.min(p.battle.maxHp, p.battle.hp + heal);
     }
 
-    // --- 關鍵修正：先斬後奏 ---
+    // 檢查怪物死亡
     if (this.m.hp <= 0) {
         this.m.hp = 0;
-        this.onMonsterDeath(); 
-    } else if (!isManual) {
-        // 自動戰鬥時，怪物反擊
-        var self = this;
-        setTimeout(function() {
-            if (self.m && self.m.hp > 0) self.monsterAtk();
-        }, 600);
+        this.core.ui.updateHPs(p, this.m);
+        this.onDeath();
+    } else {
+        // 如果是手動點擊，怪物不立刻反擊；如果是自動，由 core 循環控制或在此觸發
+        this.core.ui.updateHPs(p, this.m);
+        if (!isManual) {
+            // 自動戰鬥時，給予微小延遲增加節奏感
+            setTimeout(() => this.monsterAtk(), 200);
+        }
     }
-    
-    this.core.ui.updateHPs(p, this.m);
 };
 
-// 3. 妖獸反撲 (怪物攻擊)
+/**
+ * 怪物攻擊邏輯
+ */
 Combat.prototype.monsterAtk = function() {
-    var p = this.core.player;
+    const p = this.core.player;
     if (!this.m || this.m.hp <= 0 || p.battle.isDead) return;
 
-    // 閃避詞條判定 (最高 80%)
+    // 閃避判定
     if (Math.random() < p.battle.dodge) {
-        this.core.ui.log("✨ 閃避了 " + this.m.name + " 的攻擊", 'combat', 'cyan');
+        this.core.ui.log(`💨 閃避了 ${this.m.name} 的攻擊`, 'combat', 'cyan');
         return;
     }
 
-    // 減傷公式
-    var reduction = this.K / (this.K + p.battle.def);
-    var finalDmg = Math.max(1, Math.floor(this.m.atk * reduction));
-    
-    // 天道保底受傷 (防止防禦太高變無敵)
-    var floorDmg = Math.floor(p.battle.maxHp * p.battle.dmgFloor);
-    if (finalDmg < floorDmg) finalDmg = floorDmg;
-
-    p.battle.hp -= finalDmg;
-    this.core.ui.log(this.m.name + " 反擊，損血 " + finalDmg, 'combat', 'red');
+    // 傷害計算：怪物攻擊 * (500 / (500 + 玩家防禦)) 減傷公式
+    const dmg = Math.max(1, Math.floor(this.m.atk * (500 / (500 + p.battle.def))));
+    p.battle.hp -= dmg;
 
     if (p.battle.hp <= 0) {
         p.battle.hp = 0;
-        this.onPlayerDeath();
+        p.battle.isDead = true;
+        this.core.ui.updateHPs(p, this.m);
+        this.core.ui.toast("力竭調息中，修復傷勢...", "red");
+        
+        // 死亡懲罰：暫停戰鬥 3 秒並回滿血
+        setTimeout(() => {
+            p.battle.hp = p.battle.maxHp;
+            p.battle.isDead = false;
+            this.core.ui.log("傷勢痊癒，重返歷練！", "system", "gold");
+            this.spawn();
+        }, 3000);
+    } else {
+        this.core.ui.updateHPs(p, this.m);
     }
-    
-    this.core.ui.updateHPs(p, this.m);
 };
 
-// 4. 超渡亡魂 (結算死亡)
-Combat.prototype.onMonsterDeath = function() {
-    var p = this.core.player;
-    var target = this.m;
+/**
+ * 擊敗妖獸獎勵結算
+ */
+Combat.prototype.onDeath = function() {
+    const p = this.core.player;
+    const target = this.m;
+    this.m = null; // 清空當前怪物
 
-    // --- 立刻斷絕因果，怪物設為 null ---
-    this.m = null; 
-    this.core.ui.updateHPs(p, null); 
+    this.core.ui.log(`成功擊敗 ${target.name}！`, 'combat', 'gold');
 
-    this.core.ui.log("擊敗 " + target.name + "！", 'combat', 'gold');
-    
-    // 結算獎勵
-    if (p.addExp(target.exp)) {
-        this.core.ui.toast("✨ 境界提升！", "gold");
+    // 1. 經驗發放
+    const levelUp = p.addExp(target.exp);
+    if (levelUp) {
+        this.core.ui.toast("✨ 突破！境界提升了！", "gold");
     }
-    p.data.money += Math.floor(target.coin * p.battle.moneyMul);
-    
-    // 掉寶判定
+
+    // 2. 靈石發放
+    const coinGain = Math.floor(target.coin * p.battle.moneyMul);
+    p.data.money += coinGain;
+
+    // 3. 掉落判定
     this.core.inventory.dropLoot(p.data.mapId);
-    
+
     p.save();
     
-    // 延遲重生，增加真實感
-    var self = this;
-    setTimeout(function() {
-        self.spawn();
+    // 1秒後自動尋找下一隻怪
+    setTimeout(() => {
+        if (!p.battle.isDead) this.spawn();
     }, 1000);
-};
-
-// 5. 兵解重修 (玩家死亡)
-Combat.prototype.onPlayerDeath = function() {
-    var p = this.core.player;
-    p.battle.isDead = true;
-    this.core.ui.toast("🕯️ 傷重，原地調息中...", "red");
-    
-    var self = this;
-    setTimeout(function() {
-        p.battle.hp = p.battle.maxHp;
-        p.battle.isDead = false;
-        self.spawn();
-    }, 5000);
 };
