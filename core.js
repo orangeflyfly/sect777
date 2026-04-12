@@ -1,162 +1,132 @@
 /**
- * V1.6.0 core.js (加固優化版)
- * 職責：引擎啟動、分頁切換、數據高頻同步、效能優化。
+ * V1.7.0 core.js
+ * 職責：引擎啟動、分頁調度、高頻數據同步、全局初始化。
  */
 
 const GameCore = {
-    // 元素緩存容器，避免重複掃描 DOM
-    uiElements: {},
+    // 1. 啟動大陣
+    init() {
+        console.log("🕉️ 宗門大陣開始點火 (V1.7.0)...");
 
-    // 1. 大陣點火
-    init: function() {
-        console.log("🕉️ 宗門大陣開始點火...");
-
-        // A. 緩存常用的 UI 元素，大幅提昇效能
-        this.cacheElements();
-
-        // B. 載入修士數據 (player.js 必須在此之前載入)
-        if (typeof player !== 'undefined') {
-            player.load();
+        // A. 初始化玩家數據
+        if (typeof Player !== 'undefined') {
+            Player.init();
         } else {
-            console.error("❌ 致命錯誤：找不到 player 模組！");
+            console.error("❌ 致命錯誤：找不到 Player 模組！");
             return;
         }
-        
-        // C. 離線收益結算
-        this.handleOffline();
 
-        // D. 啟動各類引擎與同步邏輯
-        if (typeof Combat !== 'undefined') Combat.initBattle();
-        
-        this.switchTab('battle');
+        // B. 初始化 UI 各堂口 (確保 DOM 已加載)
+        this.initAllUI();
+
+        // C. 啟動戰鬥引擎
+        if (typeof Combat !== 'undefined') {
+            Combat.init();
+        }
+
+        // D. 啟動核心循環
         this.startGlobalRefresh();
         this.startAutoSave();
-        this.updateAutoBtnUI();
 
-        console.log("✅ 宗門運轉穩定。");
+        // E. 預設進入歷練分頁
+        this.switchPage('battle');
+
+        console.log("✅ 宗門運轉穩定，神識連結成功。");
     },
 
-    // 2. 緩存 DOM 元素 (優化效能關鍵)
-    cacheElements: function() {
-        const ids = ['val-level', 'val-money', 'val-exp-bar', 'val-exp-txt', 'val-hp-bar', 'val-hp-txt', 'btn-auto-combat'];
-        ids.forEach(id => {
-            this.uiElements[id] = document.getElementById(id);
-        });
+    // 2. 初始化所有 UI 模組
+    initAllUI() {
+        if (typeof UI_Battle !== 'undefined') UI_Battle.init();
+        if (typeof UI_Stats !== 'undefined') UI_Stats.renderStats();
+        // 由於沒有 ui_log.js，日誌初始化將在 ui_battle 中自動處理
     },
 
-    // 3. 離線收益結算
-    handleOffline: function() {
-        setTimeout(() => {
-            if (player.showToast) player.showToast("✨ 修士歸位，神識重連成功。", "gold");
-        }, 1000);
-    },
-
-    // 4. 核心分頁切換
-    switchTab: function(tabId) {
-        const screens = ['battle', 'bag', 'stats', 'shop'];
+    // 3. 分頁切換邏輯 (對齊 index.html 的 nav 按鈕)
+    switchPage(pageId) {
+        // 分頁 ID 對應表
+        const pages = ['battle', 'stats', 'bag', 'shop'];
         
-        screens.forEach(id => {
-            const el = document.getElementById(`${id}-screen`);
-            const btn = document.querySelector(`.nav-btn[onclick*="${id}"]`);
-            
+        pages.forEach(id => {
+            const el = document.getElementById(`page-${id}`);
             if (el) {
-                const isActive = (id === tabId);
-                el.style.display = isActive ? 'flex' : 'none';
-                if (isActive) el.classList.add('active');
-                else el.classList.remove('active');
-            }
-            
-            if (btn) {
-                if (id === tabId) btn.classList.add('active');
-                else btn.classList.remove('active');
+                el.classList.toggle('active', id === pageId);
             }
         });
 
-        this.triggerRender(tabId);
+        // 觸發對應頁面的重新渲染
+        this.triggerRender(pageId);
     },
 
-    triggerRender: function(tabId) {
-        // 使用安全調用，防止模組未加載時崩潰
+    triggerRender(pageId) {
         try {
-            switch(tabId) {
-                case 'battle':
-                    if (typeof Combat !== 'undefined' && Combat.currentMonster) UI_Battle.renderBattle(Combat.currentMonster);
-                    break;
+            switch(pageId) {
                 case 'stats':
                     if (typeof UI_Stats !== 'undefined') UI_Stats.renderStats();
                     break;
                 case 'bag':
-                    if (typeof UI_Bag !== 'undefined') UI_Bag.renderBag();
+                    if (typeof UI_Bag !== 'undefined') UI_Bag.init();
                     break;
                 case 'shop':
                     if (typeof UI_Shop !== 'undefined') UI_Shop.renderShop();
                     break;
             }
         } catch (e) {
-            console.warn(`渲染分頁 ${tabId} 時發生非致命錯誤:`, e);
+            console.warn(`[Core] 分頁 ${pageId} 渲染異常:`, e);
         }
     },
 
-    // 5. 自動練功控制
-    toggleAuto: function() {
-        player.data.isAuto = !player.data.isAuto;
-        this.updateAutoBtnUI();
-        
-        const msg = player.data.isAuto ? "⚡ 自動練功已啟動" : "💤 已轉為手動運氣";
-        player.showToast(msg, player.data.isAuto ? "gold" : "");
-        player.save();
-    },
-
-    updateAutoBtnUI: function() {
-        const btn = this.uiElements['btn-auto-combat'];
-        if (btn) {
-            btn.classList.toggle('active', player.data.isAuto);
-            btn.innerText = player.data.isAuto ? "自動練功：開" : "自動練功：關";
-        }
-    },
-
-    // 6. 高頻數據同步 (效能加固版)
-    startGlobalRefresh: function() {
+    // 4. 全局數據同步 (每 200ms 刷新一次頂部資訊欄)
+    startGlobalRefresh() {
         setInterval(() => {
-            const d = player.data;
-            const el = this.uiElements;
-            
-            // A. 同步等級與境界
-            if (el['val-level']) el['val-level'].innerText = `【${d.realm}】 Lv.${d.level}`;
+            const d = Player.data;
+            if (!d) return;
 
-            // B. 同步靈石
-            if (el['val-money']) el['val-money'].innerText = `🪙 ${Math.floor(d.money)}`;
-
-            // C. 同步經驗條
-            if (el['val-exp-bar'] && el['val-exp-txt']) {
-                const expPer = (d.exp / d.nextExp) * 100;
-                el['val-exp-bar'].style.width = Math.min(100, expPer) + "%";
-                el['val-exp-txt'].innerText = `${Math.floor(expPer)}%`;
+            // A. 同步境界文字
+            const realmEl = document.getElementById('player-realm');
+            if (realmEl) {
+                const realmName = GAMEDATA.CONFIG.REALM_NAMES[d.realm] || "未知境界";
+                realmEl.innerText = `${realmName} (Lv.${d.level})`;
             }
 
-            // D. 同步玩家血量條
-            if (el['val-hp-bar'] && el['val-hp-txt']) {
-                const hpPer = (d.hp / d.maxHp) * 100;
-                el['val-hp-bar'].style.width = Math.max(0, hpPer) + "%";
-                el['val-hp-txt'].innerText = `${Math.ceil(Math.max(0, d.hp))} / ${Math.ceil(d.maxHp)}`;
+            // B. 同步靈石 (對齊 player-coin)
+            const coinEl = document.getElementById('player-coin');
+            if (coinEl) {
+                coinEl.innerText = Math.floor(d.coin);
             }
 
-            // E. 自然回血邏輯 (保持 1.4.1 傳統，但加入安全邊界)
-            if (d.hp < d.maxHp && d.hp > 0) {
-                d.hp = Math.min(d.maxHp, d.hp + (d.regen / 5));
+            // C. 同步經驗條 (對齊 exp-fill)
+            const expFill = document.getElementById('exp-fill');
+            if (expFill) {
+                const per = (d.exp / d.maxExp) * 100;
+                expFill.style.width = Math.min(100, per) + "%";
             }
+
+            // D. 處理自動戰鬥中的回血邏輯 (V1.7 新增)
+            const stats = Player.getBattleStats();
+            // 此處可根據需要實裝非戰鬥狀態的回血
         }, 200);
     },
 
-    // 7. 定時存檔
-    startAutoSave: function() {
+    // 5. 定時存檔 (每 30 秒)
+    startAutoSave() {
         setInterval(() => {
-            player.save();
+            Player.save();
+            console.log("💾 存檔成功...");
         }, 30000);
     }
 };
 
-// --- 大陣啟動 ---
+/**
+ * 導航跳轉介面 (供 index.html 的 onclick 調用)
+ * 解決原本 Navigation.switch 的命名衝突
+ */
+const Navigation = {
+    switch(pageId) {
+        GameCore.switchPage(pageId);
+    }
+};
+
+// 最終點火
 window.onload = () => {
     GameCore.init();
 };
