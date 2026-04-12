@@ -9,18 +9,6 @@ function GameCore() {
     this.inventory = new Inventory(this);
     this.combat = new Combat(this);
     this.ui = new UIManager(this);
-    
-    this.auto = true;
-    this.timer = null;
-    this.regenTimer = null;
-}
-
-function GameCore() {
-    this.player = new Player(this);
-    this.inventory = new Inventory(this);
-    this.combat = new Combat(this);
-    this.ui = new UIManager(this);
-    
     // 🆕 冊封萬寶閣長老
     this.shop = new Shop(this); 
     
@@ -28,6 +16,9 @@ function GameCore() {
     this.timer = null;
     this.regenTimer = null;
 }
+
+   
+    
 
 // 1. 初始化遊戲
 GameCore.prototype.init = function() {
