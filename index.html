@@ -14,7 +14,7 @@
             <div id="modal-item-name" class="modal-title"></div>
             <div id="modal-item-desc" class="modal-body"></div>
             <div class="modal-footer">
-                <button id="modal-action-btn" class="btn-primary">使用/裝備</button>
+                <button id="modal-action-btn" class="btn-primary">使用</button>
                 <button id="modal-melt-btn" class="btn-danger">熔煉</button>
                 <button onclick="_X_CORE.ui.closeModal()" class="btn-close">關閉</button>
             </div>
@@ -36,15 +36,17 @@
             <div class="map-selector">
                 <select id="map-select-dropdown" onchange="_X_CORE.changeMap(this.value)"></select>
             </div>
+            
             <div class="monster-area">
                 <div id="monster-name">尋找對手中...</div>
-                <div id="monster-pic" class="monster-pic" onclick="_X_CORE.combat.playerAtk(true)">⏳</div>
+                <div id="monster-pic" class="monster-pic" style="cursor:pointer;" onclick="_X_CORE.combat.playerAtk(true)">⏳</div>
                 <div class="hp-container">
                     <div id="m-hp-bar" class="hp-bar-fill"></div>
                     <div id="m-hp-txt" class="hp-text">0 / 0</div>
                 </div>
-                <p style="font-size:10px; color:#666;">(提示：點擊怪物圖示可手動攻擊)</p>
+                <p style="font-size:10px; color:#666; margin:2px 0;">(提示：點擊怪物圖示可手動攻擊)</p>
             </div>
+
             <div class="player-status-area">
                 <div class="battle-controls">
                     <label class="switch-label">
@@ -58,6 +60,7 @@
                 </div>
                 <div id="active-skill-slots" class="active-skills"></div>
             </div>
+
             <div class="log-container">
                 <div class="log-tabs">
                     <button class="log-tab active" onclick="_X_CORE.ui.switchLog('all')">全部</button>
@@ -81,7 +84,7 @@
             <div id="detail-stats-list" class="detailed-stats-box"></div>
             <hr>
             <div class="points-allocation">
-                <p>可用屬性點：<b id="val-pts" style="color:gold;">0</b></p>
+                <p>可用點數：<b id="val-pts" style="color:gold;">0</b></p>
                 <div id="stat-list"></div>
             </div>
             <hr>
