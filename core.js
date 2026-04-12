@@ -1,61 +1,79 @@
-class GameCore {
-    constructor() {
-        this.player = new Player();
-        this.ui = new UIManager(this);
-        this.inventory = new Inventory(this);
-        this.combat = new Combat(this);
-        this.isAuto = true;
+/**
+ * 宗門修仙錄 - 核心控制模組 (core.js) V1.2
+ * 修正：加強自動歷練與重生的協調性，徹底解決 0血卡死
+ */
+var _X_CORE = null;
 
-        window.addEventListener('load', () => this.init());
-    }
+function GameCore() {
+    this.player = new Player(this);
+    this.inventory = new Inventory(this);
+    this.combat = new Combat(this);
+    this.ui = new UIManager(this);
+    this.auto = true;
+    this.timer = null;
+    this.regenTimer = null;
+}
 
-    init() {
+GameCore.prototype.init = function() {
+    _X_CORE = this; // 註冊為全域變數，供 UI 調用
+    this.ui.renderAll();
+    this.combat.spawn(); // 開啟遊戲時刷第一隻怪
+    this.startLoop();
+};
+
+GameCore.prototype.startLoop = function() {
+    var self = this;
+    
+    // 1. 戰鬥與重生循環 (每秒跳動一次)
+    this.timer = setInterval(function() {
+        if (self.auto && !self.player.battle.isDead) {
+            // 【重生鎖】：如果沒怪或數據丟失，強制刷一隻新怪
+            if (!self.combat.m || self.combat.m.hp <= 0) {
+                self.combat.spawn();
+            } else {
+                // 有怪則正常攻擊
+                self.combat.playerAtk(false);
+            }
+        }
+    }, 1000);
+
+    // 2. 恢復循環 (每秒回血)
+    this.regenTimer = setInterval(function() {
+        var p = self.player;
+        if (p.battle.hp < p.battle.maxHp && !p.battle.isDead) {
+            p.battle.hp = Math.min(p.battle.maxHp, p.battle.hp + p.battle.regen);
+            self.ui.updateHPs(p, self.combat.m);
+        }
+    }, 1000);
+};
+
+// 切換自動歷練
+GameCore.prototype.toggleAuto = function(val) {
+    this.auto = val;
+    this.ui.toast(this.auto ? "開啟自動歷練" : "關閉自動歷練");
+};
+
+// 切換地圖
+GameCore.prototype.changeMap = function(id) {
+    this.player.data.mapId = parseInt(id);
+    this.ui.toast("前往：" + GAME_DATA.MAPS[this.player.data.mapId].name);
+    this.combat.spawn(); // 換地圖立刻強行刷怪
+    this.player.save();
+};
+
+// 屬性加點
+GameCore.prototype.addStat = function(key) {
+    if (this.player.data.pts > 0) {
+        this.player.data.pts--;
+        this.player.data.baseStats[key]++;
+        this.player.refresh();
         this.ui.renderAll();
-        this.combat.spawn();
-        setInterval(() => this.mainTick(), 1000);
-        setInterval(() => this.battleTick(), 1500);
-        this.ui.log("【天道】V1.0 大圓滿版啟動成功", "system", "gold");
-    }
-
-    mainTick() {
-        if (this.player.battle.isDead) return;
-        const regen = this.player.data.baseStats.vit * 0.1 + this.player.battle.regen;
-        if (regen > 0) {
-            this.player.battle.hp = Math.min(this.player.battle.maxHp, this.player.battle.hp + (regen / 10));
-            this.ui.updateHPs(this.player, this.combat.m);
-        }
-        if (Math.random() < 0.05) this.player.save();
-    }
-
-    battleTick() {
-        if (this.isAuto && !this.player.battle.isDead && this.combat.m) {
-            this.combat.playerAtk();
-        }
-    }
-
-    // 地圖切換
-    changeMap(mapId) {
-        this.player.data.mapId = parseInt(mapId);
-        this.ui.toast("前往：" + GAME_DATA.MAPS[this.player.data.mapId].name);
-        this.combat.m = null; 
-        this.combat.spawn();
         this.player.save();
     }
+};
 
-    // 自動開關
-    toggleAuto(checked) {
-        this.isAuto = checked;
-        this.ui.toast(this.isAuto ? "自動歷練開啟" : "自動歷練暫停");
-    }
-
-    addStat(key) {
-        if (this.player.data.pts > 0) {
-            this.player.data.pts--;
-            this.player.data.baseStats[key]++;
-            this.player.refresh();
-            this.player.save();
-            this.ui.renderAll();
-        }
-    }
-}
-window._X_CORE = new GameCore();
+// 啟動陣法 (當頁面載入完成)
+window.onload = function() {
+    var core = new GameCore();
+    core.init();
+};
