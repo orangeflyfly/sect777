@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
-    <title>宗門修仙錄 V1.3.1 - 補天版</title>
+    <title>宗門修仙錄 V1.4 - 金丹大改版</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,100 +14,113 @@
             <div id="modal-item-name" class="modal-title"></div>
             <div id="modal-item-desc" class="modal-body"></div>
             <div class="modal-footer">
-                <button id="modal-action-btn" class="btn-primary">使用</button>
-                <button id="modal-melt-btn" class="btn-danger">熔煉</button>
+                <button id="modal-action-btn" class="btn-primary">執行</button>
+                <button id="modal-melt-btn" class="btn-danger">熔煉/強化</button>
                 <button onclick="_X_CORE.ui.closeModal()" class="btn-close">關閉</button>
             </div>
         </div>
     </div>
 
     <div id="game-container">
-        <div class="header-info">
+        <header class="header-info">
             <div class="header-line">
-                <span id="val-level">境界載入中...</span>
-                <span id="val-money">🪙 0</span>
+                <span id="val-level" class="realm-text">感應天機中...</span>
+                <span id="val-money" class="coin-text">🪙 0</span>
             </div>
             <div class="exp-bar-container">
                 <div id="val-exp-bar" class="exp-bar-fill"></div>
             </div>
-        </div>
+        </header>
 
-        <div id="p-battle" class="stage">
+        <section id="p-battle" class="stage">
             <div class="map-selector">
                 <select id="map-select-dropdown" onchange="_X_CORE.changeMap(this.value)"></select>
             </div>
             
-            <div class="monster-area">
-                <div id="monster-name">尋找妖獸中...</div>
-                <div id="monster-pic" class="monster-pic" onclick="_X_CORE.combat.playerAtk(true)">⏳</div>
-                <div class="hp-container">
-                    <div id="m-hp-bar" class="hp-bar-fill"></div>
-                    <div id="m-hp-txt" class="hp-text">0 / 0</div>
+            <div class="battle-main">
+                <div class="monster-card">
+                    <div id="monster-name" class="m-name">尋找妖獸中...</div>
+                    <div class="hp-container monster-hp">
+                        <div id="m-hp-bar" class="hp-bar-fill"></div>
+                        <div id="m-hp-txt" class="hp-text">0 / 0</div>
+                    </div>
+                    <div class="monster-visual">
+                        <div id="monster-pic" class="monster-pic" onclick="_X_CORE.combat.playerAtk(true)">⏳</div>
+                    </div>
+                </div>
+
+                <div class="player-card">
+                    <div class="battle-controls">
+                        <label class="auto-btn">
+                            <input type="checkbox" id="auto-battle-toggle" checked onchange="_X_CORE.toggleAuto(this.checked)">
+                            <span>自動歷練</span>
+                        </label>
+                    </div>
+                    <div class="hp-container player-hp">
+                        <div id="p-hp-bar" class="hp-bar-fill p-hp"></div>
+                        <div id="p-hp-txt" class="hp-text">0 / 0</div>
+                    </div>
+                    <div id="active-skill-slots" class="active-skills-row"></div>
                 </div>
             </div>
 
-            <div class="player-status-area">
-                <div class="battle-controls">
-                    <label class="switch-label">
-                        <input type="checkbox" id="auto-battle-toggle" checked onchange="_X_CORE.toggleAuto(this.checked)">
-                        <span>自動歷練</span>
-                    </label>
-                </div>
-                <div class="hp-container">
-                    <div id="p-hp-bar" class="hp-bar-fill p-hp"></div>
-                    <div id="p-hp-txt" class="hp-text">0 / 0</div>
-                </div>
-                <div id="active-skill-slots" class="active-skills"></div>
-            </div>
-
-            <div class="log-container">
+            <div class="log-system">
                 <div class="log-tabs">
                     <button class="log-tab active" onclick="_X_CORE.ui.switchLog('all', event)">全部</button>
                     <button class="log-tab" onclick="_X_CORE.ui.switchLog('combat', event)">戰鬥</button>
                     <button class="log-tab" onclick="_X_CORE.ui.switchLog('loot', event)">獲取</button>
-                    <button class="log-tab" onclick="_X_CORE.ui.switchLog('system', event)">系統</button>
                 </div>
                 <div id="log-list" class="log-list"></div>
             </div>
-        </div>
+        </section>
 
-        <div id="p-bag" class="stage" style="display:none;">
+        <section id="p-bag" class="stage" style="display:none;">
             <div class="bag-header">
                 <h4>儲物袋 (<span id="bag-count">0</span>/50)</h4>
-                <button class="melt-btn" onclick="_X_CORE.inventory.autoMelt()">一鍵熔煉(凡/良)</button>
+                <button class="btn-auto-melt" onclick="_X_CORE.inventory.autoMelt()">一鍵熔煉(凡/良)</button>
             </div>
-            <div class="filter-bar">
+            <div class="tab-filters">
                 <button class="filter-btn active" onclick="_X_CORE.ui.setBagFilter('all', event)">全部</button>
-                <button class="filter-btn" onclick="_X_CORE.ui.setBagFilter('equip', event)">裝備</button>
+                <button class="filter-btn" onclick="_X_CORE.ui.setBagFilter('equip', event)">法寶</button>
                 <button class="filter-btn" onclick="_X_CORE.ui.setBagFilter('scroll', event)">殘卷</button>
                 <button class="filter-btn" onclick="_X_CORE.ui.setBagFilter('material', event)">材料</button>
             </div>
             <div id="bag-grid" class="bag-grid"></div>
-        </div>
+        </section>
 
-        <div id="p-stats" class="stage" style="display:none;">
-            <h4>本命盤詳細資料</h4>
-            <div id="detail-stats-list" class="detailed-stats-grid"></div>
-            <hr>
-            <div class="points-allocation">
-                <p>可用潛能：<b id="val-pts" style="color:gold;">0</b></p>
-                <div id="stat-list"></div>
+        <section id="p-stats" class="stage" style="display:none;">
+            <div class="stats-section">
+                <h4>本命命牌</h4>
+                <div id="detail-stats-list" class="stats-grid-v2"></div>
+                <div class="pts-box">
+                    <span>可用潛能: <b id="val-pts" style="color:gold;">0</b></span>
+                    <div id="stat-list" class="stat-allocate-list"></div>
+                </div>
             </div>
-            <hr>
-            <div id="equipment-slots"></div>
-        </div>
+            
+            <div class="skills-section">
+                <h4>藏經閣 (神通管理)</h4>
+                <div class="skill-equip-hint">點擊已領悟功法即可裝備</div>
+                <div id="learned-skills-list" class="skills-grid"></div>
+            </div>
 
-        <div id="p-shop" class="stage" style="display:none;">
+            <div class="equip-section">
+                <h4>目前穿戴</h4>
+                <div id="equipment-slots" class="equip-display"></div>
+            </div>
+        </section>
+
+        <section id="p-shop" class="stage" style="display:none;">
             <h4>萬寶閣</h4>
-            <div id="shop-list" class="bag-grid"></div>
-        </div>
+            <div id="shop-list" class="shop-grid"></div>
+        </section>
 
-        <div class="nav-bar">
+        <nav class="nav-bar">
             <button onclick="_X_CORE.ui.switchPage('battle')">⚔️ 歷練</button>
             <button onclick="_X_CORE.ui.switchPage('bag')">🎒 儲物</button>
             <button onclick="_X_CORE.ui.switchPage('stats')">🧘 修為</button>
             <button onclick="_X_CORE.ui.switchPage('shop')">🏪 坊市</button>
-        </div>
+        </nav>
     </div>
 
     <script src="data.js"></script>
