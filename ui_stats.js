@@ -1,24 +1,24 @@
 /**
  * V1.5.12 ui_stats.js
- * 職責：渲染詳細屬性面板、處理潛能點分配、展示境界進度與神通清單。
- * 狀態：全量實裝，禁止簡化。
+ * 職責：顯示詳細屬性數值、執行加點操作、展示目前習得神通。
+ * 狀態：100% 全量實裝，包含 1.4.1 所有詳細數值對比。
  */
 
 const UI_Stats = {
-    // 1. 核心渲染函式 (解決介面空無一物的關鍵)
+    // 1. 渲染修為介面主體
     renderStats: function() {
         const statsArea = document.getElementById('stats-screen');
         if (!statsArea) return;
 
         const d = player.data;
 
-        // 構建詳細屬性 HTML (1.4.1 靈魂佈局)
+        // A. 構建 HTML 內容 (1.4.1 靈魂佈局)
         statsArea.innerHTML = `
-            <div class="stats-container" style="animation: fade-in 0.4s ease;">
+            <div class="stats-container" style="animation: fade-in 0.3s ease;">
                 <div class="stats-card-header" style="text-align:center; margin-bottom:20px; padding:15px; background:rgba(212,175,55,0.05); border-radius:12px; border:1px solid rgba(212,175,55,0.2);">
                     <div style="font-size:12px; color:var(--text-dim); margin-bottom:5px;">當前修為境界</div>
                     <h2 style="color:var(--gold); margin:0; letter-spacing:3px;">【${d.realm}】</h2>
-                    <div style="color:var(--text-dim); font-size:13px; margin-top:5px;">道基等級：Lv.${d.level}</div>
+                    <div style="color:var(--text-dim); font-size:13px; margin-top:5px;">修士等級：Lv.${d.level}</div>
                 </div>
 
                 <div class="stats-grid-v2">
@@ -34,23 +34,20 @@ const UI_Stats = {
 
                 <div class="allocation-section">
                     <div class="pts-box" style="margin-bottom:15px; background:#111; padding:12px; border-radius:8px; border:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
-                        <span style="color:var(--text-dim);">未分配潛能點：</span>
+                        <span style="color:var(--text-dim);">剩餘潛能點：</span>
                         <strong id="val-pts" style="color:var(--gold); font-size:1.2em;">${d.statPoints}</strong>
                     </div>
 
                     <div class="stat-allocate-list">
-                        ${this.renderStatRow("力量", "str", d.str, "提升攻擊傷害")}
-                        ${this.renderStatRow("體質", "con", d.con, "提升生命、防禦、回血")}
-                        ${this.renderStatRow("敏捷", "dex", d.dex, "提升暴擊、閃避")}
-                        ${this.renderStatRow("悟性", "int", d.int, "提升修為獲取速度")}
+                        ${this.renderStatRow("力量", "str", d.str, "影響攻擊力加成")}
+                        ${this.renderStatRow("體質", "con", d.con, "影響生命、防禦與回血")}
+                        ${this.renderStatRow("敏捷", "dex", d.dex, "影響暴擊與閃避率")}
+                        ${this.renderStatRow("悟性", "int", d.int, "影響修為獲取速度")}
                     </div>
                 </div>
 
                 <div class="skills-section" style="margin-top:30px;">
-                    <h4 style="border-bottom:1px solid #333; padding-bottom:10px; color:var(--silver); display:flex; justify-content:space-between; align-items:center;">
-                        <span>本命神通</span>
-                        <small style="font-weight:normal; font-size:11px;">已習得: ${d.skills.length}</small>
-                    </h4>
+                    <h4 style="border-bottom:1px solid #333; padding-bottom:8px; color:var(--silver); font-size:14px;">本命神通</h4>
                     <div id="skills-list">
                         ${this.renderSkills()}
                     </div>
@@ -59,12 +56,12 @@ const UI_Stats = {
         `;
     },
 
-    // 生成加點行
+    // 2. 生成單個加點行
     renderStatRow: function(label, key, value, desc) {
         return `
-            <div class="allocate-row">
+            <div class="allocate-row" style="margin-bottom:10px;">
                 <div class="stat-info">
-                    <div style="font-weight:bold; color:#fff; font-size:15px;">${label} <span style="color:var(--gold); margin-left:8px;">${value}</span></div>
+                    <div style="font-weight:bold; color:#fff;">${label} <span style="color:var(--gold); margin-left:8px;">${value}</span></div>
                     <div style="font-size:11px; color:#666; margin-top:2px;">${desc}</div>
                 </div>
                 <button class="add-btn" onclick="player.addStat('${key}')">+</button>
@@ -72,11 +69,11 @@ const UI_Stats = {
         `;
     },
 
-    // 渲染技能清單
+    // 3. 渲染神通清單
     renderSkills: function() {
         const skills = player.data.skills;
         if (skills.length === 0) {
-            return `<div style="color:#444; font-size:12px; text-align:center; padding:20px; border:1px dashed #222; border-radius:8px;">暫未參透任何神通...</div>`;
+            return `<div style="color:#444; font-size:12px; text-align:center; padding:20px; border:1px dashed #222; border-radius:8px;">暫未領悟任何神通...</div>`;
         }
         
         return skills.map(s => {
@@ -96,4 +93,4 @@ const UI_Stats = {
     }
 };
 
-console.log("✅ [V1.5.12] ui_stats.js 載入成功，修為大殿已開啟。");
+console.log("✅ [V1.5.12] ui_stats.js 修為大殿載入成功。");
