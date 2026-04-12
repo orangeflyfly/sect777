@@ -1,9 +1,9 @@
 /* ============================================================
-   V1.5.12 style.css - 宗門修仙錄：大乘圓滿全量版
-   100% 復刻 1.4.1 視覺靈魂，並優化分頁切換與動畫穩定性
+   V1.6.0 style.css - 宗門修仙錄：完美對齊加固版
+   職責：視覺氛圍、品級發光、局部更新過渡、滾動條美化
    ============================================================ */
 
-/* --- 基礎變數與重置 --- */
+/* --- 1. 全域變數與滾動條 --- */
 :root {
     --bg-dark: #0a0a0a;
     --bg-panel: #161616;
@@ -21,10 +21,17 @@
     --text-dim: #888;
 }
 
+/* 自定義暗金滾動條 */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+
 * {
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
+    outline: none;
 }
 
 body {
@@ -41,10 +48,9 @@ body {
     background: var(--bg-dark);
     display: flex; flex-direction: column; position: relative;
     border-left: 1px solid #222; border-right: 1px solid #222;
-    box-shadow: 0 0 50px rgba(0,0,0,1);
 }
 
-/* --- 1. 頂部狀態欄 (1.4.1 雙條復刻) --- */
+/* --- 2. 狀態欄與進度條 --- */
 .header-info {
     padding: 15px 20px;
     background: linear-gradient(180deg, #000 0%, #111 100%);
@@ -64,23 +70,19 @@ body {
 
 .coin-text { color: #f1c40f; font-weight: bold; font-size: 1.1em; }
 
-/* 條狀容器 (HP & EXP) */
 .bar-container {
     height: 12px; background: #111; border-radius: 6px;
     border: 1px solid #333; position: relative;
     margin-bottom: 8px; overflow: hidden;
 }
 
-.bar-container.hp { border-color: #c0392b; height: 14px; }
-.bar-container.exp { border-color: #27ae60; }
-
 .bar-fill {
     height: 100%; width: 0%;
-    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width 0.3s ease-out; /* 加快響應感 */
 }
 
-.bar-fill.hp { background: var(--hp-red); box-shadow: 0 0 10px rgba(192, 57, 43, 0.5); }
-.bar-fill.exp { background: var(--exp-green); box-shadow: 0 0 10px rgba(46, 204, 113, 0.5); }
+.bar-fill.hp { background: var(--hp-red); }
+.bar-fill.exp { background: var(--exp-green); }
 
 .bar-text {
     position: absolute; width: 100%; top: 0; text-align: center;
@@ -88,195 +90,131 @@ body {
     text-shadow: 1px 1px 2px #000;
 }
 
-/* --- 2. 氣泡訊息提示 (Toast) --- */
+/* --- 3. 氣泡訊息 (Toast) --- */
 #toast-container {
-    position: fixed; top: 25%; left: 50%;
+    position: fixed; top: 20%; left: 50%;
     transform: translateX(-50%); z-index: 9999;
-    display: flex; flex-direction: column; align-items: center;
-    pointer-events: none;
 }
 
 .toast {
-    background: rgba(0, 0, 0, 0.85); color: var(--gold);
-    padding: 12px 24px; border-radius: 24px; border: 1px solid var(--gold);
-    margin-bottom: 12px; font-weight: bold;
-    box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
-    animation: toast-fly 3s forwards;
+    background: rgba(0, 0, 0, 0.9); color: var(--gold);
+    padding: 10px 20px; border-radius: 4px; border-left: 4px solid var(--gold);
+    margin-bottom: 8px; font-size: 13px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    animation: toast-fly 2.5s forwards;
 }
 
 @keyframes toast-fly {
-    0% { opacity: 0; transform: translateY(30px); }
-    15% { opacity: 1; transform: translateY(0); }
-    85% { opacity: 1; transform: translateY(0); }
-    100% { opacity: 0; transform: translateY(-30px); }
+    0% { opacity: 0; transform: translateY(20px); }
+    10% { opacity: 1; transform: translateY(0); }
+    90% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-20px); }
 }
 
-/* --- 3. 歷練分頁佈局 (修正介面沒反應) --- */
+/* --- 4. 分頁切換 (與 JS 高度對齊) --- */
 .stage {
-    flex: 1; display: none; /* 預設完全隱藏 */
-    flex-direction: column; padding: 20px; overflow-y: auto;
+    flex: 1; display: none;
+    flex-direction: column; padding: 15px; overflow-y: auto;
 }
 
-/* 強制顯示 active 頁面 */
 .stage.active {
     display: flex !important;
+    animation: fadeIn 0.3s ease;
 }
 
-.stage-header {
-    display: flex; justify-content: space-between;
-    align-items: center; margin-bottom: 20px;
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.map-btn {
-    background: #222; color: var(--gold); padding: 8px 16px;
-    border: 1px solid var(--gold); border-radius: 6px; cursor: pointer;
-}
-
-.auto-btn {
-    background: #1a1a1a; color: #666; padding: 8px 16px;
-    border: 1px solid #333; border-radius: 6px; cursor: pointer;
-    transition: all 0.3s;
-}
-
-.auto-btn.active {
-    background: #1b3320; color: #2ecc71; border-color: #2ecc71;
-    box-shadow: 0 0 10px rgba(46, 204, 113, 0.3);
-}
-
-/* --- 4. 戰鬥怪物卡片 (修正抖動與兔子問題) --- */
-.battle-main { padding: 10px 0; }
-
+/* --- 5. 戰鬥核心視覺 --- */
 .monster-card {
     background: var(--bg-panel); border: 1px solid #333;
-    border-radius: 16px; padding: 30px 20px; text-align: center;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    border-radius: 12px; padding: 25px; text-align: center;
+    transition: 0.2s;
 }
 
 .monster-icon {
-    font-size: 4.5em; margin-bottom: 15px; cursor: pointer;
-    display: inline-block; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));
+    font-size: 4em; margin-bottom: 10px; cursor: pointer;
+    transition: transform 0.1s;
 }
 
-.monster-icon:active { transform: scale(0.9); }
+.monster-icon:active { transform: scale(0.85); }
 
-.monster-name {
-    font-size: 1.3em; font-weight: bold; margin-bottom: 20px;
-    color: #fff; letter-spacing: 2px;
-}
-
-/* 修正：優化抖動，確保動畫會重置 */
+/* 打擊抖動動畫 */
 .shake { animation: monster-shake 0.15s ease-in-out; }
 @keyframes monster-shake {
     0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-6px) rotate(-1deg); }
-    75% { transform: translateX(6px) rotate(1deg); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
 }
 
-.boss-btn {
+.boss-active-btn {
     width: 100%; margin-top: 15px; padding: 12px;
-    background: linear-gradient(135deg, #8e44ad, #c0392b);
-    color: white; border-radius: 6px; border: none; font-weight: bold;
+    background: linear-gradient(135deg, #c0392b, #8e44ad);
+    color: #fff; border: 1px solid var(--legend);
+    border-radius: 8px; font-weight: bold;
+    animation: boss-glow 1s infinite alternate;
 }
 
-/* --- 5. 日誌系統 --- */
-.log-system {
-    margin-top: 20px; background: #000;
-    border: 1px solid #222; border-radius: 10px; overflow: hidden;
+@keyframes boss-glow {
+    from { box-shadow: 0 0 5px #c0392b; }
+    to { box-shadow: 0 0 15px #f1c40f; }
 }
 
-.log-tabs { display: flex; background: #111; border-bottom: 1px solid #222; }
-
-.log-tab {
-    flex: 1; padding: 10px; border: none; background: none;
-    color: #555; font-size: 12px; font-weight: bold; cursor: pointer;
+/* --- 6. 儲物袋網格與品級發光 --- */
+.bag-grid { 
+    display: grid; 
+    grid-template-columns: repeat(5, 1fr); 
+    gap: 8px; 
+    padding: 5px;
 }
-
-.log-tab.active {
-    color: var(--gold); background: #1a1a1a;
-    border-bottom: 2px solid var(--gold);
-}
-
-.log-list { height: 180px; overflow-y: auto; padding: 12px; font-size: 13px; line-height: 1.7; }
-
-.log-item { padding: 4px 0; border-bottom: 1px dotted #222; }
-.log-item.combat { color: #ff7675; }
-.log-item.loot { color: #55efc4; }
-.log-item.system { color: #ffe66d; }
-
-/* --- 6. 修為屬性表格 --- */
-.stats-grid-v2 {
-    display: grid; grid-template-columns: 1fr 1fr;
-    gap: 12px; margin-bottom: 25px;
-}
-
-.stat-v2-item {
-    background: #1a1a1a; padding: 12px; border-radius: 8px;
-    border-left: 3px solid var(--gold); display: flex;
-    justify-content: space-between; font-size: 13px;
-}
-
-.allocate-row {
-    background: #111; padding: 15px; border-radius: 10px;
-    margin-bottom: 10px; display: flex; justify-content: space-between;
-    align-items: center; border: 1px solid #222;
-}
-
-.add-btn {
-    background: var(--gold); color: #000; border: none;
-    width: 32px; height: 32px; border-radius: 6px;
-    font-size: 18px; font-weight: bold; cursor: pointer;
-}
-
-/* --- 7. 儲物袋網格與品級發光 --- */
-.bag-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
 
 .item-slot {
-    aspect-ratio: 1; background: #1a1a1a; border: 1px solid #333;
-    border-radius: 8px; display: flex; justify-content: center;
-    align-items: center; font-size: 1.8em; cursor: pointer; position: relative;
+    aspect-ratio: 1; background: #111; border: 1px solid #333;
+    border-radius: 6px; display: flex; justify-content: center;
+    align-items: center; font-size: 1.5em; cursor: pointer;
 }
 
-.item-slot.empty { opacity: 0.2; cursor: default; }
-
-/* 品級發光效應 (1.4.1 靈魂) */
+/* 品級邊框與發光 */
 .r-1 { border-color: var(--common); }
 .r-2 { border-color: var(--uncommon); }
-.r-3 { border-color: var(--rare); box-shadow: inset 0 0 8px var(--rare); }
+.r-3 { border-color: var(--rare); box-shadow: inset 0 0 5px var(--rare); }
 .r-4 { border-color: var(--epic); animation: glow-purple 2s infinite alternate; }
 .r-5 { border-color: var(--legend); animation: glow-gold 1.5s infinite alternate; }
 
 @keyframes glow-purple {
-    from { border-color: #9b59b6; box-shadow: 0 0 2px #9b59b6; }
-    to { border-color: #d6a2e8; box-shadow: 0 0 12px #9b59b6; }
+    from { box-shadow: 0 0 2px #9b59b6; }
+    to { box-shadow: 0 0 10px #9b59b6; }
 }
 
 @keyframes glow-gold {
-    from { border-color: #f1c40f; box-shadow: 0 0 2px #f1c40f; }
-    to { border-color: #fff200; box-shadow: 0 0 18px #f1c40f; }
+    from { box-shadow: 0 0 2px #f1c40f; }
+    to { box-shadow: 0 0 15px #f1c40f; }
 }
 
-/* --- 8. 導航欄 --- */
+/* --- 7. 導航與交互 --- */
 .nav-bar {
-    height: 75px; background: #000; border-top: 1px solid #333;
+    height: 70px; background: #000; border-top: 1px solid #222;
     display: flex; justify-content: space-around; align-items: center;
 }
 
 .nav-btn {
-    background: none; border: none; color: #555; font-size: 12px;
-    display: flex; flex-direction: column; align-items: center; cursor: pointer;
+    background: none; border: none; color: #444; font-size: 11px;
+    display: flex; flex-direction: column; align-items: center; flex: 1;
 }
 
 .nav-btn.active { color: var(--gold); }
-.nav-btn span { font-size: 1.5em; margin-bottom: 4px; }
+.nav-btn span { font-size: 1.6em; margin-bottom: 2px; }
 
-/* --- 9. 彈窗與詳情樣式 --- */
+/* 彈窗樣式 */
 .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.85); z-index: 5000;
+    background: rgba(0,0,0,0.8); z-index: 2000;
     display: flex; justify-content: center; align-items: center;
 }
 
 .modal-content {
     background: #111; border: 1px solid var(--gold);
-    border-radius: 16px; padding: 25px; width: 85%; max-width: 380px;
+    border-radius: 12px; padding: 20px; width: 85%; max-width: 350px;
 }
