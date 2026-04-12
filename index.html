@@ -2,71 +2,165 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
-    <title>宗門修仙錄 V1.6.0 - 完美加固版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>宗門修仙錄 V1.7.0 - 碎裂虛空</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="toast-container"></div>
-
     <div id="game-container">
-        <header class="header-info">
-            <div class="header-line">
-                <span id="val-level" class="realm-text">感應天機中...</span>
-                <span id="val-money" class="coin-text">🪙 0</span>
+        <div class="header-info">
+            <div class="realm-box">
+                <span id="player-realm">凡人</span>
+                <div class="exp-bar-container">
+                    <div id="exp-fill" class="exp-fill"></div>
+                </div>
             </div>
-            
-            <div class="bar-container exp">
-                <div id="val-exp-bar" class="bar-fill exp"></div>
-                <div id="val-exp-txt" class="bar-text">0%</div>
+            <div class="currency-box">
+                <span class="coin-icon">💰</span>
+                <span id="player-coin">0</span>
             </div>
+        </div>
 
-            <div class="bar-container hp">
-                <div id="val-hp-bar" class="bar-fill hp"></div>
-                <div id="val-hp-txt" class="bar-text">100 / 100</div>
-            </div>
-        </header>
-
-        <section id="battle-screen" class="stage active">
-            <div class="stage-header">
-                <button class="map-btn" onclick="UI_Battle.showMapSelector()">🗺️ 選擇區域</button>
-                <button id="btn-auto-combat" class="auto-btn" onclick="GameCore.toggleAuto()">自動練功：關</button>
-            </div>
-            
-            <div id="monster-display" class="battle-main">
+        <main id="main-display">
+            <section id="page-battle" class="game-page active">
+                <div class="region-header">
+                    <h2 id="current-map-name">新手村後山</h2>
+                    <button onclick="UI_Battle.showMapSelector()" class="change-map-btn">切換歷練地</button>
+                </div>
+                
+                <div id="combat-area">
+                    <div id="damage-container"></div>
+                    
+                    <div id="monster-display" class="monster-card">
+                        <div id="monster-icon" class="monster-icon">🐇</div>
+                        <h3 id="monster-name">野兔</h3>
+                        <div class="hp-bar-container">
+                            <div id="monster-hp-fill" class="hp-fill"></div>
+                            <span id="monster-hp-text">30/30</span>
+                        </div>
+                    </div>
+                    <div id="searching-display" class="searching-box" style="display: none;">
+                        <span>正在搜尋妖獸蹤跡...</span>
+                    </div>
                 </div>
 
-            <button id="boss-btn" class="boss-btn" onclick="Combat.initBattle(true)" style="display:none;">挑戰區域領主</button>
-
-            <div class="log-system">
-                <div class="log-tabs">
-                    <button class="log-tab active" onclick="UI_Battle.switchLog('all')">全部</button>
-                    <button class="log-tab" onclick="UI_Battle.switchLog('combat')">鬥法</button>
-                    <button class="log-tab" onclick="UI_Battle.switchLog('loot')">獲取</button>
+                <div id="log-system" class="log-system expanded">
+                    <div class="log-header">
+                        <span>戰鬥日誌</span>
+                        <button id="log-toggle" class="log-toggle-btn" onclick="UI_Battle.toggleLog()">收合 🔼</button>
+                    </div>
+                    <div id="log-list" class="log-list">
+                        </div>
                 </div>
-                <div id="battle-logs" class="log-list"></div>
-            </div>
-        </section>
+            </section>
 
-        <section id="bag-screen" class="stage" style="display:none;"></section>
+            <section id="page-stats" class="game-page">
+                <div class="stats-art-container">
+                    <div class="stat-astrolabe">
+                        <div class="astrolabe-center">
+                            <span id="stat-realm-title">練氣初期</span>
+                        </div>
+                    </div>
+                    <div class="stats-list">
+                        <div class="stat-row">
+                            <span>力量 (Str)</span>
+                            <span id="stat-str">10</span>
+                            <button onclick="Player.addStat('str')" class="add-btn">+</button>
+                        </div>
+                        <div class="stat-row">
+                            <span>體質 (Con)</span>
+                            <span id="stat-con">10</span>
+                            <button onclick="Player.addStat('con')" class="add-btn">+</button>
+                        </div>
+                        <div class="stat-row">
+                            <span>敏捷 (Dex)</span>
+                            <span id="stat-dex">10</span>
+                            <button onclick="Player.addStat('dex')" class="add-btn">+</button>
+                        </div>
+                        <div class="stat-row">
+                            <span>悟性 (Int)</span>
+                            <span id="stat-int">10</span>
+                            <button onclick="Player.addStat('int')" class="add-btn">+</button>
+                        </div>
+                    </div>
+                    <div class="stat-point-info">
+                        可用屬性點：<span id="stat-points">0</span>
+                    </div>
+                </div>
+            </section>
 
-        <section id="stats-screen" class="stage" style="display:none;"></section>
+            <section id="page-bag" class="game-page">
+                <div class="bag-header">
+                    <h3>儲物袋 (<span id="bag-count">0</span>/50)</h3>
+                    <div class="bag-tabs">
+                        <button class="bag-tab active" onclick="UI_Bag.filter('all')">全部</button>
+                        <button class="bag-tab" onclick="UI_Bag.filter('equip')">裝備</button>
+                        <button class="bag-tab" onclick="UI_Bag.filter('fragment')">殘卷</button>
+                        <button class="bag-tab" onclick="UI_Bag.filter('item')">材料</button>
+                    </div>
+                </div>
+                <div id="bag-grid" class="bag-grid">
+                    </div>
+            </section>
 
-        <section id="shop-screen" class="stage" style="display:none;"></section>
+            <section id="page-shop" class="game-page">
+                <div class="shop-container">
+                    <h3>坊市交易</h3>
+                    <div id="shop-list" class="shop-list">
+                        </div>
+                </div>
+            </section>
+        </main>
 
         <nav class="nav-bar">
-            <button class="nav-btn active" onclick="GameCore.switchTab('battle')"><span>⚔️</span>歷練</button>
-            <button class="nav-btn" onclick="GameCore.switchTab('bag')"><span>🎒</span>儲物</button>
-            <button class="nav-btn" onclick="GameCore.switchTab('stats')"><span>🧘</span>修為</button>
-            <button class="nav-btn" onclick="GameCore.switchTab('shop')"><span>🏪</span>坊市</button>
+            <button class="nav-btn active" onclick="Navigation.switch('battle')">
+                <span class="nav-icon">⚔️</span>
+                <span>歷練</span>
+            </button>
+            <button class="nav-btn" onclick="Navigation.switch('stats')">
+                <span class="nav-icon">🧘</span>
+                <span>修為</span>
+            </button>
+            <button class="nav-btn" onclick="Navigation.switch('bag')">
+                <span class="nav-icon">🎒</span>
+                <span>儲物袋</span>
+            </button>
+            <button class="nav-btn" onclick="Navigation.switch('shop')">
+                <span class="nav-icon">🏪</span>
+                <span>坊市</span>
+            </button>
         </nav>
+
+        <div id="modal-map" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>選擇歷練區域</h3>
+                    <button onclick="UI_Battle.closeMapSelector()" class="close-btn">×</button>
+                </div>
+                <div id="region-list" class="region-selector">
+                    </div>
+                <div id="map-list" class="map-selector">
+                    </div>
+            </div>
+        </div>
+
+        <div id="modal-detail" class="modal">
+            <div class="modal-content detail-box">
+                <div id="item-detail-content"></div>
+                <div class="detail-actions">
+                    <button id="btn-use-item" class="action-btn primary">使用</button>
+                    <button id="btn-sell-item" class="action-btn danger">出售</button>
+                    <button onclick="UI_Bag.closeDetail()" class="action-btn">關閉</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="data.js"></script>
     <script src="player.js"></script>
-    <script src="combat.js"></script> <script src="ui_battle.js"></script>
-    <script src="ui_stats.js"></script>
+    <script src="combat.js"></script>
+    <script src="ui_battle.js"></script>
     <script src="ui_bag.js"></script>
-    <script src="ui_shop.js"></script>
-    <script src="core.js"></script> </body>
+    <script src="main.js"></script>
+</body>
 </html>
