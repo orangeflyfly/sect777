@@ -1,209 +1,182 @@
 /**
- * V1.6.0 combat.js (加固優化版)
- * 職責：戰鬥計時器、命中/暴擊/閃避判定、掉落結算、分類日誌。
- * 狀態：100% 全量實裝，優化數據索引與掉落安全性。
+ * V1.7.0 combat.js
+ * 職責：戰鬥邏輯發動、傷害跳字生成、死亡過度動畫、修為加成結算。
  */
 
 const Combat = {
-    timer: null,
     currentMonster: null,
-    isBossBattle: false,
+    combatTimer: null,
+    isSearching: false,
 
-    // 1. 戰鬥初始化
-    initBattle: function(isBoss = false) {
-        this.isBossBattle = isBoss;
-        
-        // 使用加固後的 data.js 索引函數
-        const region = GAMEDATA.getRegion(player.data.currentRegion);
-        if (!region) {
-            console.error("❌ 找不到區域數據:", player.data.currentRegion);
-            return;
+    // 初始化戰鬥：進入新地圖或重新載入時呼叫
+    init() {
+        this.stop();
+        this.spawnMonster();
+    },
+
+    // 生成怪物
+    spawnMonster() {
+        if (this.isSearching) return;
+
+        const mapId = Player.data.currentMap;
+        let currentMapData = null;
+
+        // 從 GAMEDATA 尋找地圖資料
+        for (let rId in GAMEDATA.REGIONS) {
+            const map = GAMEDATA.REGIONS[rId].maps.find(m => m.id === mapId);
+            if (map) {
+                currentMapData = map;
+                break;
+            }
         }
 
-        const map = region.maps.find(m => m.id === player.data.currentMapId) || region.maps[0];
-        
-        let mData;
-        if (isBoss) {
-            mData = GAMEDATA.getMonster(region.bossId);
-        } else {
-            const mId = map.monsterIds[Math.floor(Math.random() * map.monsterIds.length)];
-            mData = GAMEDATA.getMonster(mId);
-        }
+        if (!currentMapData) return;
 
-        // 深度複製，確保戰鬥中的 HP 變化不影響原始庫
-        this.currentMonster = { ...mData, hp: mData.hp, maxHp: mData.hp };
+        // 隨機抽取怪物
+        const randomId = currentMapData.monsterIds[Math.floor(Math.random() * currentMapData.monsterIds.length)];
+        const baseMonster = GAMEDATA.getMonster(randomId);
 
-        // 通知 UI 渲染
-        if (typeof UI_Battle !== 'undefined') {
-            UI_Battle.renderBattle(this.currentMonster);
-        }
+        // 深拷貝怪物數據，避免修改到原始庫
+        this.currentMonster = {
+            ...baseMonster,
+            currentHp: baseMonster.hp
+        };
+
+        this.isSearching = false;
+        UI_Battle.updateMonster(this.currentMonster);
+        UI_Battle.log(`一隻 [${this.currentMonster.name}] 出現在你面前！`, 'system');
         
+        // 開始戰鬥循環
         this.startLoop();
     },
 
-    // 2. 戰鬥計時循環 (加固穩定性)
-    startLoop: function() {
-        this.stopLoop();
-        this.timer = setInterval(() => this.combatTick(), 1000);
+    // 戰鬥主循環
+    startLoop() {
+        if (this.combatTimer) clearInterval(this.combatTimer);
+        this.combatTimer = setInterval(() => {
+            this.playerAttack();
+        }, 1200); // 攻擊頻率
     },
 
-    stopLoop: function() {
-        if (this.timer) {
-            clearInterval(this.timer);
-            this.timer = null;
-        }
-    },
+    // 玩家攻擊邏輯
+    playerAttack() {
+        if (!this.currentMonster || this.isSearching) return;
 
-    combatTick: function() {
-        if (!this.currentMonster) return;
+        const stats = Player.getBattleStats();
+        let damage = stats.atk;
+        let isCrit = Math.random() < stats.critRate;
 
-        // A. 檢查自動練功
-        if (player.data.isAuto) {
-            this.playerAttack(false);
+        if (isCrit) {
+            damage = Math.floor(damage * 2);
         }
 
-        // B. 檢查怪物死亡 (負血量修正)
-        if (this.currentMonster.hp <= 0) {
-            this.currentMonster.hp = 0;
-            this.onMonsterDeath();
-            return;
-        }
-
-        // C. 怪物反擊
-        this.monsterAttack();
-
-        // D. 檢查玩家死亡
-        if (player.data.hp <= 0) {
-            player.data.hp = 0;
-            this.onPlayerDeath();
-            return;
-        }
-
-        this.refreshUI();
-    },
-
-    // 3. 玩家攻擊 (1.4.1 靈魂：手動加成)
-    playerAttack: function(isManual = false) {
-        if (!this.currentMonster || this.currentMonster.hp <= 0) return;
-
-        let dmg = player.data.atk;
-        const isCrit = Math.random() * 100 < player.data.crit;
+        // 扣除怪物血量
+        this.currentMonster.currentHp -= damage;
         
-        if (isCrit) dmg *= 2.5;
-        if (isManual) {
-            dmg *= 1.2; 
-            if (typeof UI_Battle !== 'undefined') UI_Battle.triggerShake();
-        }
+        // 1. 生成浮動傷害數字 (V1.7 新增)
+        this.createDamagePopup(damage, isCrit, false);
 
-        this.currentMonster.hp -= dmg;
-        this.log(`【${player.data.name}】攻擊，造成 ${Math.ceil(dmg)} 傷害${isCrit ? ' (暴擊!)' : ''}`, 'combat');
+        // 2. 更新 UI 怪物血量
+        UI_Battle.updateMonster(this.currentMonster);
 
-        if (this.currentMonster.hp <= 0) {
-            this.currentMonster.hp = 0;
+        if (this.currentMonster.currentHp <= 0) {
             this.onMonsterDeath();
         } else {
-            this.refreshUI();
+            // 怪物反擊
+            setTimeout(() => this.monsterAttack(), 500);
         }
     },
 
-    // 4. 怪物反擊
-    monsterAttack: function() {
-        const isDodge = Math.random() * 100 < player.data.dodge;
-        if (isDodge) {
-            this.log(`你施展身法，躲開了【${this.currentMonster.name}】的攻擊`, 'combat');
-            return;
-        }
+    // 怪物反擊邏輯
+    monsterAttack() {
+        if (!this.currentMonster || this.currentMonster.currentHp <= 0) return;
 
-        const dmg = Math.max(1, this.currentMonster.atk - player.data.def);
-        player.data.hp -= dmg;
-        this.log(`【${this.currentMonster.name}】反擊，你失去 ${Math.ceil(dmg)} 生命`, 'combat');
+        const damage = Math.max(1, this.currentMonster.atk); // 基礎簡化公式
+        
+        // 生成怪物傷害跳字 (紅色)
+        this.createDamagePopup(damage, false, true);
+        
+        // 這裡可以後續擴展玩家掉血邏輯
+        UI_Battle.log(`[${this.currentMonster.name}] 發動反擊，對你造成了 ${damage} 點傷害。`, 'monster');
     },
 
-    // 5. 結算與掉落 (對接 80 詞條)
-    onMonsterDeath: function() {
-        this.stopLoop();
-        this.log(`成功擊斃了【${this.currentMonster.name}】！`, 'system');
-        
-        // 收益增加
-        player.data.exp += this.currentMonster.exp;
-        player.data.money += this.currentMonster.gold;
-        this.log(`獲得修為：${this.currentMonster.exp}，靈石：${this.currentMonster.gold}`, 'loot');
+    // 實裝 V1.7 傷害跳字生成
+    createDamagePopup(dmg, isCrit, isFromMonster) {
+        const container = document.getElementById('damage-container');
+        if (!container) return;
 
-        // 掉落邏輯加固
-        const region = GAMEDATA.getRegion(player.data.currentRegion);
-        const map = region.maps.find(m => m.id === player.data.currentMapId);
+        const popup = document.createElement('span');
+        popup.className = 'dmg-popup';
         
-        if (map && map.drops) {
-            map.drops.forEach(baseName => {
-                if (Math.random() < 0.3) { 
-                    // 先執行生成，並檢查結果
-                    const success = player.generateItem(baseName, map.level);
-                    if (success) {
-                        const inv = player.data.inventory;
-                        const lastItem = inv[inv.length - 1];
-                        this.log(`【機緣】獲得寶物：${lastItem.name}`, 'loot');
-                    } else {
-                        this.log(`【提示】儲物袋已滿，遺憾錯失寶物。`, 'system');
-                    }
-                }
-            });
+        // 判斷類型與樣式
+        if (isFromMonster) {
+            popup.classList.add('dmg-monster');
+            popup.innerText = `-${dmg}`;
+        } else if (isCrit) {
+            popup.classList.add('dmg-crit');
+            popup.innerText = `暴擊 -${dmg}`;
+        } else {
+            popup.classList.add('dmg-normal');
+            popup.innerText = `-${dmg}`;
         }
 
-        // 進度處理
-        if (this.isBossBattle) {
-            if (region.nextRegion && !player.data.unlockedRegions.includes(region.nextRegion)) {
-                player.data.unlockedRegions.push(region.nextRegion);
-                player.showToast(`✨ 突破禁制！解鎖新區域`, "gold");
+        // 隨機位置偏移，避免數字重疊
+        const offset = Math.random() * 40 - 20;
+        popup.style.left = `calc(50% + ${offset}px)`;
+        popup.style.top = `40%`;
+
+        container.appendChild(popup);
+
+        // 動畫結束後自動移除，釋放記憶體
+        setTimeout(() => {
+            if (popup.parentElement) {
+                container.removeChild(popup);
             }
-            player.data.killCount = 0;
-        } else {
-            player.data.killCount++;
-        }
+        }, 1000);
+    },
 
-        player.checkLevelUp();
-        player.save();
+    // 怪物死亡處理 (V1.7 優化版)
+    onMonsterDeath() {
+        this.stop();
         
-        // 1.5 秒後開啟下一場
-        setTimeout(() => this.initBattle(), 1500);
-    },
+        // 1. 播放消散動畫 (透過 UI 控制 class)
+        UI_Battle.playMonsterDieAnim();
 
-    onPlayerDeath: function() {
-        this.stopLoop();
-        this.log(`力戰不支，神魂回歸宗門修補...`, 'system');
-        player.data.hp = player.data.maxHp;
-        player.save();
-        setTimeout(() => this.initBattle(), 3000);
-    },
+        // 2. 結算獎勵 (實裝悟性加成)
+        const expResult = Player.gainExp(this.currentMonster.exp);
+        Player.data.coin += this.currentMonster.gold;
+        Player.save();
 
-    refreshUI: function() {
-        if (typeof UI_Battle !== 'undefined' && this.currentMonster) {
-            UI_Battle.renderBattle(this.currentMonster);
-        }
-    },
+        UI_Battle.log(`擊敗 [${this.currentMonster.name}]！獲得修為：${expResult.totalExp} (+${expResult.bonusAmount} 悟性加成), 靈石：${this.currentMonster.gold}`, 'reward');
 
-    // 日誌優化：加入防錯與類型過濾
-    log: function(msg, type) {
-        const logBox = document.getElementById('battle-logs');
-        if (!logBox) return;
-
-        const div = document.createElement('div');
-        div.className = `log-item ${type}`;
-        const now = new Date();
-        const timeStr = `[${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}] `;
-        div.innerText = timeStr + msg;
-
-        logBox.prepend(div);
-
-        // 嚴格控制日誌數量
-        const limit = (typeof GAMEDATA !== 'undefined' && GAMEDATA.CONFIG.LOG_LIMIT) || 50;
-        while (logBox.children.length > limit) {
-            logBox.lastChild.remove();
-        }
+        // 3. 處理掉落 (略過基礎逻辑，後續由 ui_battle 整合)
         
-        if (typeof UI_Battle !== 'undefined' && UI_Battle.refreshLogVisibility) {
-            UI_Battle.refreshLogVisibility();
+        // 4. 進入「搜尋過渡狀態」
+        this.searchMonster();
+    },
+
+    // 搜尋怪物過渡 (取代 1.6 的 1.5s 停滯)
+    searchMonster() {
+        this.isSearching = true;
+        this.currentMonster = null;
+        
+        // UI 切換至搜尋狀態
+        UI_Battle.showSearching(true);
+
+        // 設定搜尋時間 (1.2秒後出現新怪)
+        setTimeout(() => {
+            UI_Battle.showSearching(false);
+            this.isSearching = false;
+            this.spawnMonster();
+        }, 1200);
+    },
+
+    stop() {
+        if (this.combatTimer) {
+            clearInterval(this.combatTimer);
+            this.combatTimer = null;
         }
     }
 };
 
-console.log("✅ [V1.6.0] combat.js 戰鬥法則已加固。");
+window.Combat = Combat;
