@@ -1,98 +1,50 @@
-/**
- * V1.5 core.js
- * 職責：遊戲主入口、檔案關聯初始化、介面切換邏輯、自動存檔定時器。
- * 狀態：全量完整版，負責連結所有模組。
- */
-
 const GameCore = {
-    // --- 1. 大陣啟動 (1.5 新增：模組化初始化流程) ---
     init: function() {
-        console.log("🌀 正在啟動 V1.5 大乘飛升大陣...");
-
-        // A. 讀取存檔並嘗試獲取離線收益
-        const hasSave = player.load();
-        
-        // B. 啟動戰鬥引擎 (內含離線結算彈窗邏輯)
+        player.load();
         Combat.init();
-
-        // C. 初始化介面顯示
         this.switchTab('battle'); 
-        
-        // D. 啟動 UI 刷新定時器 (確保數據強同步)
-        this.startUIUpdater();
-
-        // E. 啟動自動存檔 (每 30 秒一次)
+        this.startGlobalUpdater(); // 啟動全域刷新
         this.startAutoSave();
-
-        console.log("✅ 大陣運作正常。歡迎回來，" + player.data.name);
     },
 
-    // --- 2. 介面切換邏輯 (1.4.1 繼承並優化) ---
+    // 介面切換
     switchTab: function(tabId) {
-        // 隱藏所有畫面
         const screens = ['battle-screen', 'stats-screen', 'bag-screen', 'shop-screen'];
         screens.forEach(s => {
             const el = document.getElementById(s);
             if (el) el.style.display = 'none';
         });
+        document.getElementById(tabId + '-screen').style.display = 'flex';
+        
+        // 觸發各頁面渲染
+        if(tabId === 'stats') UI_Stats.renderStats();
+        if(tabId === 'bag') UI_Bag.renderBag();
+        if(tabId === 'shop') UI_Shop.renderShop();
+    },
 
-        // 顯示目標畫面並執行對應渲染
-        const target = document.getElementById(tabId + '-screen');
-        if (target) {
-            target.style.display = 'block';
+    // 核心更新器：解決經驗值消失的問題
+    startGlobalUpdater: function() {
+        setInterval(() => {
+            const d = player.data;
             
-            // 根據切換的標籤，執行該模組的渲染函式
-            switch(tabId) {
-                case 'stats': UI_Stats.renderStats(); break;
-                case 'bag':   UI_Bag.renderBag(); break;
-                case 'shop':  UI_Shop.renderShop(); break;
-                case 'battle': /* Combat 模組會自動更新 */ break;
-            }
-        }
-
-        // 更新導航按鈕樣式 (1.5 視覺項)
-        this.updateNavButtons(tabId);
+            // 1. 更新頂部等級與境界
+            document.getElementById('val-level').innerText = `【${d.realm}】 Lv.${d.level}`;
+            
+            // 2. 更新靈石
+            document.getElementById('val-money').innerText = `🪙 ${Math.floor(d.money)}`;
+            
+            // 3. 更新經驗條
+            const expPercent = (d.exp / d.nextExp) * 100;
+            document.getElementById('val-exp-bar').style.width = Math.min(100, expPercent) + "%";
+            document.getElementById('val-exp-txt').innerText = Math.floor(expPercent) + "%";
+            
+            // 4. 如果在歷練頁，由 Combat 模組更新怪物血量，這裡只需確保基本數值同步
+        }, 200); // 提高刷新頻率至 0.2 秒，讓數值更流暢
     },
 
-    updateNavButtons: function(activeTab) {
-        const btns = document.querySelectorAll('.nav-btn');
-        btns.forEach(btn => {
-            if (btn.getAttribute('onclick').includes(activeTab)) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
-    },
-
-    // --- 3. 全局計時器 (1.5 核心：數據強同步) ---
-    startUIUpdater: function() {
-        // 每 500 毫秒強制刷新一次當前顯示的介面，確保數值不神隱
-        setInterval(() => {
-            const activeScreen = this.getActiveScreen();
-            if (activeScreen === 'stats') UI_Stats.renderStats();
-            if (activeScreen === 'bag') UI_Bag.renderBag();
-            // 戰鬥畫面由 Combat 模組獨立推動，故不在此重複渲染
-        }, 500);
-    },
-
-    getActiveScreen: function() {
-        if (document.getElementById('stats-screen').style.display === 'block') return 'stats';
-        if (document.getElementById('bag-screen').style.display === 'block') return 'bag';
-        if (document.getElementById('shop-screen').style.display === 'block') return 'shop';
-        return 'battle';
-    },
-
-    // --- 4. 自動存檔系統 ---
     startAutoSave: function() {
-        setInterval(() => {
-            player.save();
-            console.log("💾 靈力穩固，自動存檔完成。");
-        }, 30000); // 30秒
+        setInterval(() => player.save(), 30000);
     }
 };
 
-// --- 最終宣告：網頁載入後立即啟動 ---
-window.onload = () => {
-    GameCore.init();
-};
+window.onload = () => GameCore.init();
