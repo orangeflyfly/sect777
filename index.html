@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
-    <title>宗門修仙錄 V1.5 - 大乘飛升版</title>
+    <title>宗門修仙錄 V1.5 - 大乘飛升</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
     <div id="toast-container"></div>
-    <div id="item-modal" class="modal" style="display:none;"></div>
 
     <div id="game-container">
         <header class="header-info">
@@ -22,16 +22,25 @@
             </div>
         </header>
 
-        <section id="battle-screen" class="stage">
+        <section id="battle-screen" class="screen">
+            <div class="map-info">
+                <button class="nav-btn" onclick="UI_Battle.showMapSelector()">🗺️ 前往歷練</button>
+            </div>
+            
+            <div id="monster-display"></div> 
+            
+            <button id="boss-btn" onclick="Combat.initBattle(true)" style="display:none;">挑戰區域領主</button>
+            
+            <div id="battle-logs" class="log-list"></div>
+        </section>
+
+        <section id="stats-screen" class="screen" style="display:none;">
             </section>
 
-        <section id="bag-screen" class="stage" style="display:none;">
+        <section id="bag-screen" class="screen" style="display:none;">
             </section>
 
-        <section id="stats-screen" class="stage" style="display:none;">
-            </section>
-
-        <section id="shop-screen" class="stage" style="display:none;">
+        <section id="shop-screen" class="screen" style="display:none;">
             </section>
 
         <nav class="nav-bar">
@@ -43,12 +52,16 @@
     </div>
 
     <script src="data.js"></script>
+    
     <script src="player.js"></script>
     <script src="combat.js"></script>
+    
     <script src="ui_battle.js"></script>
     <script src="ui_stats.js"></script>
     <script src="ui_bag.js"></script>
     <script src="ui_shop.js"></script>
+    
     <script src="core.js"></script>
+
 </body>
 </html>
