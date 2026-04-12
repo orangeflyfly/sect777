@@ -1,21 +1,20 @@
 /**
  * V1.7.0 data.js
- * 職責：全量靜態資料庫。
- * 內容：包含 80 組裝備前綴詞條、地圖境界門檻、殘卷碎片、妖獸與神通數據。
+ * 職責：靜態資料庫。
+ * 內容：80組詞條、地圖境界門檻、殘卷碎片、妖獸與神通數據。
  */
 
 const GAMEDATA = {
-    // 1. 全域配置
+    // 全域配置
     CONFIG: {
         MAX_BAG_SLOTS: 50,
-        BOSS_KILL_REQUIRE: 10,
         LOG_LIMIT: 50,
+        FRAGMENT_COUNT: 5,
         RARITY_NAMES: ["凡品", "良品", "上品", "極品", "神品"],
-        REALM_NAMES: ["凡人", "練氣初期", "練氣中期", "練氣後期", "築基初期", "築基中期", "築基後期", "結丹期", "元嬰期"],
-        FRAGMENT_COUNT: 5 
+        REALM_NAMES: ["凡人", "練氣初期", "練氣中期", "練氣後期", "築基初期", "築基中期", "築基後期", "結丹期", "元嬰期"]
     },
 
-    // 2. 裝備詞條庫 (完整 80 組前綴對齊 1.4.1)
+    // 裝備詞條庫 (完整 80 組)
     PREFIXES: [
         /* 力量系 (Str) - 20組 */
         { name: "破碎的", attr: "str", value: 1 }, { name: "生鏽的", attr: "str", value: 2 },
@@ -66,13 +65,10 @@ const GAMEDATA = {
         { name: "太極的", attr: "int", value: 480 }, { name: "歸一的", attr: "int", value: 650 }
     ],
 
-    // 3. 區域與地圖數據
+    // 區域與地圖 (含境界 minRealm)
     REGIONS: {
         "region_01": {
-            id: "region_01",
-            name: "青雲州",
-            bossId: "m005",
-            nextRegion: "region_02",
+            id: "region_01", name: "青雲州", bossId: "m005", nextRegion: "region_02",
             maps: [
                 { id: 101, name: "新手村後山", level: 1, minRealm: 0, monsterIds: ["m001", "m002"], drops: ["鐵劍", "布衣"] },
                 { id: 102, name: "青雲古道", level: 5, minRealm: 1, monsterIds: ["m002", "m003"], drops: ["精鋼劍", "青鋼甲"] },
@@ -80,10 +76,7 @@ const GAMEDATA = {
             ]
         },
         "region_02": {
-            id: "region_02",
-            name: "滄瀾州",
-            bossId: "m010",
-            nextRegion: "region_03",
+            id: "region_02", name: "滄瀾州", bossId: "m010", nextRegion: "region_03",
             maps: [
                 { id: 201, name: "滄瀾江畔", level: 15, minRealm: 3, monsterIds: ["m006", "m007"], drops: ["殘卷：回春術-1", "殘卷：回春術-2"] },
                 { id: 202, name: "沉船遺跡", level: 20, minRealm: 4, monsterIds: ["m007", "m008"], drops: ["殘卷：回春術-3"] },
@@ -92,35 +85,27 @@ const GAMEDATA = {
         }
     },
 
-    // 4. 妖獸數據
+    // 怪物
     MONSTERS: {
         "m001": { id: "m001", name: "野兔", icon: "🐇", hp: 30, atk: 5, exp: 10, gold: 5 },
         "m002": { id: "m002", name: "山雞", icon: "🐔", hp: 50, atk: 8, exp: 15, gold: 8 },
         "m003": { id: "m003", name: "灰狼", icon: "🐺", hp: 120, atk: 18, exp: 40, gold: 20 },
         "m004": { id: "m004", name: "猛虎", icon: "🐯", hp: 250, atk: 35, exp: 80, gold: 50 },
-        "m005": { id: "m005", name: "青雲虎王", icon: "🐯", hp: 1500, atk: 120, exp: 500, gold: 200, isBoss: true },
-        "m006": { id: "m006", name: "水蛇", icon: "🐍", hp: 400, atk: 60, exp: 150, gold: 80 },
-        "m007": { id: "m007", name: "巨蟹", icon: "🦀", hp: 600, atk: 85, exp: 250, gold: 120 },
-        "m008": { id: "m008", name: "劍魚", icon: "🐟", hp: 850, atk: 110, exp: 400, gold: 180 },
-        "m009": { id: "m009", name: "怒浪蛟龍", icon: "🐲", hp: 2000, atk: 220, exp: 1000, gold: 500 },
-        "m010": { id: "m010", name: "滄瀾龍子", icon: "🐲", hp: 10000, atk: 800, exp: 5000, gold: 2500, isBoss: true }
+        "m005": { id: "m005", name: "青雲虎王", icon: "🐯", hp: 1500, atk: 120, exp: 500, gold: 200, isBoss: true }
     },
 
-    // 5. 神通與碎片
-    SKILLS: {
-        "s001": { id: "s001", name: "烈焰斬", desc: "造成 150% 攻擊力的火屬性傷害。", baseDmg: 1.5 },
-        "s002": { id: "s002", name: "回春術", desc: "每秒回復 10 點生命值。", baseHeal: 10 },
-        "s003": { id: "s003", name: "破天一劍", desc: "無視防禦造成 250% 傷害。", baseDmg: 2.5 }
-    },
-
+    // 殘卷與技能關聯
     FRAGMENTS: {
         "烈焰斬": { targetId: "s001", sellPrice: 50 },
-        "回春術": { targetId: "s002", sellPrice: 80 },
-        "破天一劍": { targetId: "s003", sellPrice: 200 }
+        "回春術": { targetId: "s002", sellPrice: 80 }
     },
 
-    getRegion: function(id) { return this.REGIONS[id] || null; },
-    getMonster: function(id) { return this.MONSTERS[id] || null; }
+    SKILLS: {
+        "s001": { id: "s001", name: "烈焰斬", desc: "造成 150% 攻擊力的傷害。", baseDmg: 1.5 },
+        "s002": { id: "s002", name: "回春術", desc: "每秒回復 10 點生命值。", baseHeal: 10 }
+    },
+
+    getMonster(id) { return this.MONSTERS[id] || null; }
 };
 
-console.log("✅ [V1.7.0] data.js 完整版已就緒，絕無略過。");
+console.log("✅ [V1.7.0] data.js 基礎數據層加固完成。");
