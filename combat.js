@@ -1,7 +1,7 @@
 /**
  * V1.5.12 combat.js
- * 職責：戰鬥循環控管、命中/閃避/暴擊演算法、掉落結算、分色日誌輸出。
- * 狀態：全量實裝，禁止簡化。
+ * 職責：戰鬥計時器、命中/暴擊/閃避判定、掉落結算、分類日誌。
+ * 狀態：100% 全量實裝，包含 1.4.1 抖動觸發與負血量修正。
  */
 
 const Combat = {
@@ -9,11 +9,11 @@ const Combat = {
     currentMonster: null,
     isBossBattle: false,
 
-    // 1. 戰鬥初始化
+    // 1. 戰鬥初始化 (修正：確保怪物圖標與數據重置)
     initBattle: function(isBoss = false) {
         this.isBossBattle = isBoss;
         
-        // 取得當前區域與地圖資料
+        // 獲取區域與地圖
         const region = GAMEDATA.REGIONS.find(r => r.id === player.data.currentRegion);
         const map = region.maps.find(m => m.id === player.data.currentMapId) || region.maps[0];
         
@@ -21,25 +21,24 @@ const Combat = {
         if (isBoss) {
             mData = GAMEDATA.MONSTERS[region.bossId];
         } else {
-            // 從地圖隨機抽取妖獸
+            // 從地圖對應的怪物池中隨機抽取
             const mId = map.monsterIds[Math.floor(Math.random() * map.monsterIds.length)];
             mData = GAMEDATA.MONSTERS[mId];
         }
 
-        // 深拷貝怪物數據，確保不影響原始庫
-        this.currentMonster = {
-            ...mData,
-            maxHp: mData.hp,
-            hp: mData.hp
-        };
+        // 深度複製怪物數據，防止污染原始庫
+        this.currentMonster = JSON.parse(JSON.stringify(mData));
+        this.currentMonster.maxHp = mData.hp; // 記錄最大血量供血條計算
 
-        // 渲染戰鬥畫面
-        if (typeof UI_Battle !== 'undefined') UI_Battle.renderBattle(this.currentMonster);
+        // 立即通知 UI 渲染 (解決圖標不換的問題)
+        if (typeof UI_Battle !== 'undefined') {
+            UI_Battle.renderBattle(this.currentMonster);
+        }
         
         this.startLoop();
     },
 
-    // 2. 戰鬥主循環 (每秒跳動一次)
+    // 2. 戰鬥計時循環
     startLoop: function() {
         if (this.timer) clearInterval(this.timer);
         this.timer = setInterval(() => {
@@ -55,12 +54,12 @@ const Combat = {
     combatTick: function() {
         if (!this.currentMonster) return;
 
-        // A. 檢查是否開啟自動練功
+        // A. 檢查自動練功
         if (player.data.isAuto) {
-            this.playerAttack(false); // 自動攻擊
+            this.playerAttack(false); // 自動攻擊無手動加成
         }
 
-        // B. 怪物死亡檢查 (修正負血量顯示)
+        // B. 檢查怪物死亡 (負血量修正)
         if (this.currentMonster.hp <= 0) {
             this.currentMonster.hp = 0;
             this.onMonsterDeath();
@@ -70,18 +69,18 @@ const Combat = {
         // C. 怪物反擊
         this.monsterAttack();
 
-        // D. 玩家死亡檢查
+        // D. 檢查玩家死亡
         if (player.data.hp <= 0) {
             player.data.hp = 0;
             this.onPlayerDeath();
             return;
         }
 
-        // 刷新頂部玩家血量條與怪物血條
-        this.updateAllUI();
+        // 每秒同步一次介面
+        this.refreshUI();
     },
 
-    // 3. 玩家攻擊邏輯 (1.4.1 打擊抖動核心)
+    // 3. 玩家攻擊 (1.4.1 靈魂：手動點擊加成與抖動)
     playerAttack: function(isManual = false) {
         if (!this.currentMonster || this.currentMonster.hp <= 0) return;
 
@@ -89,42 +88,44 @@ const Combat = {
         
         // 暴擊判定
         const isCrit = Math.random() * 100 < player.data.crit;
-        if (isCrit) dmg *= 2.5; // 暴擊 2.5 倍
+        if (isCrit) dmg *= 2.5;
         
-        // 手動點擊加成 (1.4.1 的爽快感來源)
+        // 手動加成與抖動觸發
         if (isManual) {
-            dmg *= 1.2; 
-            if (typeof UI_Battle !== 'undefined') UI_Battle.triggerShake(); // 觸發卡片抖動
+            dmg *= 1.2; // 手動點擊多 20% 傷害
+            if (typeof UI_Battle !== 'undefined') {
+                UI_Battle.triggerShake(); // 觸發 1.4.1 經典抖動
+            }
         }
 
         this.currentMonster.hp -= dmg;
         this.log(`【${player.data.name}】發動攻擊，造成 ${Math.ceil(dmg)} 點傷害${isCrit ? ' (暴擊!)' : ''}`, 'combat');
 
         // 手動點擊時即時判定死亡，不等待 Tick
-        if (isManual && this.currentMonster.hp <= 0) {
+        if (this.currentMonster.hp <= 0) {
             this.currentMonster.hp = 0;
             this.onMonsterDeath();
+        } else {
+            this.refreshUI();
         }
-        
-        this.updateAllUI();
     },
 
-    // 4. 怪物攻擊邏輯 (閃避與防禦判定)
+    // 4. 怪物反擊 (閃避判定)
     monsterAttack: function() {
         // 閃避判定
         const isDodge = Math.random() * 100 < player.data.dodge;
         if (isDodge) {
-            this.log(`你步法玄妙，躲開了【${this.currentMonster.name}】的突襲`, 'combat');
+            this.log(`你施展身法，躲開了【${this.currentMonster.name}】的攻擊`, 'combat');
             return;
         }
 
-        // 減傷判定
+        // 計算扣血 (攻擊 - 防禦，最低 1 點)
         let dmg = Math.max(1, this.currentMonster.atk - player.data.def);
         player.data.hp -= dmg;
-        this.log(`【${this.currentMonster.name}】反擊，使你失去了 ${Math.ceil(dmg)} 點生命`, 'combat');
+        this.log(`【${this.currentMonster.name}】反擊，你失去了 ${Math.ceil(dmg)} 點生命`, 'combat');
     },
 
-    // 5. 戰鬥結算與 80 詞條掉落
+    // 5. 結算與掉落 (對接 80 詞條)
     onMonsterDeath: function() {
         this.stopLoop();
         this.log(`成功擊斃了【${this.currentMonster.name}】！`, 'system');
@@ -134,27 +135,24 @@ const Combat = {
         player.data.money += this.currentMonster.gold;
         this.log(`獲得修為：${this.currentMonster.exp}，獲得靈石：${this.currentMonster.gold}`, 'loot');
 
-        // 掉落邏輯 (1.4.1 爆率機制)
+        // 掉落邏輯 (對接 80 詞條)
         const region = GAMEDATA.REGIONS.find(r => r.id === player.data.currentRegion);
         const map = region.maps.find(m => m.id === player.data.currentMapId);
         
         if (map && map.drops) {
             map.drops.forEach(baseName => {
-                const dropRate = 0.25; // 25% 掉落率
-                if (Math.random() < dropRate) {
+                if (Math.random() < 0.3) { // 30% 掉落率
                     const success = player.generateItem(baseName, map.level);
                     if (success) {
                         const inv = player.data.inventory;
                         const lastItem = inv[inv.length - 1];
                         this.log(`【機緣】獲得寶物：${lastItem.name}`, 'loot');
-                    } else {
-                        this.log(`儲物袋已滿，眼睜睜看著寶物化為靈氣消散...`, 'system');
                     }
                 }
             });
         }
 
-        // Boss 擊殺進度
+        // 領主進度與解鎖
         if (this.isBossBattle) {
             if (region.nextRegion && !player.data.unlockedRegions.includes(region.nextRegion)) {
                 player.data.unlockedRegions.push(region.nextRegion);
@@ -168,51 +166,47 @@ const Combat = {
         player.checkLevelUp();
         player.save();
         
-        // 1.5 秒後尋找下一個對手
+        // 1.5 秒後尋找下一位受害者
         setTimeout(() => this.initBattle(), 1500);
     },
 
     onPlayerDeath: function() {
         this.stopLoop();
-        this.log(`力戰不支，神魂受創，回歸宗門修補...`, 'system');
+        this.log(`力戰不支，神魂回歸宗門修補...`, 'system');
         player.data.hp = player.data.maxHp; // 復活滿血
         player.save();
         setTimeout(() => this.initBattle(), 3000);
     },
 
-    // 6. UI 更新中控
-    updateAllUI: function() {
-        if (typeof UI_Battle !== 'undefined') {
+    // 6. 內部工具
+    refreshUI: function() {
+        if (typeof UI_Battle !== 'undefined' && this.currentMonster) {
             UI_Battle.renderBattle(this.currentMonster);
         }
-        // 觸發頂部狀態欄刷新 (core.js 會定時刷，但這裡做即時同步)
     },
 
-    // 7. 1.4.1 分類日誌實現
     log: function(msg, type) {
         const logBox = document.getElementById('battle-logs');
         if (!logBox) return;
 
         const div = document.createElement('div');
         div.className = `log-item ${type}`; // combat, loot, system
-        
         const now = new Date();
         const timeStr = `[${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}] `;
-        
         div.innerText = timeStr + msg;
 
         logBox.prepend(div);
 
-        // 即時檢查當前標籤過濾
+        // 數量控制，防止卡頓
+        if (logBox.children.length > 50) {
+            logBox.lastChild.remove();
+        }
+        
+        // 即時刷新過濾狀態
         if (typeof UI_Battle !== 'undefined') {
             UI_Battle.refreshLogVisibility();
-        }
-
-        // 數量限制
-        if (logBox.children.length > 60) {
-            logBox.lastChild.remove();
         }
     }
 };
 
-console.log("✅ [V1.5.12] combat.js 戰鬥法則圓滿載入。");
+console.log("✅ [V1.5.12] combat.js 戰鬥法則圓滿注入。");
