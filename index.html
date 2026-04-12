@@ -25,7 +25,7 @@
             <section id="page-battle" class="game-page active">
                 <div class="region-header">
                     <h2 id="current-map-name">---</h2>
-                    <button onclick="UI_Map.show()" class="change-map-btn">切換歷練地</button>
+                    <button onclick="UI_Battle.showMapSelect()" class="change-map-btn">切換歷練地</button>
                 </div>
                 
                 <div id="combat-area">
@@ -39,6 +39,7 @@
                             <span id="monster-hp-text">0/0</span>
                         </div>
                     </div>
+
                     <div id="searching-display" class="searching-box" style="display: none;">
                         <span class="search-text">正在搜尋妖獸蹤跡...</span>
                     </div>
@@ -47,7 +48,7 @@
                 <div id="log-system" class="log-system expanded">
                     <div class="log-header">
                         <span>戰鬥日誌</span>
-                        <button id="log-toggle" onclick="UI_Log.toggle()">收合 🔼</button>
+                        <button id="log-toggle" onclick="UI_Battle.toggleLog()">收合 🔼</button>
                     </div>
                     <div id="log-list" class="log-list"></div>
                 </div>
@@ -62,12 +63,15 @@
                         <div class="stat-item">敏捷：<span id="stat-dex">0</span> <button onclick="UI_Stats.add('dex')">+</button></div>
                         <div class="stat-item">悟性：<span id="stat-int">0</span> <button onclick="UI_Stats.add('int')">+</button></div>
                     </div>
-                    <div class="stat-points">可用屬性點：<span id="stat-points">0</span></div>
+                    <div class="stat-points">可用潛能點：<span id="stat-points">0</span></div>
                     <hr>
                     <div class="stat-preview">
-                        <p>生命值：<span id="stat-hp-preview">0</span></p>
-                        <p>攻擊力：<span id="stat-atk-preview">0</span></p>
+                        <p>生命上限：<span id="stat-hp-preview">0</span></p>
+                        <p>攻擊威力：<span id="stat-atk-preview">0</span></p>
                     </div>
+                    <hr>
+                    <h4>已領悟神通</h4>
+                    <div id="skills-list" class="skills-list"></div>
                 </div>
             </section>
 
@@ -84,10 +88,8 @@
             </section>
 
             <section id="page-shop" class="game-page">
-                <div class="shop-container">
-                    <h3>坊市交易</h3>
-                    <div id="shop-list" class="shop-list"></div>
-                </div>
+                <div id="shop-list" class="shop-container">
+                    </div>
             </section>
         </main>
 
@@ -98,28 +100,19 @@
             <button onclick="Navigation.switch('shop')">坊市</button>
         </nav>
 
-        <div id="modal-map" class="modal" style="display:none;">
-            <div class="modal-content">
-                <div id="region-list"></div>
-                <div id="map-list"></div>
-                <button onclick="UI_Map.close()">關閉</button>
-            </div>
-        </div>
-
         <div id="modal-detail" class="modal" style="display:none;">
-            <div class="modal-content" id="item-detail-content"></div>
+            <div class="modal-content" id="item-detail-content">
+                </div>
         </div>
     </div>
 
     <script src="data.js"></script>
     <script src="player.js"></script>
     <script src="combat.js"></script>
+    <script src="shop.js"></script>
     <script src="ui_battle.js"></script>
-    <script src="ui_log.js"></script>
-    <script src="ui_map.js"></script>
     <script src="ui_bag.js"></script>
     <script src="ui_stats.js"></script>
     <script src="ui_shop.js"></script>
-    <script src="main.js"></script>
-</body>
+    <script src="core.js"></script> </body>
 </html>
