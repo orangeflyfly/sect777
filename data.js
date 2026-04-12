@@ -1,7 +1,6 @@
 /**
- * V1.5.12 data.js
- * 職責：全量靜態資料庫 (包含 80 個隨機詞條、妖獸庫、地圖產出)
- * 狀態：100% 全量實裝，絕無省略。
+ * V1.6.0 data.js (優化加固版)
+ * 職責：全量靜態資料庫、數據檢索索引化。
  */
 
 const GAMEDATA = {
@@ -13,7 +12,7 @@ const GAMEDATA = {
         RARITY_COLORS: ["#95a5a6", "#2ecc71", "#3498db", "#9b59b6", "#f1c40f"]
     },
 
-    // --- 80 個隨機詞條 (全量列出，一行一個) ---
+    // --- 80 個隨機詞條 (保持原樣，全量實裝) ---
     PREFIXES: [
         /* 凡品 (1-20) */
         { name: "鋒利的", attr: "str", value: 2, rarity: 1 },
@@ -119,9 +118,8 @@ const GAMEDATA = {
     },
 
     // --- 區域與地圖配置 ---
-    REGIONS: [
-        {
-            id: "qingyun",
+    REGIONS: {
+        "qingyun": {
             name: "青雲州",
             bossId: "m005",
             nextRegion: "canglan",
@@ -131,8 +129,7 @@ const GAMEDATA = {
                 { id: 2, name: "野豬林", level: 10, monsterIds: ["m003", "m004"], drops: ["青鋼劍", "鎖子甲"] }
             ]
         },
-        {
-            id: "canglan",
+        "canglan": {
             name: "滄瀾州",
             bossId: "m105",
             nextRegion: null,
@@ -141,14 +138,24 @@ const GAMEDATA = {
                 { id: 11, name: "熔岩深淵", level: 30, monsterIds: ["m102"], drops: ["重玄劍", "岩神鎧"] }
             ]
         }
-    ],
+    },
 
-    // --- 神通秘籍 ---
-    SKILLS: {
-        "s001": { name: "烈焰斬", desc: "附帶火焰傷害，威力不俗", type: "active", baseDmg: 20 },
-        "s002": { name: "回春術", desc: "調動靈氣，修復肉身傷勢", type: "heal", baseHeal: 15 },
-        "s003": { name: "破天一劍", desc: "引動天地之力，造成毀滅打擊", type: "active", baseDmg: 100 }
+    // --- 數據檢索輔助函數 (加固關鍵) ---
+    getMonster: function(id) {
+        return this.MONSTERS[id] || { name: "未知怪物", hp: 1, atk: 0, gold: 0, exp: 0 };
+    },
+
+    getRegion: function(id) {
+        return this.REGIONS[id] || null;
+    },
+
+    getMap: function(regionId, mapId) {
+        const region = this.getRegion(regionId);
+        if (region) {
+            return region.maps.find(m => m.id === mapId);
+        }
+        return null;
     }
 };
 
-console.log("✅ [V1.5.12] data.js 法則資料庫全量載入，80 詞條已就位。");
+console.log("✅ [V1.6.0] data.js 法則資料庫已優化，支持高速索引檢索。");
