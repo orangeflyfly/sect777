@@ -23,6 +23,7 @@ let player = {
         maxHp: 100,
         // 1.5 新增：區域進度
         currentRegion: "qingyun",
+        currentMapId: 0, // <--- 補上這行，不然戰鬥引擎會找不到怪
         unlockedRegions: ["qingyun"],
         killCount: 0, // 當前區域擊殺數，用於觸發 Boss
         // 1.5 新增：時間戳與技能熟練度
