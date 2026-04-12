@@ -1,7 +1,6 @@
 /**
- * V1.5.12 ui_bag.js
- * 職責：渲染儲物袋網格、展現品級特效、裝備詳情彈窗、裝備/卸下/熔煉核心邏輯。
- * 狀態：100% 全量實裝，包含一鍵熔煉功能。
+ * V1.6.0 ui_bag.js (加固優化版)
+ * 職責：網格渲染、裝備穿脫邏輯、安全熔煉、屬性同步。
  */
 
 const UI_Bag = {
@@ -11,112 +10,110 @@ const UI_Bag = {
         if (!bagArea) return;
 
         const d = player.data;
+        const maxSlots = GAMEDATA.CONFIG?.MAX_BAG_SLOTS || 50;
         
         bagArea.innerHTML = `
             <div class="bag-container" style="animation: fade-in 0.3s ease;">
-                <div class="equipment-section" style="margin-bottom:20px; background:rgba(255,255,255,0.03); padding:15px; border-radius:12px; border:1px solid #222;">
-                    <h4 style="margin:0 0 12px 0; color:var(--gold); font-size:14px; border-bottom:1px solid #333; padding-bottom:8px;">當前穿戴</h4>
-                    <div style="display:flex; gap:12px;">
+                <div class="equipment-section">
+                    <h4 class="section-title">當前穿戴</h4>
+                    <div class="equip-row" style="display:flex; gap:12px;">
                         ${this.renderEquipSlot('武 器', d.equipment.weapon, 'weapon')}
                         ${this.renderEquipSlot('法 袍', d.equipment.armor, 'armor')}
                     </div>
                 </div>
 
-                <div class="bag-actions" style="margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
-                    <div style="font-size:12px; color:var(--text-dim);">
-                        儲物空間：<span id="bag-count" style="color:#fff;">${d.inventory.length}</span> / ${GAMEDATA.CONFIG.MAX_BAG_SLOTS}
+                <div class="bag-actions">
+                    <div class="bag-status">
+                        儲物空間：<span id="bag-count" class="highlight">${d.inventory.length}</span> / ${maxSlots}
                     </div>
-                    <button class="auto-btn" onclick="UI_Bag.autoMelt()" style="background:#4a1a1a; color:#ff7675; border-color:#632a2a; padding:5px 10px; font-size:11px; border-radius:4px;">一鍵熔煉(凡/良)</button>
+                    <button class="melt-btn-auto" onclick="UI_Bag.autoMelt()">一鍵熔煉 (凡/良)</button>
                 </div>
 
-                <div class="bag-grid">
+                <div class="bag-grid" id="main-bag-grid">
                     ${this.renderGrid()}
                 </div>
             </div>
         `;
     },
 
-    // 2. 生成單個穿戴格
+    // 2. 生成穿戴格
     renderEquipSlot: function(label, item, slot) {
         if (!item) {
             return `
-                <div class="equip-box empty" style="flex:1; background:#111; border:1px dashed #444; border-radius:8px; padding:12px; text-align:center;">
-                    <div style="font-size:11px; color:#555;">${label}</div>
-                    <div style="margin-top:5px; font-size:12px; color:#333;">未裝備</div>
+                <div class="equip-box empty">
+                    <div class="label">${label}</div>
+                    <div class="status">未裝備</div>
                 </div>
             `;
         }
         return `
-            <div class="equip-box r-${item.rarity}" onclick="UI_Bag.showItemDetail('${item.uid}', true)" 
-                 style="flex:1; background:#1a1a1a; border:1px solid; border-radius:8px; padding:12px; text-align:center; cursor:pointer; position:relative;">
-                <div style="font-size:11px; color:var(--text-dim);">${label}</div>
-                <div style="margin-top:5px; font-size:13px; color:#fff; font-weight:bold;">${item.name}</div>
+            <div class="equip-box r-${item.rarity}" onclick="UI_Bag.showItemDetail('${item.uid}', true)">
+                <div class="label">${label}</div>
+                <div class="name">${item.name}</div>
+                <div class="rarity-glow"></div>
             </div>
         `;
     },
 
-    // 3. 渲染 50 格網格 (包含 1.4.1 品級發光)
+    // 3. 渲染網格 (優化迴圈效能)
     renderGrid: function() {
-        const slots = [];
         const inv = player.data.inventory;
-        const maxSlots = GAMEDATA.CONFIG.MAX_BAG_SLOTS || 50;
+        const maxSlots = GAMEDATA.CONFIG?.MAX_BAG_SLOTS || 50;
+        let html = '';
 
         for (let i = 0; i < maxSlots; i++) {
             const item = inv[i];
             if (item) {
-                // 有物品：顯示對應品級 Class (r-1 ~ r-5)
-                slots.push(`
+                html += `
                     <div class="item-slot r-${item.rarity}" onclick="UI_Bag.showItemDetail('${item.uid}', false)">
-                        <span style="filter: drop-shadow(0 0 5px rgba(0,0,0,0.5));">
-                            ${item.type === 'weapon' ? '⚔️' : '🛡️'}
-                        </span>
-                    </div>
-                `);
+                        <div class="item-icon">${item.type === 'weapon' ? '⚔️' : '🛡️'}</div>
+                    </div>`;
             } else {
-                // 空格子
-                slots.push(`<div class="item-slot empty"></div>`);
+                html += `<div class="item-slot empty"></div>`;
             }
         }
-        return slots.join('');
+        return html;
     },
 
-    // 4. 物品詳情彈窗 (對接 80 詞條屬性)
+    // 4. 物品詳情 (加固數據展示)
     showItemDetail: function(uid, isEquipped) {
         const d = player.data;
+        // 使用嚴格比對找到物品
         let item = isEquipped ? 
             (d.equipment.weapon?.uid === uid ? d.equipment.weapon : d.equipment.armor) :
-            d.inventory.find(i => i.uid == uid);
+            d.inventory.find(i => String(i.uid) === String(uid));
 
         if (!item) return;
 
-        const rarityName = GAMEDATA.CONFIG.RARITY_NAMES[item.rarity - 1];
-        const attrName = {str:'力量', con:'體質', dex:'敏捷', int:'悟性'}[item.prefix.attr];
+        const rarityName = GAMEDATA.CONFIG.RARITY_NAMES[item.rarity - 1] || "凡品";
+        const attrMap = {str:'力量', con:'體質', dex:'敏捷', int:'悟性'};
+        const attrName = attrMap[item.prefix.attr] || "未知";
 
         const modalHtml = `
             <div id="item-modal" class="modal-overlay" onclick="if(event.target==this) UI_Bag.closeModal()">
-                <div class="modal-content r-${item.rarity}" style="border:2px solid; animation: modal-in 0.3s ease;">
-                    <div style="text-align:center; margin-bottom:15px;">
-                        <div style="font-size:12px; color:var(--text-dim); letter-spacing:2px;">— ${rarityName} —</div>
-                        <h3 style="margin:8px 0; color:#fff; font-size:1.4em;">${item.name}</h3>
+                <div class="modal-content r-${item.rarity} detail-card">
+                    <div class="detail-header">
+                        <div class="rarity-tag">— ${rarityName} —</div>
+                        <h3 class="item-title">${item.name}</h3>
                     </div>
 
-                    <div style="background:rgba(0,0,0,0.5); padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #333;">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                            <span style="color:#888;">加成屬性：</span>
-                            <span style="color:var(--gold); font-weight:bold;">${attrName} +${item.prefix.value}</span>
+                    <div class="detail-body">
+                        <div class="stat-line">
+                            <span class="label">加成屬性：</span>
+                            <span class="value">${attrName} +${item.prefix.value}</span>
                         </div>
-                        <div style="display:flex; justify-content:space-between;">
-                            <span style="color:#888;">回收價值：</span>
-                            <span style="color:#f1c40f;">🪙 ${item.price} 靈石</span>
+                        <div class="stat-line">
+                            <span class="label">回收價值：</span>
+                            <span class="value-gold">🪙 ${item.price} 靈石</span>
                         </div>
                     </div>
 
-                    <div style="display:flex; gap:12px;">
+                    <div class="detail-footer">
                         ${isEquipped ? 
-                            `<button onclick="UI_Bag.unequip('${item.type}')" style="flex:1; padding:12px; background:#444; color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">卸下裝備</button>` :
-                            `<button onclick="UI_Bag.equip('${item.uid}')" style="flex:1; padding:12px; background:var(--gold); color:#000; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">立即裝備</button>`
+                            `<button class="btn-primary" onclick="UI_Bag.unequip('${item.type}')">卸下裝備</button>` :
+                            `<button class="btn-primary" onclick="UI_Bag.equip('${item.uid}')">立即裝備</button>`
                         }
-                        ${!isEquipped ? `<button onclick="UI_Bag.melt('${item.uid}')" style="flex:1; padding:12px; background:#632a2a; color:#ff7675; border:none; border-radius:8px; cursor:pointer;">熔煉</button>` : ''}
+                        ${!isEquipped ? `<button class="btn-danger" onclick="UI_Bag.melt('${item.uid}')">熔煉</button>` : ''}
                     </div>
                 </div>
             </div>
@@ -124,70 +121,59 @@ const UI_Bag = {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     },
 
-    // 5. 核心邏輯：裝備、卸下、熔煉
+    // 5. 穿脫邏輯 (加固屬性刷新)
     equip: function(uid) {
         const inv = player.data.inventory;
-        const idx = inv.findIndex(i => i.uid == uid);
+        const idx = inv.findIndex(i => String(i.uid) === String(uid));
         if (idx === -1) return;
 
         const item = inv[idx];
-        const slot = item.type;
+        const slot = item.type; // weapon 或 armor
 
-        // 若該位置已有裝備，先脫下放回背包
+        // 核心加固：自動替換並退回背包
         if (player.data.equipment[slot]) {
             inv.push(player.data.equipment[slot]);
         }
 
-        // 穿上新裝備並從背包移除
         player.data.equipment[slot] = item;
         inv.splice(idx, 1);
 
-        player.updateDerivedStats(); // 關鍵：即時刷新戰鬥數值
-        player.save();
-        this.closeModal();
-        this.renderBag();
-        player.showToast(`已穿戴：${item.name}`);
+        this.finalizeChange(`已穿戴：${item.name}`);
     },
 
     unequip: function(slot) {
-        if (player.data.inventory.length >= GAMEDATA.CONFIG.MAX_BAG_SLOTS) {
+        const inv = player.data.inventory;
+        if (inv.length >= (GAMEDATA.CONFIG.MAX_BAG_SLOTS || 50)) {
             player.showToast("儲物袋已滿，無法卸下！");
             return;
         }
 
         const item = player.data.equipment[slot];
         if (item) {
-            player.data.inventory.push(item);
+            inv.push(item);
             player.data.equipment[slot] = null;
-            player.updateDerivedStats();
-            player.save();
-            this.closeModal();
-            this.renderBag();
-            player.showToast(`已卸下：${item.name}`);
+            this.finalizeChange(`已卸下：${item.name}`);
         }
     },
 
     melt: function(uid) {
         const inv = player.data.inventory;
-        const idx = inv.findIndex(i => i.uid == uid);
+        const idx = inv.findIndex(i => String(i.uid) === String(uid));
         if (idx === -1) return;
 
         const item = inv[idx];
         player.data.money += item.price;
         inv.splice(idx, 1);
-
-        player.save();
-        this.closeModal();
-        this.renderBag();
-        player.showToast(`熔煉成功，獲得靈石 🪙${item.price}`);
+        
+        this.finalizeChange(`熔煉成功，獲得 🪙${item.price}`);
     },
 
-    // 一鍵熔煉 (凡品 & 良品)
     autoMelt: function() {
         const inv = player.data.inventory;
-        let count = 0;
         let totalGain = 0;
+        let count = 0;
 
+        // 從後往前刪除是標準做法，防止索引偏移
         for (let i = inv.length - 1; i >= 0; i--) {
             if (inv[i].rarity <= 2) {
                 totalGain += inv[i].price;
@@ -198,11 +184,23 @@ const UI_Bag = {
 
         if (count > 0) {
             player.data.money += totalGain;
-            player.save();
-            this.renderBag();
-            player.showToast(`一鍵熔煉完成：清理 ${count} 件凡品，獲得靈石 🪙${totalGain}`, "gold");
+            this.finalizeChange(`一鍵熔煉：清理 ${count} 件凡/良品，獲得靈石 🪙${totalGain}`);
         } else {
-            player.showToast("儲物袋內並無凡品或良品。");
+            player.showToast("儲物袋內無低級品級裝備。");
+        }
+    },
+
+    // 輔助：統一結算變動
+    finalizeChange: function(msg) {
+        player.updateDerivedStats(); // 重算四維
+        player.save();               // 存檔
+        this.closeModal();           // 關彈窗
+        this.renderBag();            // 刷新背包 UI
+        player.showToast(msg);
+        
+        // 如果目前在屬性頁面，同步刷新
+        if (typeof UI_Stats !== 'undefined' && document.getElementById('stats-screen')?.style.display !== 'none') {
+            UI_Stats.renderStats();
         }
     },
 
@@ -212,4 +210,4 @@ const UI_Bag = {
     }
 };
 
-console.log("✅ [V1.5.12] ui_bag.js 儲物萬寶系統全量載入完成。");
+console.log("✅ [V1.6.0] ui_bag.js 儲物系統優化加固完成。");
