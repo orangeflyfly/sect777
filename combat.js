@@ -1,27 +1,27 @@
 /**
  * V1.7.0 combat.js
- * 職責：戰鬥邏輯發動、傷害跳字生成、死亡過度動畫、修為加成結算。
+ * 職責：戰鬥邏輯運算、傷害跳字觸發、怪物死亡結算、搜尋狀態控制。
  */
 
 const Combat = {
     currentMonster: null,
     combatTimer: null,
-    isSearching: false,
+    isSearching: false, // 標記是否處於搜尋怪物的過渡期
 
-    // 初始化戰鬥：進入新地圖或重新載入時呼叫
+    // 1. 初始化戰鬥 (進入地圖或重啟時呼叫)
     init() {
         this.stop();
         this.spawnMonster();
     },
 
-    // 生成怪物
+    // 2. 生成怪物邏輯
     spawnMonster() {
         if (this.isSearching) return;
 
         const mapId = Player.data.currentMap;
         let currentMapData = null;
 
-        // 從 GAMEDATA 尋找地圖資料
+        // 從 GAMEDATA 尋找地圖資料 (對應 data.js 結構)
         for (let rId in GAMEDATA.REGIONS) {
             const map = GAMEDATA.REGIONS[rId].maps.find(m => m.id === mapId);
             if (map) {
@@ -30,35 +30,42 @@ const Combat = {
             }
         }
 
-        if (!currentMapData) return;
+        if (!currentMapData) {
+            console.error("找不到當前地圖數據，無法生成怪物");
+            return;
+        }
 
-        // 隨機抽取怪物
-        const randomId = currentMapData.monsterIds[Math.floor(Math.random() * currentMapData.monsterIds.length)];
+        // 隨機抽取怪物 ID
+        const monsterList = currentMapData.monsterIds;
+        const randomId = monsterList[Math.floor(Math.random() * monsterList.length)];
         const baseMonster = GAMEDATA.getMonster(randomId);
 
-        // 深拷貝怪物數據，避免修改到原始庫
+        // 深拷貝怪物數據，確保不改動到原始庫
         this.currentMonster = {
             ...baseMonster,
             currentHp: baseMonster.hp
         };
 
         this.isSearching = false;
-        UI_Battle.updateMonster(this.currentMonster);
-        UI_Battle.log(`一隻 [${this.currentMonster.name}] 出現在你面前！`, 'system');
         
-        // 開始戰鬥循環
+        // 通知 UI 更新 (ui_battle.js 負責渲染)
+        UI_Battle.updateMonster(this.currentMonster);
+        UI_Log.add(`一隻 [${this.currentMonster.name}] 出現在你面前！`, 'system');
+        
+        // 開啟戰鬥循環
         this.startLoop();
     },
 
-    // 戰鬥主循環
+    // 3. 戰鬥計時器循環
     startLoop() {
         if (this.combatTimer) clearInterval(this.combatTimer);
+        // 設定每 1.2 秒攻擊一次 (可根據敏捷 spd 調整)
         this.combatTimer = setInterval(() => {
             this.playerAttack();
-        }, 1200); // 攻擊頻率
+        }, 1200);
     },
 
-    // 玩家攻擊邏輯
+    // 4. 玩家攻擊邏輯
     playerAttack() {
         if (!this.currentMonster || this.isSearching) return;
 
@@ -66,41 +73,45 @@ const Combat = {
         let damage = stats.atk;
         let isCrit = Math.random() < stats.critRate;
 
+        // 暴擊倍率處理
         if (isCrit) {
             damage = Math.floor(damage * 2);
         }
 
-        // 扣除怪物血量
+        // 實際扣血
         this.currentMonster.currentHp -= damage;
         
-        // 1. 生成浮動傷害數字 (V1.7 新增)
+        // --- V1.7 核心：觸發浮動傷害跳字 ---
         this.createDamagePopup(damage, isCrit, false);
 
-        // 2. 更新 UI 怪物血量
+        // 更新 UI 怪物血量
         UI_Battle.updateMonster(this.currentMonster);
 
+        // 判定怪物是否死亡
         if (this.currentMonster.currentHp <= 0) {
             this.onMonsterDeath();
         } else {
-            // 怪物反擊
+            // 怪物沒死，會在 0.5 秒後反擊
             setTimeout(() => this.monsterAttack(), 500);
         }
     },
 
-    // 怪物反擊邏輯
+    // 5. 怪物反擊邏輯
     monsterAttack() {
         if (!this.currentMonster || this.currentMonster.currentHp <= 0) return;
 
-        const damage = Math.max(1, this.currentMonster.atk); // 基礎簡化公式
+        const monsterDmg = Math.max(1, this.currentMonster.atk);
         
-        // 生成怪物傷害跳字 (紅色)
-        this.createDamagePopup(damage, false, true);
+        // --- V1.7 核心：觸發怪物傷害跳字 (紅字) ---
+        this.createDamagePopup(monsterDmg, false, true);
         
-        // 這裡可以後續擴展玩家掉血邏輯
-        UI_Battle.log(`[${this.currentMonster.name}] 發動反擊，對你造成了 ${damage} 點傷害。`, 'monster');
+        // 日誌記錄
+        UI_Log.add(`[${this.currentMonster.name}] 發動攻擊，對你造成了 ${monsterDmg} 點傷害。`, 'monster');
+        
+        // (此處可後續擴充玩家 HP 扣減邏輯)
     },
 
-    // 實裝 V1.7 傷害跳字生成
+    // 6. 實裝：傷害跳字 DOM 生成 (V1.7 視覺重點)
     createDamagePopup(dmg, isCrit, isFromMonster) {
         const container = document.getElementById('damage-container');
         if (!container) return;
@@ -108,7 +119,7 @@ const Combat = {
         const popup = document.createElement('span');
         popup.className = 'dmg-popup';
         
-        // 判斷類型與樣式
+        // 根據類型賦予 CSS 類名 (對應 style.css)
         if (isFromMonster) {
             popup.classList.add('dmg-monster');
             popup.innerText = `-${dmg}`;
@@ -120,14 +131,14 @@ const Combat = {
             popup.innerText = `-${dmg}`;
         }
 
-        // 隨機位置偏移，避免數字重疊
+        // 隨機位置偏移，讓數字不重疊
         const offset = Math.random() * 40 - 20;
         popup.style.left = `calc(50% + ${offset}px)`;
         popup.style.top = `40%`;
 
         container.appendChild(popup);
 
-        // 動畫結束後自動移除，釋放記憶體
+        // 動畫結束後自毀，防止 DOM 過多造成卡頓 (1秒)
         setTimeout(() => {
             if (popup.parentElement) {
                 container.removeChild(popup);
@@ -135,35 +146,37 @@ const Combat = {
         }, 1000);
     },
 
-    // 怪物死亡處理 (V1.7 優化版)
+    // 7. 怪物死亡結算
     onMonsterDeath() {
         this.stop();
         
-        // 1. 播放消散動畫 (透過 UI 控制 class)
+        // A. 播放消散效果 (透過 UI 控制)
         UI_Battle.playMonsterDieAnim();
 
-        // 2. 結算獎勵 (實裝悟性加成)
+        // B. 結算獎勵 (整合 Player.js 的悟性加成)
         const expResult = Player.gainExp(this.currentMonster.exp);
         Player.data.coin += this.currentMonster.gold;
         Player.save();
 
-        UI_Battle.log(`擊敗 [${this.currentMonster.name}]！獲得修為：${expResult.totalExp} (+${expResult.bonusAmount} 悟性加成), 靈石：${this.currentMonster.gold}`, 'reward');
+        UI_Log.add(`擊敗 [${this.currentMonster.name}]！`, 'reward');
+        UI_Log.add(`獲得修為：${expResult.totalExp} (+${expResult.bonusAmount} 悟性加成), 靈石：${this.currentMonster.gold}`, 'reward');
 
-        // 3. 處理掉落 (略過基礎逻辑，後續由 ui_battle 整合)
-        
-        // 4. 進入「搜尋過渡狀態」
-        this.searchMonster();
+        // C. 隨機掉落邏輯 (可擴充)
+        // ... (此處可對齊 data.js 的 drops 進行隨機判定)
+
+        // D. 進入搜尋過渡期 (取代 V1.6 的硬停滯)
+        this.enterSearchingState();
     },
 
-    // 搜尋怪物過渡 (取代 1.6 的 1.5s 停滯)
-    searchMonster() {
+    // 8. 搜尋怪物的過渡狀態
+    enterSearchingState() {
         this.isSearching = true;
         this.currentMonster = null;
         
-        // UI 切換至搜尋狀態
+        // UI 顯示「搜尋中」視覺效果
         UI_Battle.showSearching(true);
 
-        // 設定搜尋時間 (1.2秒後出現新怪)
+        // 1.2 秒後找到下一隻怪，讓流程有節奏感
         setTimeout(() => {
             UI_Battle.showSearching(false);
             this.isSearching = false;
@@ -171,6 +184,7 @@ const Combat = {
         }, 1200);
     },
 
+    // 停止戰鬥 (如切換地圖時)
     stop() {
         if (this.combatTimer) {
             clearInterval(this.combatTimer);
@@ -179,4 +193,5 @@ const Combat = {
     }
 };
 
+// 確保全域可用
 window.Combat = Combat;
