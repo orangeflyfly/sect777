@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sect777 - 歷練修仙 (V1.8.1 最終重構版)</title>
+    <title>Sect777 - 歷練修仙 (V1.8.2 極致版)</title>
     
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/page_battle.css">
@@ -84,6 +84,8 @@
         <button class="nav-btn" onclick="Core.switchPage('shop')">🏪 坊市</button>
     </nav>
 
+    <div id="ui-layer-top"></div>
+
     <div id="modal-map" class="modal" style="display:none;">
         <div class="modal-box">
             <div class="modal-header">
@@ -102,7 +104,10 @@
     <script src="data/data_monsters.js"></script>
     <script src="data/data_world.js"></script>
     <script src="data/data_skills.js"></script>
-    <script>window.DATA = window.GAMEDATA;</script>
+    <script>
+        // 數據加載鎖：確保全域 DATA 優先於後續邏輯
+        window.DATA = window.GAMEDATA;
+    </script>
 
     <script src="SaveManager.js"></script>
     <script src="Formula.js"></script>
@@ -121,12 +126,24 @@
     <script src="core.js"></script>
     
     <script>
-        // 確保視窗載入後啟動大陣
+        /**
+         * 宗門啟動檢測
+         */
         window.onload = () => {
-            if (window.Core && typeof Core.init === 'function') {
-                Core.init();
-            } else {
-                console.error("【警告】核心啟動失敗，請檢查 core.js 是否載入正確。");
+            console.log("【系統】開始點燃神識大陣...");
+            
+            try {
+                if (window.Core && typeof Core.init === 'function') {
+                    Core.init();
+                    console.log("【核心】 Sect777 運行正常。");
+                } else {
+                    throw new Error("Core 模組未正確加載");
+                }
+            } catch (err) {
+                console.error("【致命錯誤】大陣啟動失敗:", err.message);
+                // 視覺化回饋：如果載入失敗，讓玩家知道
+                const realmEl = document.getElementById('player-realm');
+                if (realmEl) realmEl.innerText = "加載失敗，請檢查網路";
             }
         };
     </script>
