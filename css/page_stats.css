@@ -1,14 +1,78 @@
-.stats-grid { display: flex; flex-direction: column; gap: 10px; }
-
-.page-title {
-    font-size: 18px; font-weight: bold; margin-bottom: 15px;
-    border-left: 4px solid var(--accent); padding-left: 10px;
+/* 修為頁面專用佈局 */
+.stats-grid {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
 }
 
-.bars-stack { display: flex; flex-direction: column; gap: 4px; width: 120px; }
-.bar-container { height: 6px; background: #000; border-radius: 3px; overflow: hidden; position: relative; }
-.bar-container.hp { height: 14px; }
+.stat-group-header {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+}
 
-.fill { height: 100%; transition: width 0.3s ease; }
-.fill-hp { background: var(--hp-color); }
-.fill-exp { background: var(--exp-color); }
+.stat-group-header .highlight {
+    color: var(--coin-color);
+    font-weight: bold;
+    font-size: 18px;
+}
+
+/* 每一列屬性的排版 */
+.stat-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 12px 15px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.stat-label {
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stat-val {
+    flex: 1;
+    text-align: right;
+    margin-right: 20px;
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--accent);
+}
+
+/* 加點按鈕 */
+.btn-add-stat {
+    width: 36px;
+    height: 36px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.btn-add-stat:active {
+    transform: scale(0.9);
+    background: #4f46e5;
+}
+
+/* 戰鬥能力預覽區 */
+.battle-preview-box {
+    border: 1px dashed var(--border-color);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.battle-preview-box span {
+    font-weight: bold;
+    color: var(--text-main);
+}
