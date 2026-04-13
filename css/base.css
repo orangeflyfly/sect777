@@ -37,6 +37,11 @@ body {
     justify-content: space-between;
     align-items: center;
     z-index: 100;
+    
+    /* V1.8.2 修正：限制最大寬度並居中對齊 */
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
 }
 
 .realm-title {
@@ -47,9 +52,15 @@ body {
 
 /* 底部導覽 */
 .bottom-nav {
-    position: fixed; bottom: 0; width: 100%; height: 65px;
+    position: fixed; bottom: 0; height: 65px;
     background: var(--bg-card); display: flex;
     border-top: 1px solid var(--border-color); z-index: 1000;
+    
+    /* V1.8.2 修正：限制最大寬度並利用 translateX 絕對居中 */
+    width: 100%;
+    max-width: 500px;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .nav-btn {
@@ -72,12 +83,18 @@ body {
     width: 90%; max-width: 400px; background: var(--bg-card);
     border-radius: 16px; overflow: hidden; border: 1px solid var(--border-color);
 }
+
 /* 確保遊戲主容器填滿中間剩餘空間 */
 #game-container {
     flex: 1;
     overflow-y: auto;
     padding: 15px;
     padding-bottom: 80px; /* 預留底部導覽列的高度，避免內容被遮擋 */
+    
+    /* V1.8.2 修正：限制最大寬度並居中對齊 */
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
 }
 
 /* 所有的遊戲頁面預設撐滿容器 */
