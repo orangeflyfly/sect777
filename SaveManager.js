@@ -1,48 +1,56 @@
 /**
- * SaveManager.js
- * 職責：處理數據的持久化儲存 (LocalStorage)
+ * V1.8.1 SaveManager.js
+ * 職責：數據持久化 (LocalStorage)
+ * 修正：加入深拷貝機制，確保存檔動作不影響運行中數據
  */
 const SaveManager = {
-    // 增加版本號，未來如果資料結構大改，可以用來做資料遷移
+    // 版本號控管：若未來結構大改，可改為 V1.9 進行資料遷移
     SAVE_KEY: 'CultivationGame_Save_V1.8',
 
     /**
      * 存檔
-     * @param {Object} data - 玩家的完整數據物件
+     * @param {Object} data - 玩家數據物件
      */
     save(data) {
-        if (!data) return;
+        if (!data) return false;
         
         try {
-            // 更新最後存檔時間
-            data.lastSaveTime = Date.now();
-            const jsonStr = JSON.stringify(data);
+            // 修正：使用 JSON 序列化進行深拷貝，避免直接修改原始 Player.data
+            const dataToSave = JSON.parse(JSON.stringify(data));
+            
+            // 更新最後存檔時間（僅在存檔副本中更新）
+            dataToSave.lastSaveTime = Date.now();
+            
+            const jsonStr = JSON.stringify(dataToSave);
             localStorage.setItem(this.SAVE_KEY, jsonStr);
             return true;
         } catch (error) {
-            console.error("【司庫房】存檔失敗，可能空間已滿或環境異常：", error);
+            // 錯誤處理：通常是 LocalStorage 空間滿了 (5MB 限制)
+            console.error("【司庫房】存檔失敗：", error);
             return false;
         }
     },
 
     /**
      * 讀檔
-     * @returns {Object|null} - 傳回解碼後的物件，若無存檔則回傳 null
+     * @returns {Object|null}
      */
     load() {
         try {
             const savedData = localStorage.getItem(this.SAVE_KEY);
             if (!savedData) return null;
             
-            return JSON.parse(savedData);
+            const parsedData = JSON.parse(savedData);
+            console.log("【司庫房】神識引導成功，數據載入中...");
+            return parsedData;
         } catch (error) {
-            console.error("【司庫房】讀檔失敗，資料格式可能損壞：", error);
+            console.error("【司庫房】讀檔失敗，存檔可能損壞：", error);
             return null;
         }
     },
 
     /**
-     * 刪除存檔 (通常用於重新開始)
+     * 重置存檔
      */
     clear() {
         localStorage.removeItem(this.SAVE_KEY);
