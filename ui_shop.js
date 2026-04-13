@@ -1,14 +1,13 @@
 /**
- * V1.7.0 ui_shop.js
- * 職責：渲染坊市買賣介面、處理分頁切換、調用商店邏輯。
- * 核心：與 ShopLogic (shop.js) 聯動，確保交易數據準確。
- * 【專家承諾：全量保留商品清單與渲染邏輯，行數不縮減】
+ * V1.8.1 ui_shop.js
+ * 職責：渲染坊市介面、處理分頁、對接 ShopLogic
+ * 修正點：對接 Player.data 結構、優化出售列表讀取、統一 Msg 輸出
  */
 
 const UI_Shop = {
-    currentTab: 'buy', // 預設為購買分頁
+    currentTab: 'buy', 
 
-    // 坊市固定販售商品清單 (全量保留，絕不刪減)
+    // 坊市商品清單 (全量保留)
     shopItems: [
         { id: 's001', name: '殘卷：烈焰斬-1', type: 'fragment', price: 500, rarity: 2 },
         { id: 's002', name: '殘卷：回春術-1', type: 'fragment', price: 800, rarity: 2 },
@@ -17,18 +16,17 @@ const UI_Shop = {
         { id: 'i002', name: '粗糙的布衣', type: 'armor', price: 200, rarity: 1, stats: { con: 2 } }
     ],
 
-    // 1. 渲染坊市主介面 (由 core.js 調用)
+    // 1. 渲染坊市主介面
     renderShop() {
-        const shopArea = document.getElementById('shop-content'); // 修正 ID 對應 index.html
+        const shopArea = document.getElementById('shop-content'); 
         if (!shopArea) return;
 
-        // 構建佈局結構
         shopArea.innerHTML = `
-            <div class="shop-tabs" style="display:flex; gap:10px; margin-bottom:15px;">
-                <button class="tab-btn ${this.currentTab === 'buy' ? 'active' : ''}" onclick="UI_Shop.setTab('buy')">購買</button>
-                <button class="tab-btn ${this.currentTab === 'sell' ? 'active' : ''}" onclick="UI_Shop.setTab('sell')">出售</button>
+            <div class="shop-tabs" style="display:flex; gap:10px; margin: 10px 0 15px 0;">
+                <button class="nav-btn ${this.currentTab === 'buy' ? 'active' : ''}" onclick="UI_Shop.setTab('buy')" style="flex:1">購買</button>
+                <button class="nav-btn ${this.currentTab === 'sell' ? 'active' : ''}" onclick="UI_Shop.setTab('sell')" style="flex:1">出售</button>
             </div>
-            <div id="shop-list-container">
+            <div id="shop-list-container" class="shop-grid-wrapper">
                 ${this.currentTab === 'buy' ? this.renderBuyList() : this.renderSellList()}
             </div>
         `;
@@ -43,62 +41,66 @@ const UI_Shop = {
     // 3. 渲染購買列表
     renderBuyList() {
         return `
-            <div class="shop-grid" style="display:grid; gap:10px;">
+            <div class="shop-grid">
                 ${this.shopItems.map(item => `
-                    <div class="shop-item r-${item.rarity}" style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                    <div class="shop-item r-${item.rarity}">
                         <div class="item-info">
-                            <div class="item-name" style="font-weight:bold;">${item.name}</div>
-                            <div class="item-price" style="font-size:12px; color:var(--coin-color);">🪙 ${item.price}</div>
+                            <div class="item-name">${item.name}</div>
+                            <div class="item-price">🪙 ${item.price}</div>
                         </div>
-                        <button class="buy-btn" onclick="UI_Shop.buyAction('${item.id}')" style="background:var(--accent); color:white; border:none; padding:5px 12px; border-radius:4px; cursor:pointer;">購買</button>
+                        <button class="btn-buy" onclick="UI_Shop.buyAction('${item.id}')">購買</button>
                     </div>
                 `).join('')}
             </div>
         `;
     },
 
-    // 4. 渲染出售列表 (讀取玩家儲物袋)
+    // 4. 渲染出售列表 (對接 V1.8.1 的 Player.data.inventory)
     renderSellList() {
-        // 使用我們在 player.js 裡建立的相容性映射 Player.inventory
-        const inv = Player.inventory;
+        // 重構修正：玩家數據現在存在 Player.data 內
+        const inv = Player.data ? Player.data.inventory : [];
         
-        if (inv.length === 0) return `<div style="color:var(--text-dim); padding:20px;">儲物袋內沒有可出售的物品。</div>`;
+        if (inv.length === 0) {
+            return `<div class="empty-msg" style="color:var(--text-dim); text-align:center; padding:30px;">儲物袋空空如也...</div>`;
+        }
 
         return `
-            <div class="shop-grid" style="display:grid; gap:10px;">
+            <div class="shop-grid">
                 ${inv.map(item => `
-                    <div class="shop-item r-${item.rarity || 1}" style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                    <div class="shop-item r-${item.rarity || 1}">
                         <div class="item-info">
-                            <div class="item-name" style="font-weight:bold;">${item.name}</div>
-                            <div class="item-price" style="font-size:12px; color:#888;">回收價: 💰 ${item.price || 10}</div>
+                            <div class="item-name">${item.name}</div>
+                            <div class="item-price" style="color:#888;">回收: 💰 ${item.price || Math.floor(item.value * 0.5) || 10}</div>
                         </div>
-                        <button class="sell-btn" onclick="UI_Shop.sellAction('${item.uuid}')" style="background:#e74c3c; color:white; border:none; padding:5px 12px; border-radius:4px; cursor:pointer;">出售</button>
+                        <button class="btn-sell" onclick="UI_Shop.sellAction('${item.uuid}')">出售</button>
                     </div>
                 `).join('')}
             </div>
         `;
     },
 
-    // 5. 觸發購買動作
+    // 5. 觸發購買
     buyAction(itemId) {
         const item = this.shopItems.find(i => i.id === itemId);
         if (!item) return;
 
-        // 調用 ShopLogic (shop.js) 進行實際交易
+        // 調用 ShopLogic
         const success = ShopLogic.buy(item);
-        
         if (success) {
-            this.renderShop(); // 交易成功刷新介面
+            this.renderShop(); 
+            // 購買成功後同步更新頁頭靈石顯示
+            if (window.Core) Core.updateUI(); 
         }
     },
 
-    // 6. 觸發出售動作
+    // 6. 觸發出售
     sellAction(itemUuid) {
-        // 調用 ShopLogic (shop.js) 進行出售，此函式將在下一個檔案中補齊
-        if (confirm("確定要出售此物嗎？")) {
+        // 配合重構，建議將確認邏輯放在 UI 層
+        if (confirm("道友確定要將此法寶換成靈石嗎？")) {
             const success = ShopLogic.sell(itemUuid);
             if (success) {
                 this.renderShop();
+                if (window.Core) Core.updateUI();
             }
         }
     }
