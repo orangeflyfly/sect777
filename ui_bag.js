@@ -1,12 +1,10 @@
 /**
- * V1.8.1 ui_bag.js
- * 修正點：對接 Player.data 結構、實裝隨機裝備渲染、修復稀有度特效
+ * V1.8.2 ui_bag.js (經濟系統雙修版)
+ * 修正點：廢棄九宮格，實裝「左圖右文+行動按鈕」的直覺列表佈局
  */
-
 const UI_Bag = {
     currentFilter: 'all',
 
-    // 1. 初始化分類按鈕
     init() {
         const filterContainer = document.getElementById('bag-filters');
         if (!filterContainer) return;
@@ -15,7 +13,8 @@ const UI_Bag = {
             { id: 'all', name: '全部' },
             { id: 'weapon', name: '武器' },
             { id: 'armor', name: '護甲' },
-            { id: 'fragment', name: '殘卷' }
+            { id: 'fragment', name: '殘卷' },
+            { id: 'material', name: '材料' } // 補上材料分類
         ];
 
         filterContainer.innerHTML = filters.map(f => `
@@ -26,31 +25,22 @@ const UI_Bag = {
         `).join('');
     },
 
-    // 2. 切換過濾器
     setFilter(type) {
         this.currentFilter = type;
         this.init(); 
         this.renderBag();
     },
 
-    // 3. 渲染儲物袋內容
     renderBag() {
         const bagGrid = document.getElementById('bag-content');
         if (!bagGrid) return;
 
-        bagGrid.innerHTML = '';
-
-        // 防禦：檢查玩家數據與資料庫
-        const _DATA = window.DATA || window.GAMEDATA;
         if (!Player.data || !Player.data.inventory) {
             bagGrid.innerHTML = '<div class="empty-msg">儲物袋封印中...</div>';
             return;
         }
 
-        const inventory = Player.data.inventory;
-
-        // 執行過濾邏輯
-        const filteredItems = inventory.filter(item => {
+        const filteredItems = Player.data.inventory.filter(item => {
             if (this.currentFilter === 'all') return true;
             return item.type === this.currentFilter;
         });
@@ -60,46 +50,53 @@ const UI_Bag = {
             return;
         }
 
-        // 生成物品格
-        filteredItems.forEach(item => {
-            const slot = document.createElement('div');
-            // r-1 ~ r-5 對應 fx.css 的金光效果
-            slot.className = `bag-slot r-${item.rarity || 1}`;
+        // V1.8.2 核心重構：生成「左圖右文」列表卡片
+        bagGrid.innerHTML = filteredItems.map(item => {
+            const statsDesc = item.stats ? Object.entries(item.stats).map(([k, v]) => `${k}+${v}`).join(' ') : '無特殊加成';
+            const rarity = item.rarity || 1;
             
-            // 取得屬性描述 (用於提示)
-            const statsDesc = item.stats ? Object.entries(item.stats).map(([k, v]) => `${k}+${v}`).join(' ') : '';
+            // 根據類型決定行動按鈕文字與樣式
+            let actionBtn = '';
+            if (['weapon', 'armor', 'accessory'].includes(item.type)) {
+                actionBtn = `<button class="btn-eco-action btn-equip" onclick="UI_Bag.useItem('${item.uuid}', event)">裝備</button>`;
+            } else if (item.type === 'fragment' || item.type === 'special') {
+                actionBtn = `<button class="btn-eco-action btn-use" onclick="UI_Bag.useItem('${item.uuid}', event)">使用</button>`;
+            }
 
-            slot.innerHTML = `
-                <div class="item-icon">${this.getItemIcon(item.type)}</div>
-                <div class="item-name-tag">${item.name}</div>
-                ${item.count > 1 ? `<div class="item-count">x${item.count}</div>` : ''}
-                <div class="item-hover-tip">${statsDesc}</div>
+            return `
+                <div class="eco-list-card r-${rarity}">
+                    <div class="eco-card-left">
+                        <div class="eco-icon-box r-bg-${rarity}">${this.getItemIcon(item.type)}</div>
+                        ${item.count > 1 ? `<div class="eco-item-count">x${item.count}</div>` : ''}
+                    </div>
+                    <div class="eco-card-mid">
+                        <div class="eco-item-name r-txt-${rarity}">${item.name}</div>
+                        <div class="eco-item-desc">${statsDesc}</div>
+                    </div>
+                    <div class="eco-card-right">
+                        ${actionBtn}
+                    </div>
+                </div>
             `;
-            
-            // 綁定點擊動作 (預留給穿戴裝備功能)
-            slot.onclick = () => this.handleItemClick(item);
-            bagGrid.appendChild(slot);
-        });
+        }).join('');
     },
 
     getItemIcon(type) {
-        const icons = { 
-            'weapon': '⚔️', 
-            'armor': '👕', 
-            'accessory': '💍', 
-            'fragment': '📜',
-            'material': '💎' 
-        };
+        const icons = { weapon: '⚔️', armor: '👕', accessory: '💍', fragment: '📜', material: '💎', special: '🎁' };
         return icons[type] || '📦';
     },
 
-    handleItemClick(item) {
-        // 如果是裝備，未來這裡對接 Player.equip(item.uuid)
-        Msg.log(`你查看了 【${item.name}】，感受到一股莫名的靈氣。`, "system");
-        
-        // 簡單展示屬性
-        if (item.stats) {
-            console.table(item.stats);
+    // 模擬使用/裝備物品
+    useItem(uuid, event) {
+        const item = Player.data.inventory.find(i => i.uuid === uuid);
+        if (!item) return;
+
+        // 觸發通用跳字特效
+        if (window.UI_Stats && event) {
+            UI_Stats.createFloatingText(event.target, "使用中");
         }
+        
+        Msg.log(`你${item.type === 'weapon' || item.type === 'armor' ? '裝備' : '使用'}了 【${item.name}】`, "system");
+        // 未來這裡對接 Player.equip 或 Player.consume
     }
 };
