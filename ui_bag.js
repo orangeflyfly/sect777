@@ -1,8 +1,8 @@
 /**
  * ============================================================
  * V1.7.0 全量極致版 ui_bag.js
- * 職責：儲物袋分頁顯示、物品過濾、詳細描述彈窗
- * 【專家承諾：保留所有過濾與渲染邏輯，僅修正資料檢索斷點，行數不縮減】
+ * 職責：儲物袋分頁顯示、物品過濾、詳細描述彈窗。
+ * 【專家承諾：保留所有過濾與渲染邏輯，行數絕對不縮減，解決紅字報錯】
  * ============================================================
  */
 
@@ -32,7 +32,7 @@ const UI_Bag = {
     // 2. 切換過濾器
     setFilter(type) {
         this.currentFilter = type;
-        this.init(); // 重新渲染按鈕狀態
+        this.init(); // 刷新按鈕狀態
         this.renderBag();
     },
 
@@ -43,12 +43,18 @@ const UI_Bag = {
 
         bagGrid.innerHTML = '';
 
-        // 過濾物品 (對接修正：確保能從 ITEMS, FRAGMENTS 或 SKILLS 找到對應的資料模板)
+        // 取得全域資料庫引用 (防禦性檢查)
+        const _DATA = window.DATA || window.GAMEDATA;
+        if (!_DATA) {
+            console.error("[UI_Bag] 找不到資料庫 (DATA)！");
+            return;
+        }
+
+        // 過濾物品 (對接修正：確保能從 ITEMS, FRAGMENTS 或 SKILLS 找到資料)
         const filteredItems = Player.inventory.filter(invItem => {
-            // 嘗試從各個資料庫節點尋找物品定義
-            const template = (DATA.ITEMS && DATA.ITEMS[invItem.id]) || 
-                             (DATA.FRAGMENTS && DATA.FRAGMENTS[invItem.id]) || 
-                             (DATA.SKILLS && DATA.SKILLS[invItem.id]);
+            const template = (_DATA.ITEMS && _DATA.ITEMS[invItem.id]) || 
+                             (_DATA.FRAGMENTS && _DATA.FRAGMENTS[invItem.id]) || 
+                             (_DATA.SKILLS && _DATA.SKILLS[invItem.id]);
             
             if (this.currentFilter === 'all') return true;
             return template && template.type === this.currentFilter;
@@ -60,16 +66,16 @@ const UI_Bag = {
         }
 
         filteredItems.forEach(invItem => {
-            // 獲取正確的物品模板
-            const template = (DATA.ITEMS && DATA.ITEMS[invItem.id]) || 
-                             (DATA.FRAGMENTS && DATA.FRAGMENTS[invItem.id]) || 
-                             (DATA.SKILLS && DATA.SKILLS[invItem.id]);
+            // 獲取物品模板
+            const template = (_DATA.ITEMS && _DATA.ITEMS[invItem.id]) || 
+                             (_DATA.FRAGMENTS && _DATA.FRAGMENTS[invItem.id]) || 
+                             (_DATA.SKILLS && _DATA.SKILLS[invItem.id]);
             
             if (!template) return;
 
             const slot = document.createElement('div');
             slot.className = 'bag-slot';
-            // 這裡套用 style.css 裡的樣式，保留 item-icon 與 item-name-tag 的結構
+            // 套用你的 CSS 結構
             slot.innerHTML = `
                 <div class="item-icon">${this.getItemIcon(template.type)}</div>
                 <div class="item-count">x${invItem.count || 1}</div>
@@ -80,29 +86,26 @@ const UI_Bag = {
         });
     },
 
-    // 4. 根據類型顯示圖示 (極致視覺化)
+    // 4. 根據類型顯示圖示
     getItemIcon(type) {
         switch(type) {
             case 'equipment': return '⚔️';
             case 'material': return '💎';
             case 'consumable': return '💊';
-            case 'fragment': return '📜'; // 新增殘卷圖示支援
+            case 'fragment': return '📜';
             default: return '📦';
         }
     },
 
-    // 5. 顯示物品詳情 (對應你原有的開發進度)
+    // 5. 顯示物品詳情
     showItemDetail(itemId) {
-        // 同樣實施多路徑資料檢索
-        const item = (DATA.ITEMS && DATA.ITEMS[itemId]) || 
-                     (DATA.FRAGMENTS && DATA.FRAGMENTS[itemId]) || 
-                     (DATA.SKILLS && DATA.SKILLS[itemId]);
+        const _DATA = window.DATA || window.GAMEDATA;
+        const item = (_DATA.ITEMS && _DATA.ITEMS[itemId]) || 
+                     (_DATA.FRAGMENTS && _DATA.FRAGMENTS[itemId]) || 
+                     (_DATA.SKILLS && _DATA.SKILLS[itemId]);
         if (!item) return;
         
-        // 此處保留你的開發位置，未來可以彈出 Modal 或是詳細文字
         console.log(`[UI_Bag] 正在查看：${item.name}`, item);
-        
-        // 為了讓新手也能看到反饋，我們暫時先用一個簡單的 log 提醒
-        // 這裡可以使用瀏覽器的 alert 或是自定義 Modal 展示詳情
+        // 未來可在這裡實裝彈窗 Modal
     }
 };
