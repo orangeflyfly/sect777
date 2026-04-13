@@ -1,7 +1,7 @@
 /**
- * V1.7.0 shop.js
- * 職責：處理坊市購買邏輯、價格判定、隨機靈石袋獎勵、殘卷自動回收。
- * 【專家承諾：補齊缺失的 sell 函式，保留所有開獎邏輯，行數不縮減】
+ * V1.8.1 shop.js
+ * 職責：處理坊市交易邏輯 (購買/出售)
+ * 修正點：對接 Msg 訊號台、修正 Player.addItem 回傳判斷、移除過時的 UI 直接調用
  */
 
 function Shop() {
@@ -12,62 +12,49 @@ function Shop() {
  * 執行購買動作
  */
 Shop.prototype.buy = function(shopItem) {
-    if (!Player || !Player.data) return;
+    if (!Player || !Player.data) return false;
 
-    // 1. 靈石足夠檢查
+    // 1. 靈石檢查
     if (Player.data.coin < shopItem.price) {
-        if (typeof UI_Battle !== 'undefined') {
-            UI_Battle.log("靈石不足，仙友請回吧。", "red");
-        }
+        Msg.log("靈石不足，仙友請回吧。", "red");
         return false;
     }
 
-    // 2. 靈石袋隨機獎勵 (保留原始公式：500 + 1000 以內隨機)
+    // 2. 特殊物品：低階靈石袋 (隨機開獎邏輯)
     if (shopItem.name === "低階靈石袋") {
         const bonus = 500 + Math.floor(Math.random() * 1000);
         Player.data.coin = Player.data.coin - shopItem.price + bonus;
         
-        if (typeof UI_Battle !== 'undefined') {
-            UI_Battle.log(`開啟靈石袋，獲得 🪙 ${bonus}`, "gold");
-        }
+        Msg.log(`開啟靈石袋，獲得 🪙 ${bonus}`, "gold");
         Player.save();
         return true;
     }
 
     // 3. 一般物品/殘卷購買
-    const baseTemplate = shopItem; 
+    // 深拷貝一份商品數據，避免修改到商店原始模板
+    const newItem = JSON.parse(JSON.stringify(shopItem));
+    
+    // 生成唯一識別碼 (重要：讓商店買來的裝備也能被出售/穿戴)
+    newItem.uuid = 'it_' + Date.now() + Math.random().toString(36).substr(2, 5);
+    newItem.count = 1;
 
-    if (baseTemplate) {
-        const newItem = JSON.parse(JSON.stringify(baseTemplate));
-        newItem.count = 1;
-        
-        // 調用 Player.addItem (已修正可處理物件與 ID)
-        const result = Player.addItem(newItem);
+    // 調用 Player.addItem (V1.8.1 回傳為布林值)
+    const success = Player.addItem(newItem);
 
-        if (result.success) {
-            Player.data.coin -= shopItem.price;
-            
-            if (typeof UI_Battle !== 'undefined') {
-                if (result.type === 'refined') {
-                    UI_Battle.log(`購買成功：【${shopItem.name}】(重複殘卷已自動煉化為 ${result.price} 靈石)`);
-                } else {
-                    UI_Battle.log(`購買成功：【${shopItem.name}】`);
-                }
-            }
-            Player.save();
-            return true;
-        } else {
-            if (typeof UI_Battle !== 'undefined') {
-                UI_Battle.log(`購買失敗：${result.reason}`, "red");
-            }
-            return false;
-        }
+    if (success) {
+        Player.data.coin -= shopItem.price;
+        // 注意：Player.addItem 內部已經有 Msg.log 提示獲得物品了
+        // 這裡只需要額外記錄存檔
+        Player.save();
+        return true;
+    } else {
+        // addItem 失敗通常是背包滿了，該方法內已有 Msg.log 提示
+        return false;
     }
-    return false;
 };
 
 /**
- * 出售物品功能 (補齊原本缺失的邏輯)
+ * 出售物品功能
  */
 Shop.prototype.sell = function(itemUuid) {
     if (!Player || !Player.data) return false;
@@ -77,21 +64,22 @@ Shop.prototype.sell = function(itemUuid) {
     
     if (index !== -1) {
         const item = inv[index];
-        // 計算回購價 (原價 50% 或預設 10)
+        
+        // 計算回購價 (V1.8.1 邏輯：隨機裝備使用 price 或自帶價值)
         const sellPrice = item.price ? Math.floor(item.price * 0.5) : 10;
         
         Player.data.coin += sellPrice;
         inv.splice(index, 1); // 從儲物袋移除
         
-        if (typeof UI_Battle !== 'undefined') {
-            UI_Battle.log(`出售【${item.name}】，獲得 🪙 ${sellPrice}`, "system");
-        }
+        Msg.log(`出售【${item.name}】，獲得 🪙 ${sellPrice}`, "system");
         
         Player.save();
         return true;
     }
+    
+    Msg.log("找不到該物品，無法出售。", "red");
     return false;
 };
 
-// 確保全域只有一個商店實例
+// 確保全域實例化
 window.ShopLogic = new Shop();
