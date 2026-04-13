@@ -1,6 +1,6 @@
 /* ============================================================
-   V1.8.2 修為頁面專用佈局 (精化瘦身修正版)
-   修正點：加入 max-width 限制防止過長、優化網格對齊
+   V1.8.2 修為頁面專用佈局 (全局適配版)
+   修正點：解除冗餘的 max-width，完美對接 base.css 的容器設定
    ============================================================ */
 
 .stats-grid {
@@ -10,9 +10,7 @@
     gap: 12px; 
     padding-bottom: 80px;
 
-    /* --- 關鍵修正：限制寬度並置中 --- */
-    max-width: 480px; 
-    margin: 0 auto;   
+    /* --- 關鍵修正：配合 base.css，讓其自然撐滿父容器即可 --- */
     width: 100%;      
     box-sizing: border-box;
 }
@@ -27,7 +25,7 @@
 .stat-group-header .highlight {
     color: var(--coin-color);
     font-weight: bold;
-    font-size: 16px;
+    font-size: 16px; 
     text-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
 }
 
@@ -43,7 +41,7 @@
 }
 
 .stat-card-mini {
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.03); 
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
     padding: 8px 12px; 
@@ -60,12 +58,12 @@
 }
 
 .stat-icon {
-    font-size: 14px;
+    font-size: 14px; 
     opacity: 0.6;
 }
 
 .stat-val-bold {
-    font-size: 18px;
+    font-size: 18px; 
     font-weight: 700;
     color: var(--accent);
     font-family: 'Consolas', monospace;
@@ -83,7 +81,7 @@
     font-weight: 500;
 }
 
-/* 加點按鈕 */
+/* 加點按鈕 (更精緻的迷你化) */
 .btn-add-mini {
     width: 24px;
     height: 24px;
@@ -109,7 +107,7 @@
     background: linear-gradient(160deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
     border: 1px solid rgba(99, 102, 241, 0.2);
     border-radius: 14px;
-    padding: 12px;
+    padding: 12px; 
     box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     width: 100%;
     box-sizing: border-box;
@@ -150,8 +148,8 @@
 .battle-grid-3x2 {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px 8px;
-    justify-items: center; /* 讓內容水平居中 */
+    gap: 10px 8px; 
+    justify-items: center; 
 }
 
 .b-item {
@@ -175,13 +173,13 @@
 }
 
 /* ------------------------------------------------------------
-   3. B方案：詳細數據彈窗
+   3. B方案：詳細數據彈窗 (關閉鈕重製與藝術化)
    ------------------------------------------------------------ */
 .modal-overlay {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px); 
     display: flex;
     align-items: center;
     justify-content: center;
@@ -196,9 +194,10 @@
     border-radius: 16px;
     padding: 24px 20px 20px 20px;
     box-shadow: 0 15px 35px rgba(0,0,0,0.6);
-    position: relative;
+    position: relative; 
 }
 
+/* 藝術化關閉按鈕 */
 .modal-header button {
     position: absolute;
     top: -12px;
