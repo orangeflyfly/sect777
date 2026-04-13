@@ -1,6 +1,6 @@
 /**
- * V1.8.1 ui_stats.js
- * 修正點：自動初始化統計面板結構、對齊 V1.8.1 新增的防禦與速度數值
+ * V1.8.2 ui_stats.js
+ * 修正點：重構為 2x2 加點網格、3x2 戰鬥卡片、新增詳細數據彈窗、實裝動態跳字
  */
 
 const UI_Stats = {
@@ -17,33 +17,38 @@ const UI_Stats = {
             realmTitle.innerText = `【${realmName}】 Lv.${d.level}`;
         }
 
-        // B. 核心：檢查並初始化屬性面板 (防止 HTML 為空)
+        // B. 核心：初始化 2x2 結構與 3x2 卡片
         this.ensureStatsStructure();
 
-        // C. 更新屬性數值
+        // C. 更新基礎屬性 (2x2 區塊)
         this.updateValue('stat-str', d.stats.str);
         this.updateValue('stat-con', d.stats.con);
         this.updateValue('stat-dex', d.stats.dex);
         this.updateValue('stat-int', d.stats.int);
         this.updateValue('stat-points', d.statPoints);
 
-        // D. 更新戰鬥預覽數值 (包含 V1.8.1 新增的 def, speed)
+        // D. 更新戰鬥卡片數值 (3x2 區塊)
         const bStats = Player.getBattleStats();
+        // 對接 Formula 新公式
+        const critRate = Formula.calculateCritRate(d.stats.str, d.stats.dex);
+        const dodgeRate = Formula.calculateEvasionRate(d.stats.dex);
+
         this.updateValue('stat-hp-preview', Math.ceil(bStats.maxHp));
         this.updateValue('stat-atk-preview', Math.ceil(bStats.atk));
         this.updateValue('stat-def-preview', Math.ceil(bStats.def));
         this.updateValue('stat-spd-preview', bStats.speed.toFixed(1));
+        this.updateValue('stat-crit-preview', critRate + "%");
+        this.updateValue('stat-dodge-preview', dodgeRate + "%");
 
         // E. 渲染神通列表
         this.renderSkills();
     },
 
-    // 新增：初始化 HTML 結構，確保 updateValue 找得到 ID
+    // 2. 初始化 HTML 結構 (重構為 2x2 與 3x2 佈局)
     ensureStatsStructure() {
         const container = document.getElementById('stats-content');
         if (!container || container.innerHTML.trim() !== "") return;
 
-        // 如果容器是空的，生成屬性條與加點按鈕
         const statsConfig = [
             { id: 'str', name: '力量', icon: '⚔️' },
             { id: 'con', name: '體質', icon: '❤️' },
@@ -53,31 +58,44 @@ const UI_Stats = {
 
         let html = `
             <div class="stat-group-header">自由屬性點: <span id="stat-points" class="highlight">0</span></div>
-            <div class="stats-list">
+            
+            <div class="stats-grid-2x2">
         `;
 
         statsConfig.forEach(s => {
             html += `
-                <div class="stat-item">
-                    <span class="stat-label">${s.icon} ${s.name}</span>
-                    <span id="stat-${s.id}" class="stat-val">0</span>
-                    <button class="btn-add-stat" onclick="UI_Stats.addStat('${s.id}')">+</button>
+                <div class="stat-card-mini">
+                    <div class="stat-card-top">
+                        <span class="stat-icon">${s.icon}</span>
+                        <span id="stat-${s.id}" class="stat-val-bold">0</span>
+                    </div>
+                    <div class="stat-card-bottom">
+                        <span class="stat-label-name">${s.name}</span>
+                        <button class="btn-add-mini" onclick="UI_Stats.addStat('${s.id}', event)">+</button>
+                    </div>
                 </div>
             `;
         });
 
         html += `
             </div>
-            <div class="battle-preview-box" style="margin-top:20px; padding:15px; background:rgba(0,0,0,0.2); border-radius:8px;">
-                <div style="color:var(--accent); margin-bottom:10px; font-size:14px; border-bottom:1px solid #444;">戰鬥能力預覽</div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:13px;">
-                    <div>血量: <span id="stat-hp-preview">0</span></div>
-                    <div>攻擊: <span id="stat-atk-preview">0</span></div>
-                    <div>防禦: <span id="stat-def-preview">0</span></div>
-                    <div>速度: <span id="stat-spd-preview">0</span></div>
+
+            <div class="battle-master-card">
+                <div class="card-header">
+                    <span>核心戰鬥指標</span>
+                    <button class="btn-detail-lens" onclick="UI_Stats.showDetailModal()">詳細數據 🔍</button>
+                </div>
+                <div class="battle-grid-3x2">
+                    <div class="b-item"><em>血量</em><span id="stat-hp-preview">0</span></div>
+                    <div class="b-item"><em>攻擊</em><span id="stat-atk-preview">0</span></div>
+                    <div class="b-item"><em>防禦</em><span id="stat-def-preview">0</span></div>
+                    <div class="b-item"><em>速度</em><span id="stat-spd-preview">0</span></div>
+                    <div class="b-item"><em>暴擊</em><span id="stat-crit-preview">0%</span></div>
+                    <div class="b-item"><em>閃避</em><span id="stat-dodge-preview">0%</span></div>
                 </div>
             </div>
-            <div class="skills-section" style="margin-top:20px;">
+
+            <div class="skills-section">
                 <div class="section-title">本命神通</div>
                 <div id="skills-list"></div>
             </div>
@@ -85,31 +103,68 @@ const UI_Stats = {
         container.innerHTML = html;
     },
 
-    // 2. 執行加點動作
-    addStat(type) {
+    // 3. 執行加點 (新增動態跳字效果)
+    addStat(type, event) {
         const success = Player.addStat(type);
         if (success) {
-            const d = Player.data;
-            const bStats = Player.getBattleStats();
+            // 觸發動態跳字
+            if (event) this.createFloatingText(event.target, "+1");
 
-            // 局部更新數值
-            this.updateValue(`stat-${type}`, d.stats[type]);
-            this.updateValue('stat-points', d.statPoints);
-            
-            // 同步刷新戰鬥預覽
-            this.updateValue('stat-hp-preview', Math.ceil(bStats.maxHp));
-            this.updateValue('stat-atk-preview', Math.ceil(bStats.atk));
-            this.updateValue('stat-def-preview', Math.ceil(bStats.def));
-            this.updateValue('stat-spd-preview', bStats.speed.toFixed(1));
+            // 全面刷新數據
+            this.renderStats();
 
             if (type === 'int') {
-                const bonus = (1 + d.stats.int * 0.01).toFixed(2);
-                Msg.log(`悟性提升，經驗獲取倍率達到 ${bonus}x`, "system");
+                const bonus = (1 + Player.data.stats.int * 0.01).toFixed(2);
+                Msg.log(`悟性精進，靈氣吸收效率變為 ${bonus}x`, "system");
             }
         }
     },
 
-    // 3. 渲染神通列表 (對齊 index.html 的 ID)
+    // 4. B方案：展示詳細數據彈窗
+    showDetailModal() {
+        const d = Player.data;
+        const bStats = Player.getBattleStats();
+        
+        // 計算進階隱藏數值
+        const reduction = Formula.calculateDamageReduction(bStats.def);
+        const efficiency = Formula.calculateStudyEfficiency(d.stats.int);
+        const critMult = Formula.calculateCritMultiplier(d.stats.str);
+
+        const modalHtml = `
+            <div id="detail-modal-overlay" class="modal-overlay" onclick="this.remove()">
+                <div class="detail-glass-card" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h4>詳細修為數據</h4>
+                        <button onclick="document.getElementById('detail-modal-overlay').remove()">✕</button>
+                    </div>
+                    <div class="detail-list">
+                        <div class="detail-row"><span>修煉效率</span><b class="c-green">${efficiency}%</b></div>
+                        <div class="detail-row"><span>物理減傷</span><b class="c-blue">${reduction}%</b></div>
+                        <div class="detail-row"><span>暴擊倍率</span><b class="c-gold">${critMult.toFixed(2)}x</b></div>
+                        <div class="detail-row"><span>基礎生命</span><b>${Formula.calculateMaxHp(d.stats.con)}</b></div>
+                        <div class="detail-row"><span>基礎攻擊</span><b>${Formula.calculateAtk(d.stats.str)}</b></div>
+                    </div>
+                    <p class="modal-tip">※ 數據受根骨與功法裝備共同影響</p>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
+
+    // 5. 輔助：創建動態跳字
+    createFloatingText(target, text) {
+        const rect = target.getBoundingClientRect();
+        const floatText = document.createElement('div');
+        floatText.className = 'float-up-text';
+        floatText.innerText = text;
+        floatText.style.left = `${rect.left + rect.width / 2}px`;
+        floatText.style.top = `${rect.top}px`;
+        document.body.appendChild(floatText);
+        
+        setTimeout(() => floatText.remove(), 800);
+    },
+
+    // 6. 渲染神通列表
     renderSkills() {
         const skillContainer = document.getElementById('skills-list');
         if (!skillContainer) return; 
@@ -132,11 +187,9 @@ const UI_Stats = {
         `).join('');
     },
 
-    // 4. 輔助函式
+    // 7. 輔助函式
     updateValue(id, val) {
         const el = document.getElementById(id);
-        if (el) {
-            el.innerText = val;
-        }
+        if (el) el.innerText = val;
     }
 };
