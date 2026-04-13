@@ -1,47 +1,47 @@
 /* ============================================================
-   V1.8.2 修為頁面專用佈局 (強化版)
+   V1.8.2 修為頁面專用佈局 (瘦身精化版)
    ============================================================ */
 
 .stats-grid {
-    padding: 10px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    padding-bottom: 80px; /* 預留底部導覽空間 */
+    gap: 12px; /* 縮減間距讓佈局更緊湊 */
+    padding-bottom: 80px;
 }
 
 .stat-group-header {
-    font-size: 14px;
+    font-size: 13px;
     color: var(--text-dim);
-    margin: 5px 0;
+    margin: 2px 0;
 }
 
 .stat-group-header .highlight {
     color: var(--coin-color);
     font-weight: bold;
-    font-size: 18px;
-    text-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
+    font-size: 16px; /* 略微縮小字體 */
+    text-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
 }
 
 /* ------------------------------------------------------------
-   1. 2x2 基礎屬性網格 (根骨區)
+   1. 2x2 基礎屬性網格 (瘦身重塑)
    ------------------------------------------------------------ */
 .stats-grid-2x2 {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 10px;
+    gap: 10px;
+    margin-bottom: 5px;
 }
 
 .stat-card-mini {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 12px;
+    background: rgba(255, 255, 255, 0.03); /* 降低背景權重 */
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 8px 12px; /* 大幅縮減內距 (瘦身關鍵) */
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    transition: all 0.2s ease;
+    gap: 4px;
+    transition: transform 0.2s ease;
 }
 
 .stat-card-top {
@@ -51,15 +51,15 @@
 }
 
 .stat-icon {
-    font-size: 18px;
-    opacity: 0.8;
+    font-size: 14px; /* 縮小圖標 */
+    opacity: 0.6;
 }
 
 .stat-val-bold {
-    font-size: 20px;
-    font-weight: 800;
+    font-size: 18px; /* 縮減數值大小 */
+    font-weight: 700;
     color: var(--accent);
-    font-family: 'Courier New', Courier, monospace;
+    font-family: 'Consolas', monospace;
 }
 
 .stat-card-bottom {
@@ -69,102 +69,107 @@
 }
 
 .stat-label-name {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--text-dim);
+    font-weight: 500;
 }
 
-/* 加點按鈕 (迷你版) */
+/* 加點按鈕 (更精緻的迷你化) */
 .btn-add-mini {
-    width: 28px;
-    height: 28px;
-    background: var(--accent);
+    width: 24px;
+    height: 24px;
+    background: rgba(99, 102, 241, 0.8);
     color: white;
     border: none;
-    border-radius: 6px;
-    font-size: 18px;
-    font-weight: bold;
+    border-radius: 5px;
+    font-size: 16px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
 .btn-add-mini:active {
-    transform: scale(0.85);
-    background: #4f46e5;
+    transform: scale(0.9);
 }
 
 /* ------------------------------------------------------------
-   2. 3x2 核心戰鬥卡片 (主面板)
+   2. 3x2 核心戰鬥卡片 (緊湊精緻化)
    ------------------------------------------------------------ */
 .battle-master-card {
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
-    border: 1px solid rgba(99, 102, 241, 0.3);
-    border-radius: 16px;
-    padding: 15px;
-    margin-top: 5px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    background: linear-gradient(160deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 14px;
+    padding: 12px; /* 瘦身 */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }
 
 .card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 
 .card-header span {
-    font-size: 14px;
+    font-size: 12px;
     color: var(--accent);
-    letter-spacing: 1px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
 }
 
 .btn-detail-lens {
-    background: rgba(255,255,255,0.05);
+    background: transparent;
     color: var(--text-dim);
-    border: 1px solid var(--border-color);
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 11px;
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
     cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-detail-lens:hover {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-main);
 }
 
 .battle-grid-3x2 {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 15px 10px;
+    gap: 10px 8px; /* 縮減間距，解決散亂問題 */
 }
 
 .b-item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
 }
 
 .b-item em {
     font-style: normal;
-    font-size: 11px;
+    font-size: 10px;
     color: var(--text-dim);
+    opacity: 0.8;
 }
 
 .b-item span {
-    font-size: 15px;
-    font-weight: bold;
+    font-size: 14px;
+    font-weight: 700;
     color: var(--text-main);
 }
 
 /* ------------------------------------------------------------
-   3. B方案：詳細數據彈窗 (毛玻璃卡片)
+   3. B方案：詳細數據彈窗 (關閉鈕重製與藝術化)
    ------------------------------------------------------------ */
 .modal-overlay {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(5px);
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px); /* 增強模糊感 */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -172,101 +177,137 @@
 }
 
 .detail-glass-card {
-    width: 85%;
-    max-width: 320px;
-    background: rgba(30, 41, 59, 0.95);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 20px;
-    padding: 20px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    width: 82%;
+    max-width: 300px;
+    background: rgba(23, 31, 45, 0.95);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 16px;
+    padding: 24px 20px 20px 20px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+    position: relative; /* 給關閉鈕定位 */
+}
+
+/* 藝術化關閉按鈕 */
+.modal-header button {
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    width: 30px;
+    height: 30px;
+    background: #1e293b;
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    color: var(--text-main);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    transition: all 0.2s;
+}
+
+.modal-header button:hover {
+    background: var(--accent);
+    transform: rotate(90deg);
+}
+
+.modal-header h4 {
+    text-align: center;
+    width: 100%;
+    color: var(--accent);
+    font-size: 15px;
+    margin-bottom: 5px;
 }
 
 .detail-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     margin: 15px 0;
 }
 
 .detail-row {
     display: flex;
     justify-content: space-between;
-    padding-bottom: 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    font-size: 14px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    font-size: 13px;
 }
 
-.c-green { color: var(--exp-color); }
-.c-blue  { color: #60a5fa; }
-.c-gold  { color: var(--coin-color); }
+.c-green { color: #2ecc71; }
+.c-blue  { color: #3498db; }
+.c-gold  { color: #f1c40f; }
 
 .modal-tip {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--text-dim);
     text-align: center;
     margin-top: 10px;
+    font-style: italic;
 }
 
 /* ------------------------------------------------------------
-   4. 動態跳字動畫
+   4. 動態跳字動畫 (保持不變)
    ------------------------------------------------------------ */
 .float-up-text {
     position: fixed;
-    color: #4ade80;
+    color: #2ecc71;
     font-weight: bold;
-    font-size: 20px;
+    font-size: 18px;
     pointer-events: none;
     z-index: 10000;
-    animation: floatUpAnim 0.8s ease-out forwards;
-    text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+    animation: floatUpAnim 0.7s ease-out forwards;
+    text-shadow: 0 0 6px rgba(46, 204, 113, 0.4);
 }
 
 @keyframes floatUpAnim {
     0% { transform: translate(-50%, 0); opacity: 1; }
-    100% { transform: translate(-50%, -50px); opacity: 0; }
+    100% { transform: translate(-50%, -40px); opacity: 0; }
 }
 
 /* ------------------------------------------------------------
-   5. 神通列表
+   5. 神通列表 (保持穩健)
    ------------------------------------------------------------ */
 .skills-section {
-    margin-top: 20px;
+    margin-top: 15px;
 }
 
 .section-title {
-    font-size: 14px;
+    font-size: 13px;
     color: var(--accent);
-    margin-bottom: 12px;
-    padding-left: 5px;
-    border-left: 3px solid var(--accent);
+    margin-bottom: 10px;
+    padding-left: 8px;
+    border-left: 2px solid var(--accent);
 }
 
 .skill-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 12px;
-    margin-bottom: 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 8px;
 }
 
 .skill-info {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
 }
 
 .skill-name {
-    font-weight: bold;
+    font-size: 14px;
+    font-weight: 600;
     color: var(--text-main);
 }
 
 .skill-level {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--accent);
 }
 
 .skill-desc {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-dim);
     line-height: 1.4;
 }
