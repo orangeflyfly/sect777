@@ -1,8 +1,7 @@
 /**
  * ============================================================
- * V1.7.0 全量極致版 ui_bag.js
- * 職責：儲物袋分頁顯示、物品過濾、詳細描述彈窗。
- * 【專家承諾：保留所有過濾與渲染邏輯，行數絕對不縮減，解決紅字報錯】
+ * V1.7.1 究極穩定版 ui_bag.js
+ * 職責：儲物袋渲染 (加入強效防崩潰機制)
  * ============================================================
  */
 
@@ -11,8 +10,14 @@ const UI_Bag = {
 
     // 1. 初始化分類按鈕
     init() {
+        console.log("[UI_Bag] 正在嘗試初始化分類按鈕...");
         const filterContainer = document.getElementById('bag-filters');
-        if (!filterContainer) return;
+        
+        // 防禦 1：如果 HTML 沒寫這個 ID，不報錯直接退出
+        if (!filterContainer) {
+            console.warn("[UI_Bag] 找不到 'bag-filters' 容器，請檢查 index.html");
+            return;
+        }
 
         const filters = [
             { id: 'all', name: '全部' },
@@ -23,6 +28,7 @@ const UI_Bag = {
 
         filterContainer.innerHTML = filters.map(f => `
             <button class="filter-btn ${this.currentFilter === f.id ? 'active' : ''}" 
+                    style="padding:5px 10px; margin-right:5px; cursor:pointer;"
                     onclick="UI_Bag.setFilter('${f.id}')">
                 ${f.name}
             </button>
@@ -32,26 +38,38 @@ const UI_Bag = {
     // 2. 切換過濾器
     setFilter(type) {
         this.currentFilter = type;
-        this.init(); // 刷新按鈕狀態
+        this.init(); 
         this.renderBag();
     },
 
-    // 3. 渲染儲物袋 (核心極致邏輯)
+    // 3. 渲染儲物袋內容
     renderBag() {
+        console.log("[UI_Bag] 正在觸發渲染流程...");
         const bagGrid = document.getElementById('bag-content');
-        if (!bagGrid) return;
-
-        bagGrid.innerHTML = '';
-
-        // 取得全域資料庫引用 (防禦性檢查)
-        const _DATA = window.DATA || window.GAMEDATA;
-        if (!_DATA) {
-            console.error("[UI_Bag] 找不到資料庫 (DATA)！");
+        if (!bagGrid) {
+            console.warn("[UI_Bag] 找不到 'bag-content' 容器");
             return;
         }
 
-        // 過濾物品 (對接修正：確保能從 ITEMS, FRAGMENTS 或 SKILLS 找到資料)
-        const filteredItems = Player.inventory.filter(invItem => {
+        bagGrid.innerHTML = '';
+
+        // 防禦 2：檢查資料庫是否就緒
+        const _DATA = window.DATA || window.GAMEDATA;
+        if (!_DATA) {
+            bagGrid.innerHTML = '<div style="color:red; padding:10px;">資料庫加載失敗...</div>';
+            return;
+        }
+
+        // 防禦 3：檢查玩家背包資料是否就緒
+        if (!window.Player || !window.Player.inventory) {
+            console.warn("[UI_Bag] Player 資料尚未初始化");
+            bagGrid.innerHTML = '<div style="color:gray; padding:10px;">儲物袋封印中...</div>';
+            return;
+        }
+
+        // 執行過濾邏輯
+        const inventory = window.Player.inventory;
+        const filteredItems = inventory.filter(invItem => {
             const template = (_DATA.ITEMS && _DATA.ITEMS[invItem.id]) || 
                              (_DATA.FRAGMENTS && _DATA.FRAGMENTS[invItem.id]) || 
                              (_DATA.SKILLS && _DATA.SKILLS[invItem.id]);
@@ -61,12 +79,12 @@ const UI_Bag = {
         });
 
         if (filteredItems.length === 0) {
-            bagGrid.innerHTML = '<div style="color:var(--text-dim); padding:20px;">儲物袋內空空如也...</div>';
+            bagGrid.innerHTML = '<div style="color:var(--text-dim); padding:20px; font-size:14px;">儲物袋內尚無此類法寶。</div>';
             return;
         }
 
+        // 生成物品格
         filteredItems.forEach(invItem => {
-            // 獲取物品模板
             const template = (_DATA.ITEMS && _DATA.ITEMS[invItem.id]) || 
                              (_DATA.FRAGMENTS && _DATA.FRAGMENTS[invItem.id]) || 
                              (_DATA.SKILLS && _DATA.SKILLS[invItem.id]);
@@ -75,37 +93,22 @@ const UI_Bag = {
 
             const slot = document.createElement('div');
             slot.className = 'bag-slot';
-            // 套用你的 CSS 結構
             slot.innerHTML = `
-                <div class="item-icon">${this.getItemIcon(template.type)}</div>
-                <div class="item-count">x${invItem.count || 1}</div>
-                <div class="item-name-tag">${template.name}</div>
+                <div class="item-icon" style="font-size:24px;">${this.getItemIcon(template.type)}</div>
+                <div class="item-count" style="font-size:10px; color:#888;">x${invItem.count || 1}</div>
+                <div class="item-name-tag" style="font-size:10px; margin-top:4px;">${template.name}</div>
             `;
             slot.onclick = () => this.showItemDetail(invItem.id);
             bagGrid.appendChild(slot);
         });
     },
 
-    // 4. 根據類型顯示圖示
     getItemIcon(type) {
-        switch(type) {
-            case 'equipment': return '⚔️';
-            case 'material': return '💎';
-            case 'consumable': return '💊';
-            case 'fragment': return '📜';
-            default: return '📦';
-        }
+        const icons = { 'equipment': '⚔️', 'material': '💎', 'consumable': '💊', 'fragment': '📜' };
+        return icons[type] || '📦';
     },
 
-    // 5. 顯示物品詳情
     showItemDetail(itemId) {
-        const _DATA = window.DATA || window.GAMEDATA;
-        const item = (_DATA.ITEMS && _DATA.ITEMS[itemId]) || 
-                     (_DATA.FRAGMENTS && _DATA.FRAGMENTS[itemId]) || 
-                     (_DATA.SKILLS && _DATA.SKILLS[itemId]);
-        if (!item) return;
-        
-        console.log(`[UI_Bag] 正在查看：${item.name}`, item);
-        // 未來可在這裡實裝彈窗 Modal
+        console.log(`[UI_Bag] 查看物品：${itemId}`);
     }
 };
