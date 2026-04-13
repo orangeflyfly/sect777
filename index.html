@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sect777 - 歷練修仙 (V1.7.5)</title>
+    <title>Sect777 - 歷練修仙 (V1.8.0 重構版)</title>
     
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/page_battle.css">
@@ -14,11 +14,11 @@
 <body>
     <header class="header-info">
         <div class="player-main-stats">
-            <div id="player-realm" class="realm-title">凡人</div>
+            <div id="player-realm" class="realm-title">載入中...</div>
             <div class="bars-stack">
                 <div class="bar-container hp">
                     <div id="player-hp-fill" class="fill fill-hp" style="width: 100%;"></div>
-                    <div class="bar-text"><span id="player-hp-val">100</span> / <span id="player-hp-max">100</span></div>
+                    <div class="bar-text"><span id="player-hp-val">0</span> / <span id="player-hp-max">0</span></div>
                 </div>
                 <div class="bar-container exp">
                     <div id="exp-fill" class="fill fill-exp" style="width: 0%;"></div>
@@ -29,17 +29,16 @@
     </header>
 
     <main id="game-container">
-        
         <section id="page-battle" class="game-page active">
             <div class="map-nav-header">
-                <span id="current-map-name">外山小徑</span>
+                <span id="current-map-name">探尋天機中...</span>
                 <button onclick="UI_Battle.showMapSelect()" class="btn-travel">🗺️ 尋找歷練地</button>
             </div>
             
             <div id="combat-area">
                 <div id="monster-display" class="monster-card">
                     <div id="monster-icon" class="monster-avatar">❓</div>
-                    <h3 id="monster-name">尋覓中...</h3>
+                    <h3 id="monster-name">搜尋妖氣中...</h3>
                     <div class="bar-container monster-hp">
                         <div id="monster-hp-fill" class="fill fill-hp" style="width: 100%;"></div>
                         <div class="bar-text" id="monster-hp-val">0 / 0</div>
@@ -60,7 +59,7 @@
 
         <section id="page-stats" class="game-page" style="display:none;">
             <div class="page-title">修為與境界</div>
-            <h2 id="stat-realm-title" style="text-align:center; color:var(--accent); margin-bottom:20px;">【凡人】 Lv.1</h2>
+            <h2 id="stat-realm-title" style="text-align:center; color:var(--accent); margin-bottom:20px;">載入中...</h2>
             <div id="stats-content" class="stats-grid"></div>
         </section>
 
@@ -74,7 +73,6 @@
             <div class="page-title">坊市交易</div>
             <div id="shop-content" class="shop-grid"></div>
         </section>
-
     </main>
 
     <nav class="bottom-nav">
@@ -102,19 +100,22 @@
     <script src="data/data_monsters.js"></script>
     <script src="data/data_world.js"></script>
     <script src="data/data_skills.js"></script>
-    
-    <script>
-        // 強制資料對接：確保所有模組都能透過 DATA 抓到內容
-        window.DATA = window.GAMEDATA;
-    </script>
+    <script>window.DATA = window.GAMEDATA;</script>
+
+    <script src="SaveManager.js"></script>
+    <script src="Formula.js"></script>
+    <script src="MessageCenter.js"></script>
+    <script src="ItemFactory.js"></script>
 
     <script src="player.js"></script>
-    <script src="core.js"></script>
-    <script src="combat.js"></script>
+    <script src="CombatEngine.js"></script>
     <script src="shop.js"></script>
+
+    <script src="core.js"></script>
     <script src="ui_battle.js"></script>
     <script src="ui_bag.js"></script>
     <script src="ui_stats.js"></script>
     <script src="ui_shop.js"></script>
+
 </body>
 </html>
