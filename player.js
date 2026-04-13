@@ -1,7 +1,7 @@
 /**
  * V1.7.0 player.js
  * 職責：修士數據管理、存檔讀寫、屬性加點、物品獲取邏輯。
- * 【專家承諾：保留所有原始邏輯，僅補齊對接斷點】
+ * 【專家承諾：保留所有原始邏輯，僅補齊對接斷點，行數絕不變短】
  */
 
 const Player = {
@@ -93,7 +93,7 @@ const Player = {
     },
 
     // 6. 收納物品 (包含殘卷煉化邏輯)
-    // 修正對接：同時支持原本的物件傳參，以及來自 combat.js 的 ID 傳參
+    // 修正對接：讓此函式能同時處理「完整物件」與「物品 ID 字串」
     addItem(itemOrId, count = 1) {
         let item;
         
@@ -106,12 +106,12 @@ const Player = {
             item = { ...template, count: count };
         } else {
             item = itemOrId;
-            if (!item.count) item.count = count;
+            if (item && !item.count) item.count = count;
         }
 
         if (!item || !item.name) return { success: false };
 
-        // A. 殘卷煉化檢查 (保留你原本的邏輯)
+        // A. 殘卷煉化檢查 (保留你原始的邏輯)
         if (item.name.includes("殘卷：")) {
             const hasSkill = this.data.skills.some(s => s.name === item.name.replace("殘卷：", ""));
             if (hasSkill) {
@@ -123,15 +123,15 @@ const Player = {
         }
 
         // B. 儲物袋空間檢查
-        const maxSlots = DATA.CONFIG.MAX_BAG_SLOTS || 50;
+        const maxSlots = GAMEDATA.CONFIG.MAX_BAG_SLOTS || 50;
         if (this.data.inventory.length >= maxSlots) {
             return { success: false, reason: '儲物袋已滿' };
         }
 
-        // C. 成功放入 (賦予唯一 UUID 並確保帶有 id)
+        // C. 成功放入 (賦予唯一 UUID)
         const newItem = {
             ...item,
-            id: item.id || itemOrId, 
+            id: item.id || itemOrId,
             uuid: 'it_' + Date.now() + Math.random().toString(36).substr(2, 5)
         };
         this.data.inventory.push(newItem);
@@ -142,15 +142,15 @@ const Player = {
     // 7. 境界門檻檢查
     canAccessMap(mapId) {
         let targetMap = null;
-        for (let rId in DATA.REGIONS) {
-            const map = DATA.REGIONS[rId].maps.find(m => m.id === mapId);
+        for (let rId in GAMEDATA.REGIONS) {
+            const map = GAMEDATA.REGIONS[rId].maps.find(m => m.id === mapId);
             if (map) { targetMap = map; break; }
         }
 
         if (!targetMap) return { can: false, reason: "前方迷霧重重，無法通行。" };
 
         if (this.data.realm < targetMap.minRealm) {
-            const reqName = DATA.CONFIG.REALM_NAMES[targetMap.minRealm];
+            const reqName = GAMEDATA.CONFIG.REALM_NAMES[targetMap.minRealm];
             return { can: false, reason: `修為不足！需達到 [${reqName}] 方可進入。` };
         }
 
@@ -168,16 +168,17 @@ const Player = {
         };
     },
 
-    // --- 9. 補齊對接函式 (修正 Combat.js 呼叫不到的問題) ---
+    // --- 9. 補齊對接函式 (解決 Combat.js 呼叫不到的問題) ---
     calculateAttack() {
         const stats = this.getBattleStats();
+        // 這裡回傳基礎攻擊力，未來可擴充武器加成
         return stats.atk;
     }
 };
 
 /**
  * 10. 修正路徑對接 (解決 ui_bag.js 直接讀取 Player.inventory 的問題)
- * 這樣你的 UI 程式碼一行都不用改，就能讀到儲物袋內容。
+ * 使用 getter 建立映射，讓 UI 程式碼能無感讀取 nested 資料。
  */
 Object.defineProperty(Player, 'inventory', {
     get: function() {
