@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sect777 - 歷練修仙 (V1.8.0 重構版)</title>
+    <title>Sect777 - 歷練修仙 (V1.8.1 最終重構版)</title>
     
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/page_battle.css">
@@ -14,11 +14,13 @@
 <body>
     <header class="header-info">
         <div class="player-main-stats">
-            <div id="player-realm" class="realm-title">載入中...</div>
+            <div id="player-realm" class="realm-title">感應天地中...</div>
             <div class="bars-stack">
                 <div class="bar-container hp">
                     <div id="player-hp-fill" class="fill fill-hp" style="width: 100%;"></div>
-                    <div class="bar-text"><span id="player-hp-val">0</span> / <span id="player-hp-max">0</span></div>
+                    <div class="bar-text">
+                        <span id="player-hp-val">0</span> / <span id="player-hp-max">0</span>
+                    </div>
                 </div>
                 <div class="bar-container exp">
                     <div id="exp-fill" class="fill fill-exp" style="width: 0%;"></div>
@@ -46,7 +48,7 @@
                 </div>
             </div>
 
-            <div id="battle-actions" class="actions-container" style="display:flex; gap:10px; margin: 15px 0; justify-content: center;"></div>
+            <div id="battle-actions" class="actions-container"></div>
 
             <div id="log-system" class="log-container expanded">
                 <div class="log-controls">
@@ -59,13 +61,13 @@
 
         <section id="page-stats" class="game-page" style="display:none;">
             <div class="page-title">修為與境界</div>
-            <h2 id="stat-realm-title" style="text-align:center; color:var(--accent); margin-bottom:20px;">載入中...</h2>
+            <h2 id="stat-realm-title" style="text-align:center; color:var(--accent); margin-bottom:20px;"></h2>
             <div id="stats-content" class="stats-grid"></div>
         </section>
 
         <section id="page-bag" class="game-page" style="display:none;">
             <div class="page-title">儲物袋</div>
-            <div id="bag-filters" class="bag-filters" style="margin-bottom:15px; display: flex; gap: 5px;"></div>
+            <div id="bag-filters" class="bag-filters"></div>
             <div id="bag-content" class="bag-grid"></div>
         </section>
 
@@ -89,7 +91,7 @@
                 <button onclick="document.getElementById('modal-map').style.display='none'">✕</button>
             </div>
             <div class="modal-body">
-                <div id="region-list" class="region-tabs" style="display: flex; gap: 10px; margin-bottom: 15px;"></div>
+                <div id="region-list" class="region-tabs"></div>
                 <div id="map-list" class="map-grid"></div>
             </div>
         </div>
@@ -111,11 +113,22 @@
     <script src="CombatEngine.js"></script>
     <script src="shop.js"></script>
 
-    <script src="core.js"></script>
     <script src="ui_battle.js"></script>
     <script src="ui_bag.js"></script>
     <script src="ui_stats.js"></script>
     <script src="ui_shop.js"></script>
-
+    
+    <script src="core.js"></script>
+    
+    <script>
+        // 確保視窗載入後啟動大陣
+        window.onload = () => {
+            if (window.Core && typeof Core.init === 'function') {
+                Core.init();
+            } else {
+                console.error("【警告】核心啟動失敗，請檢查 core.js 是否載入正確。");
+            }
+        };
+    </script>
 </body>
 </html>
