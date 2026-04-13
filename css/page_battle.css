@@ -1,0 +1,23 @@
+.battle-display {
+    background: var(--bg-card); border-radius: 12px;
+    padding: 20px; text-align: center; margin-bottom: 15px;
+    border: 1px solid var(--border-color); position: relative;
+}
+
+#battle-log {
+    height: 200px; background: rgba(0,0,0,0.3);
+    border-radius: 8px; padding: 10px; overflow-y: auto;
+    font-family: monospace; font-size: 12px; border: 1px solid var(--border-color);
+}
+
+.log-item { margin-bottom: 2px; }
+.log-player-atk { color: #a78bfa; font-weight: bold; }
+.log-monster-atk { color: #ef4444; }
+.log-reward, .log-gold { color: #fbbf24; }
+.log-system { color: #94a3b8; }
+
+#battle-log::-webkit-scrollbar { width: 4px; }
+#battle-log::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
+
+.monster-previews span { display: inline-block; transition: transform 0.2s; }
+.monster-previews span:hover { transform: scale(1.3); }
