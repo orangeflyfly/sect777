@@ -1,0 +1,22 @@
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shake {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    10% { transform: translate(-1px, -2px) rotate(-1deg); }
+    50% { transform: translate(-1px, 2px) rotate(1deg); }
+    100% { transform: translate(1px, -2px) rotate(0deg); }
+}
+
+@keyframes rarity-glow {
+    0% { box-shadow: 0 0 5px rgba(251, 191, 36, 0.4); }
+    50% { box-shadow: 0 0 15px rgba(251, 191, 36, 0.7); }
+    100% { box-shadow: 0 0 5px rgba(251, 191, 36, 0.4); }
+}
+
+.game-page { animation: fadeIn 0.3s ease; }
+.hit-shake { animation: shake 0.2s; }
+.r-5 { animation: rarity-glow 2s infinite; }
+.monster-silhouette { filter: brightness(0) grayscale(1); opacity: 0.7; transition: filter 0.5s ease; }
