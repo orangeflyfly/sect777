@@ -1,78 +1,272 @@
-/* 修為頁面專用佈局 */
+/* ============================================================
+   V1.8.2 修為頁面專用佈局 (強化版)
+   ============================================================ */
+
 .stats-grid {
     padding: 10px;
     display: flex;
     flex-direction: column;
     gap: 15px;
+    padding-bottom: 80px; /* 預留底部導覽空間 */
 }
 
 .stat-group-header {
     font-size: 14px;
     color: var(--text-dim);
-    margin-bottom: 5px;
+    margin: 5px 0;
 }
 
 .stat-group-header .highlight {
     color: var(--coin-color);
     font-weight: bold;
     font-size: 18px;
+    text-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
 }
 
-/* 每一列屬性的排版 */
-.stat-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 12px 15px;
-    border-radius: 12px;
+/* ------------------------------------------------------------
+   1. 2x2 基礎屬性網格 (根骨區)
+   ------------------------------------------------------------ */
+.stats-grid-2x2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.stat-card-mini {
+    background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--border-color);
-}
-
-.stat-label {
-    font-size: 15px;
+    border-radius: 12px;
+    padding: 12px;
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 8px;
+    transition: all 0.2s ease;
 }
 
-.stat-val {
-    flex: 1;
-    text-align: right;
-    margin-right: 20px;
+.stat-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stat-icon {
     font-size: 18px;
-    font-weight: bold;
-    color: var(--accent);
+    opacity: 0.8;
 }
 
-/* 加點按鈕 */
-.btn-add-stat {
-    width: 36px;
-    height: 36px;
+.stat-val-bold {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--accent);
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.stat-card-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stat-label-name {
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+/* 加點按鈕 (迷你版) */
+.btn-add-mini {
+    width: 28px;
+    height: 28px;
     background: var(--accent);
     color: white;
     border: none;
-    border-radius: 8px;
-    font-size: 20px;
+    border-radius: 6px;
+    font-size: 18px;
+    font-weight: bold;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
-.btn-add-stat:active {
-    transform: scale(0.9);
+.btn-add-mini:active {
+    transform: scale(0.85);
     background: #4f46e5;
 }
 
-/* 戰鬥能力預覽區 */
-.battle-preview-box {
-    border: 1px dashed var(--border-color);
-    background: rgba(99, 102, 241, 0.05);
+/* ------------------------------------------------------------
+   2. 3x2 核心戰鬥卡片 (主面板)
+   ------------------------------------------------------------ */
+.battle-master-card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 16px;
+    padding: 15px;
+    margin-top: 5px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
 }
 
-.battle-preview-box span {
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.card-header span {
+    font-size: 14px;
+    color: var(--accent);
+    letter-spacing: 1px;
+}
+
+.btn-detail-lens {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-dim);
+    border: 1px solid var(--border-color);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.battle-grid-3x2 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px 10px;
+}
+
+.b-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.b-item em {
+    font-style: normal;
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+.b-item span {
+    font-size: 15px;
     font-weight: bold;
     color: var(--text-main);
+}
+
+/* ------------------------------------------------------------
+   3. B方案：詳細數據彈窗 (毛玻璃卡片)
+   ------------------------------------------------------------ */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.detail-glass-card {
+    width: 85%;
+    max-width: 320px;
+    background: rgba(30, 41, 59, 0.95);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+}
+
+.detail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 15px 0;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 14px;
+}
+
+.c-green { color: var(--exp-color); }
+.c-blue  { color: #60a5fa; }
+.c-gold  { color: var(--coin-color); }
+
+.modal-tip {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: center;
+    margin-top: 10px;
+}
+
+/* ------------------------------------------------------------
+   4. 動態跳字動畫
+   ------------------------------------------------------------ */
+.float-up-text {
+    position: fixed;
+    color: #4ade80;
+    font-weight: bold;
+    font-size: 20px;
+    pointer-events: none;
+    z-index: 10000;
+    animation: floatUpAnim 0.8s ease-out forwards;
+    text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+}
+
+@keyframes floatUpAnim {
+    0% { transform: translate(-50%, 0); opacity: 1; }
+    100% { transform: translate(-50%, -50px); opacity: 0; }
+}
+
+/* ------------------------------------------------------------
+   5. 神通列表
+   ------------------------------------------------------------ */
+.skills-section {
+    margin-top: 20px;
+}
+
+.section-title {
+    font-size: 14px;
+    color: var(--accent);
+    margin-bottom: 12px;
+    padding-left: 5px;
+    border-left: 3px solid var(--accent);
+}
+
+.skill-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+
+.skill-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+
+.skill-name {
+    font-weight: bold;
+    color: var(--text-main);
+}
+
+.skill-level {
+    font-size: 12px;
+    color: var(--accent);
+}
+
+.skill-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.4;
 }
