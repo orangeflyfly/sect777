@@ -1,16 +1,30 @@
 /**
- * Player.js (V1.8 重構版)
+ * V1.8.0 player.js
+ * 職責：修士狀態管理、行為執行、數據封裝
  */
 const Player = {
     data: null,
 
+    // 初始化修士 (從 SaveManager 讀取或建立新角色)
     init() {
-        const saved = SaveManager.load();
-        this.data = saved || this.getInitialData();
-        console.log("修士資料初始化完成");
+        const savedData = SaveManager.load();
+        
+        if (savedData) {
+            this.data = savedData;
+            Msg.log("神識連結成功，修為恢復中...", "system");
+        } else {
+            this.data = this.getInitialData();
+            Msg.log("新一代修士踏入凡塵，開啟求仙之路。", "system");
+        }
+        this.save();
     },
 
-    // 獲取經驗的動作
+    // 存檔 (調用司庫房)
+    save() {
+        SaveManager.save(this.data);
+    },
+
+    // 獲取經驗
     gainExp(amount) {
         const bonus = Formula.calculateExpBonus(this.data.stats.int);
         const finalExp = Math.floor(amount * bonus);
@@ -23,25 +37,50 @@ const Player = {
         return finalExp;
     },
 
-    // 戰鬥數值獲取 (直接調用公式)
+    // 等級提升
+    levelUp() {
+        this.data.exp -= this.data.maxExp;
+        this.data.level++;
+        this.data.maxExp = Formula.calculateNextExp(this.data.maxExp);
+        this.data.statPoints += 5;
+        Msg.log(`【突破】修為精進，當前等級：Lv.${this.data.level}！`, "gold");
+    },
+
+    // 屬性加點
+    addStat(type) {
+        if (this.data.statPoints > 0) {
+            this.data.stats[type]++;
+            this.data.statPoints--;
+            this.save();
+            return true;
+        }
+        return false;
+    },
+
+    // 即時換算戰鬥數值 (動態從 Formula 獲取，不再寫死公式)
     getBattleStats() {
         const s = this.data.stats;
         return {
             maxHp: Formula.calculateMaxHp(s.con),
-            atk: Formula.calculateAtk(s.str)
-            // ...以此類推
+            atk: Formula.calculateAtk(s.str),
+            def: s.dex * 1, // 未來可放入 Formula
+            speed: 10 + s.dex * 0.5
         };
     },
 
-    save() {
-        SaveManager.save(this.data);
+    // 收納物品
+    addItem(itemOrId, count = 1) {
+        // ... (保留你原本的 Inventory 邏輯，但將 UI 輸出改為 Msg.log)
+        // 範例：
+        // if (success) Msg.log(`拾獲 ${item.name} x${count}`, "reward");
     },
 
     getInitialData() {
         return {
             realm: 0, level: 1, exp: 0, maxExp: 100, coin: 500,
             stats: { str: 10, con: 10, dex: 10, int: 10 },
-            inventory: [], skills: []
+            statPoints: 0, inventory: [], skills: [],
+            equipped: { weapon: null, armor: null }
         };
     }
 };
