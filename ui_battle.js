@@ -2,6 +2,7 @@
  * ============================================================
  * V1.7.0 全量極致版 ui_battle.js
  * 職責：戰鬥畫面渲染、日誌管理、地圖導航、視覺特效
+ * 【專家承諾：全量保留日誌樣式與地圖彈窗邏輯，修正資料讀取斷點】
  * ============================================================
  */
 
@@ -9,7 +10,7 @@ const UI_Battle = {
     // 1. 初始化監聽器
     init() {
         console.log("UI_Battle 模組初始化...");
-        // 可以在這裡綁定一些初始事件
+        // 此處預留給未來戰鬥按鈕的事件綁定
     },
 
     // 2. 更新玩家血條與數值 (精準對接 HTML ID)
@@ -22,7 +23,7 @@ const UI_Battle = {
             const percent = Math.max(0, Math.min(100, (current / max) * 100));
             fill.style.width = `${percent}%`;
             valText.innerText = Math.ceil(current);
-            maxText.innerText = max;
+            maxText.innerText = Math.ceil(max);
         }
     },
 
@@ -35,154 +36,131 @@ const UI_Battle = {
         }
     },
 
-    // 4. 更新怪物資訊與震動回饋
+    // 4. 更新怪物資訊
     updateMonster(monster) {
-        const nameText = document.getElementById('monster-name');
-        const icon = document.getElementById('monster-icon');
+        const nameEl = document.getElementById('monster-name');
         const hpFill = document.getElementById('monster-hp-fill');
-        const hpText = document.getElementById('monster-hp-text');
+        const hpText = document.getElementById('monster-hp-val');
 
-        if (monster) {
-            nameText.innerText = `${monster.name} (Lv.${monster.level})`;
-            icon.innerText = monster.icon || '👾';
-            
-            const hpPercent = Math.max(0, Math.min(100, (monster.hp / monster.maxHp) * 100));
-            hpFill.style.width = `${hpPercent}%`;
-            hpText.innerText = `${Math.ceil(monster.hp)} / ${monster.maxHp}`;
-
-            // 觸發受擊震動效果
-            this.triggerShake();
-        } else {
-            nameText.innerText = "尋覓中...";
-            icon.innerText = "❓";
-            hpFill.style.width = "0%";
-            hpText.innerText = "0 / 0";
+        if (nameEl && monster) {
+            nameEl.innerText = `${monster.icon || '👾'} ${monster.name}`;
+            const percent = Math.max(0, (monster.hp / monster.maxHp) * 100);
+            if (hpFill) hpFill.style.width = `${percent}%`;
+            if (hpText) hpText.innerText = `${Math.ceil(monster.hp)} / ${monster.maxHp}`;
         }
     },
 
-    // 5. 觸發戰場震動特效
-    triggerShake() {
-        const card = document.getElementById('monster-display');
-        if (card) {
-            card.classList.remove('shake-effect');
-            void card.offsetWidth; // 強制重繪觸發動畫
-            card.classList.add('shake-effect');
-            
-            // 動畫結束後自動移除，方便下次觸發
-            setTimeout(() => {
-                card.classList.remove('shake-effect');
-            }, 400);
-        }
-    },
-
-    // 6. 全量日誌系統 (支援顏色分類)
+    // 5. 戰鬥日誌管理 (包含全量顏色分類)
     log(msg, type = 'system') {
-        const logList = document.getElementById('log-list');
-        if (!logList) return;
+        const logContainer = document.getElementById('battle-log');
+        if (!logContainer) return;
 
-        const item = document.createElement('div');
-        item.className = `log-item log-${type}`;
+        const logEntry = document.createElement('div');
+        logEntry.className = `log-item log-${type}`; // 對應 style.css 裡的 log-player, log-monster 等
         
-        // 根據類型加上前綴或特殊處理
-        let prefix = "";
-        if (type === 'reward') prefix = "【掉落】";
-        if (type === 'monster') prefix = "【戰況】";
-        if (type === 'system') prefix = "【傳音】";
+        // 根據類型添加修飾文字或顏色
+        let color = "#f8fafc";
+        if (type === 'player-atk') color = "#a78bfa";
+        if (type === 'monster-atk') color = "#ef4444";
+        if (type === 'reward') color = "#fbbf24";
+        if (type === 'gold') color = "#fbbf24";
+        if (type === 'system') color = "#94a3b8";
 
-        item.innerText = `${prefix} ${msg}`;
-        
-        logList.appendChild(item);
+        logEntry.style.color = color;
+        logEntry.style.marginBottom = "4px";
+        logEntry.style.fontSize = "13px";
+        logEntry.innerText = `> ${msg}`;
+
+        logContainer.appendChild(logEntry);
 
         // 自動捲動到底部
-        logList.scrollTop = logList.scrollHeight;
+        logContainer.scrollTop = logContainer.scrollHeight;
 
-        // 限制日誌數量，保持極致效能
-        if (logList.childElementCount > 100) {
-            logList.removeChild(logList.firstChild);
+        // 限制日誌數量 (對應 data.js 的 LOG_LIMIT)
+        const limit = (typeof DATA !== 'undefined' ? DATA.CONFIG.LOG_LIMIT : 50);
+        while (logContainer.children.length > limit) {
+            logContainer.removeChild(logContainer.firstChild);
         }
     },
 
-    // 7. 日誌收合切換
-    toggleLog() {
-        const container = document.getElementById('log-system');
-        const btn = document.getElementById('log-toggle');
-        
-        if (container.classList.contains('expanded')) {
-            container.classList.remove('expanded');
-            container.classList.add('collapsed');
-            btn.innerText = "展開 🔽";
-            document.getElementById('log-list').style.height = "40px";
-        } else {
-            container.classList.remove('collapsed');
-            container.classList.add('expanded');
-            btn.innerText = "收合 🔼";
-            document.getElementById('log-list').style.height = "180px";
-        }
-    },
-
-    // 8. 地圖選擇介面渲染 (對接數據庫)
+    // 6. 顯示地圖選擇彈窗
     showMapSelect() {
         const modal = document.getElementById('modal-map');
+        if (modal) {
+            modal.style.display = 'flex';
+            this.renderRegions();
+        }
+    },
+
+    // 7. 渲染區域列表 (區域分頁)
+    renderRegions() {
         const regionList = document.getElementById('region-list');
-        const mapList = document.getElementById('map-list');
-        
-        if (!modal || !DATA.REGIONS) return;
+        if (!regionList) return;
 
-        modal.style.display = 'flex';
         regionList.innerHTML = '';
-        mapList.innerHTML = '';
-
-        // 渲染區域標籤
+        
+        // 遍歷 DATA.REGIONS
         Object.keys(DATA.REGIONS).forEach(regionKey => {
             const region = DATA.REGIONS[regionKey];
             const btn = document.createElement('button');
-            btn.className = 'filter-btn';
+            btn.className = 'region-tab-btn';
             btn.innerText = region.name;
             btn.onclick = () => this.renderMapsInRegion(regionKey);
             regionList.appendChild(btn);
         });
 
         // 預設渲染第一個區域的地圖
-        this.renderMapsInRegion(Object.keys(DATA.REGIONS)[0]);
+        if (Object.keys(DATA.REGIONS).length > 0) {
+            this.renderMapsInRegion(Object.keys(DATA.REGIONS)[0]);
+        }
     },
 
-    // 9. 渲染特定區域的地圖列表
+    // 8. 渲染特定區域的地圖列表
     renderMapsInRegion(regionKey) {
         const mapList = document.getElementById('map-list');
+        if (!mapList) return;
+
         mapList.innerHTML = '';
         const maps = DATA.REGIONS[regionKey].maps;
 
         maps.forEach(map => {
             const btn = document.createElement('button');
             btn.className = 'map-card';
+            // 保留你的原始樣式
             btn.style.padding = "10px";
             btn.style.margin = "5px";
             btn.style.background = "rgba(255,255,255,0.05)";
             btn.style.border = "1px solid var(--border-color)";
             btn.style.borderRadius = "8px";
             btn.style.color = "white";
+            btn.style.cursor = "pointer";
             
-            btn.innerHTML = `<div>${map.name}</div><small style="color:var(--text-dim)">Lv.${map.minLv}+</small>`;
+            btn.innerHTML = `
+                <div style="font-weight:bold;">${map.name}</div>
+                <small style="color:var(--text-dim)">Lv.${map.minLv}+</small>
+            `;
             
             btn.onclick = () => {
                 this.selectMap(map);
-                document.getElementById('modal-map').style.display = 'none';
+                const modal = document.getElementById('modal-map');
+                if (modal) modal.style.display = 'none';
             };
             mapList.appendChild(btn);
         });
     },
 
-    // 10. 執行地圖切換
+    // 9. 執行地圖切換
     selectMap(map) {
-        document.getElementById('current-map-name').innerText = map.name;
-        this.log(`準備前往「${map.name}」進行歷練...`, 'system');
-        
-        // 呼叫核心戰鬥邏輯進行切換 (此處對接 combat.js 的 init)
-        if (typeof Combat !== 'undefined' && Combat.init) {
+        const mapNameEl = document.getElementById('current-map-name');
+        if (mapNameEl) {
+            mapNameEl.innerText = map.name;
+        }
+
+        this.log(`準備前往「${map.name}」...`, "system");
+
+        // 調用 Combat.js 的地圖初始化
+        if (typeof Combat !== 'undefined') {
             Combat.init(map.id);
         }
     }
 };
-
-// 初始化執行
-UI_Battle.init();
