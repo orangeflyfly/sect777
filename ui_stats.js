@@ -1,6 +1,6 @@
 /**
  * V1.8.2 ui_stats.js
- * 修正點：重構為 2x2 加點網格、3x2 戰鬥卡片、新增詳細數據彈窗、實裝動態跳字
+ * 修正點：精化 2x2 與 3x2 佈局結構、對接藝術化關閉按鈕、優化動態跳字座標
  */
 
 const UI_Stats = {
@@ -17,7 +17,7 @@ const UI_Stats = {
             realmTitle.innerText = `【${realmName}】 Lv.${d.level}`;
         }
 
-        // B. 核心：初始化 2x2 結構與 3x2 卡片
+        // B. 核心：檢查並初始化屬性面板 (防止 HTML 為空)
         this.ensureStatsStructure();
 
         // C. 更新基礎屬性 (2x2 區塊)
@@ -29,7 +29,7 @@ const UI_Stats = {
 
         // D. 更新戰鬥卡片數值 (3x2 區塊)
         const bStats = Player.getBattleStats();
-        // 對接 Formula 新公式
+        // 對接 Formula 公式計算暴擊與閃避
         const critRate = Formula.calculateCritRate(d.stats.str, d.stats.dex);
         const dodgeRate = Formula.calculateEvasionRate(d.stats.dex);
 
@@ -44,7 +44,7 @@ const UI_Stats = {
         this.renderSkills();
     },
 
-    // 2. 初始化 HTML 結構 (重構為 2x2 與 3x2 佈局)
+    // 2. 初始化 HTML 結構 (重構為緊湊型 2x2 與 3x2 佈局)
     ensureStatsStructure() {
         const container = document.getElementById('stats-content');
         if (!container || container.innerHTML.trim() !== "") return;
@@ -103,16 +103,17 @@ const UI_Stats = {
         container.innerHTML = html;
     },
 
-    // 3. 執行加點 (新增動態跳字效果)
+    // 3. 執行加點 (觸發動態跳字與數據刷新)
     addStat(type, event) {
         const success = Player.addStat(type);
         if (success) {
-            // 觸發動態跳字
+            // 觸發動態跳字：傳入 event.target 以獲取精確座標
             if (event) this.createFloatingText(event.target, "+1");
 
-            // 全面刷新數據
+            // 全面刷新當前頁面數據
             this.renderStats();
 
+            // 特殊處理悟性提升的日誌提示
             if (type === 'int') {
                 const bonus = (1 + Player.data.stats.int * 0.01).toFixed(2);
                 Msg.log(`悟性精進，靈氣吸收效率變為 ${bonus}x`, "system");
@@ -120,12 +121,12 @@ const UI_Stats = {
         }
     },
 
-    // 4. B方案：展示詳細數據彈窗
+    // 4. B方案：展示詳細數據彈窗 (修正為對接藝術化關閉鈕結構)
     showDetailModal() {
         const d = Player.data;
         const bStats = Player.getBattleStats();
         
-        // 計算進階隱藏數值
+        // 從 Formula 獲取進階隱藏數值
         const reduction = Formula.calculateDamageReduction(bStats.def);
         const efficiency = Formula.calculateStudyEfficiency(d.stats.int);
         const critMult = Formula.calculateCritMultiplier(d.stats.str);
@@ -153,18 +154,23 @@ const UI_Stats = {
 
     // 5. 輔助：創建動態跳字
     createFloatingText(target, text) {
+        // 獲取按鈕在螢幕上的位置
         const rect = target.getBoundingClientRect();
         const floatText = document.createElement('div');
         floatText.className = 'float-up-text';
         floatText.innerText = text;
+        
+        // 設定起始座標為按鈕中心
         floatText.style.left = `${rect.left + rect.width / 2}px`;
         floatText.style.top = `${rect.top}px`;
+        
         document.body.appendChild(floatText);
         
+        // 動畫結束後自動移除標籤 (時間與 CSS 動畫一致)
         setTimeout(() => floatText.remove(), 800);
     },
 
-    // 6. 渲染神通列表
+    // 6. 渲染神通列表 (對齊技能卡片樣式)
     renderSkills() {
         const skillContainer = document.getElementById('skills-list');
         if (!skillContainer) return; 
@@ -187,7 +193,7 @@ const UI_Stats = {
         `).join('');
     },
 
-    // 7. 輔助函式
+    // 7. 基礎數值更新函式
     updateValue(id, val) {
         const el = document.getElementById(id);
         if (el) el.innerText = val;
