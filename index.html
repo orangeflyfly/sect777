@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sect777 - 歷練修仙</title>
+    <title>Sect777 - 歷練修仙 (V1.7.5)</title>
+    
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/page_battle.css">
     <link rel="stylesheet" href="css/page_bag.css">
@@ -46,8 +47,7 @@
                 </div>
             </div>
 
-            <div id="battle-actions" class="actions-container" style="display:flex; gap:10px; margin: 15px 0;">
-                </div>
+            <div id="battle-actions" class="actions-container" style="display:flex; gap:10px; margin: 15px 0; justify-content: center;"></div>
 
             <div id="log-system" class="log-container expanded">
                 <div class="log-controls">
@@ -61,21 +61,18 @@
         <section id="page-stats" class="game-page" style="display:none;">
             <div class="page-title">修為與境界</div>
             <h2 id="stat-realm-title" style="text-align:center; color:var(--accent); margin-bottom:20px;">【凡人】 Lv.1</h2>
-            <div id="stats-content" class="stats-grid">
-                </div>
+            <div id="stats-content" class="stats-grid"></div>
         </section>
 
         <section id="page-bag" class="game-page" style="display:none;">
             <div class="page-title">儲物袋</div>
-            <div id="bag-filters" class="bag-filters" style="margin-bottom:15px;"></div>
-            <div id="bag-content" class="bag-grid">
-                </div>
+            <div id="bag-filters" class="bag-filters" style="margin-bottom:15px; display: flex; gap: 5px;"></div>
+            <div id="bag-content" class="bag-grid"></div>
         </section>
 
         <section id="page-shop" class="game-page" style="display:none;">
             <div class="page-title">坊市交易</div>
-            <div id="shop-content" class="shop-grid">
-                </div>
+            <div id="shop-content" class="shop-grid"></div>
         </section>
 
     </main>
@@ -94,13 +91,23 @@
                 <button onclick="document.getElementById('modal-map').style.display='none'">✕</button>
             </div>
             <div class="modal-body">
-                <div id="region-list" class="region-tabs"></div>
+                <div id="region-list" class="region-tabs" style="display: flex; gap: 10px; margin-bottom: 15px;"></div>
                 <div id="map-list" class="map-grid"></div>
             </div>
         </div>
     </div>
 
-    <script src="data.js"></script>
+    <script src="data/data_config.js"></script>
+    <script src="data/data_items.js"></script>
+    <script src="data/data_monsters.js"></script>
+    <script src="data/data_world.js"></script>
+    <script src="data/data_skills.js"></script>
+    
+    <script>
+        // 強制資料對接：確保所有模組都能透過 DATA 抓到內容
+        window.DATA = window.GAMEDATA;
+    </script>
+
     <script src="player.js"></script>
     <script src="core.js"></script>
     <script src="combat.js"></script>
