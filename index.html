@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sect777 - 歷練修仙</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/page_battle.css">
+    <link rel="stylesheet" href="css/page_bag.css">
+    <link rel="stylesheet" href="css/page_stats.css">
+    <link rel="stylesheet" href="css/fx.css">
 </head>
 <body>
     <header class="header-info">
@@ -27,45 +31,43 @@
         
         <section id="page-battle" class="game-page active">
             <div class="map-nav-header">
-                <span id="current-map-name">未知裂隙</span>
+                <span id="current-map-name">外山小徑</span>
                 <button onclick="UI_Battle.showMapSelect()" class="btn-travel">🗺️ 尋找歷練地</button>
             </div>
             
             <div id="combat-area">
-                <div id="damage-container"></div>
-                
                 <div id="monster-display" class="monster-card">
                     <div id="monster-icon" class="monster-avatar">❓</div>
                     <h3 id="monster-name">尋覓中...</h3>
                     <div class="bar-container monster-hp">
                         <div id="monster-hp-fill" class="fill fill-hp" style="width: 100%;"></div>
-                        <div class="bar-text" id="monster-hp-text">0 / 0</div>
+                        <div class="bar-text" id="monster-hp-val">0 / 0</div>
                     </div>
                 </div>
-                
-                <div id="searching-display" class="searching-overlay" style="display:none;">
-                    <div class="spinner"></div><span>正在搜尋妖獸蹤跡...</span>
-                </div>
             </div>
+
+            <div id="battle-actions" class="actions-container" style="display:flex; gap:10px; margin: 15px 0;">
+                </div>
 
             <div id="log-system" class="log-container expanded">
                 <div class="log-controls">
                     <span>戰鬥日誌</span>
                     <button id="log-toggle" onclick="UI_Battle.toggleLog()">收合 🔼</button>
                 </div>
-                <div id="log-list" class="log-content"></div>
+                <div id="battle-log" class="log-content"></div>
             </div>
         </section>
 
         <section id="page-stats" class="game-page" style="display:none;">
             <div class="page-title">修為與境界</div>
+            <h2 id="stat-realm-title" style="text-align:center; color:var(--accent); margin-bottom:20px;">【凡人】 Lv.1</h2>
             <div id="stats-content" class="stats-grid">
                 </div>
         </section>
 
         <section id="page-bag" class="game-page" style="display:none;">
             <div class="page-title">儲物袋</div>
-            <div id="bag-filters" class="bag-filters"></div>
+            <div id="bag-filters" class="bag-filters" style="margin-bottom:15px;"></div>
             <div id="bag-content" class="bag-grid">
                 </div>
         </section>
