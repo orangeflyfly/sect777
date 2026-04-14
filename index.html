@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="css/page_stats.css">
     <link rel="stylesheet" href="css/fx.css">
     <link rel="stylesheet" href="css/page_world.css">
+    <link rel="stylesheet" href="css/page_sect.css"> 
 </head>
 <body>
     <header class="header-info">
@@ -61,6 +62,40 @@
             </div>
         </section>
 
+        <section id="page-sect" class="game-page" style="display:none;">
+            <div class="sect-header">
+                <h2 class="sect-title">青雲宗門總部</h2>
+                <div class="sect-subtitle">人界 · 某不知名小世界</div>
+            </div>
+            
+            <div class="sect-hub-grid">
+                <div class="dept-card" onclick="UI_Sect.openDept('herb')">
+                    <div class="dept-icon">🌿</div>
+                    <div class="dept-name">草藥部</div>
+                </div>
+                <div class="dept-card" onclick="UI_Sect.openDept('iron')">
+                    <div class="dept-icon">⛏️</div>
+                    <div class="dept-name">鐵礦部</div>
+                </div>
+                <div class="dept-card" onclick="UI_Sect.openDept('recruit')">
+                    <div class="dept-icon">👥</div>
+                    <div class="dept-name">招募堂</div>
+                </div>
+                <div class="dept-card" onclick="UI_Sect.openDept('bounty')">
+                    <div class="dept-icon">📜</div>
+                    <div class="dept-name">懸賞堂</div>
+                </div>
+                <div class="dept-card" onclick="UI_Sect.openDept('vault')">
+                    <div class="dept-icon">📦</div>
+                    <div class="dept-name">宗門庫房</div>
+                </div>
+                <div class="dept-card" onclick="Core.switchPage('world')">
+                    <div class="dept-icon">☯️</div>
+                    <div class="dept-name">聚靈大陣</div>
+                </div>
+            </div>
+        </section>
+
         <section id="page-world" class="game-page" style="display:none; flex-direction:column;">
             <div class="page-title">隨身洞府</div>
             <div id="world-content" style="flex:1; overflow-y:auto; padding-bottom:20px;">
@@ -96,11 +131,21 @@
 
     <nav class="bottom-nav">
         <button class="nav-btn active" onclick="Core.switchPage('battle')">⚔️ 歷練</button>
-        <button class="nav-btn" onclick="Core.switchPage('world')">🌌 洞府</button>
         <button class="nav-btn" onclick="Core.switchPage('stats')">🧘‍♂️ 修為</button>
         <button class="nav-btn" onclick="Core.switchPage('bag')">🎒 儲物</button>
         <button class="nav-btn" onclick="Core.switchPage('shop')">🏪 坊市</button>
     </nav>
+
+    <div id="float-nav-wrap">
+        <button id="btn-jump-sect" class="fab-btn" onclick="Core.switchPage('sect')">
+            <span class="fab-icon">⛩️</span>
+            <span class="fab-text">回宗門</span>
+        </button>
+        <button id="btn-jump-battle" class="fab-btn" style="display:none;" onclick="Core.switchPage('battle')">
+            <span class="fab-icon">⚔️</span>
+            <span class="fab-text">去歷練</span>
+        </button>
+    </div>
 
     <div id="modal-map" class="modal-overlay" style="display:none;">
         <div class="modal-box">
@@ -123,17 +168,17 @@
         import { UI_Bag } from './ui/ui_bag.js';
         import { UI_Shop } from './ui/ui_shop.js';
         import { UI_Stats } from './ui/ui_stats.js';
-        import { UI_World } from './ui/ui_world.js'; // 🟢 導入小世界神識
+        import { UI_World } from './ui/ui_world.js';
 
         // B. 建立全域橋樑 (為了 HTML 裡的 onclick 屬性能夠運作)
         window.Core = Core;
-        window.DB = DB;           
-        window.DATA = DB;         
+        window.DB = DB;            
+        window.DATA = DB;          
         window.UI_Battle = UI_Battle;
         window.UI_Bag = UI_Bag;
         window.UI_Shop = UI_Shop;
         window.UI_Stats = UI_Stats;
-        window.UI_World = UI_World; // 🟢 掛載小世界神識
+        window.UI_World = UI_World; 
 
         // C. 點燃點火裝置
         window.onload = () => {
