@@ -112,7 +112,7 @@ export const Player = {
         const pStats = this.getBattleStats();
         this.data.hp = pStats.maxHp;
         
-        Msg.log(`【突破】修為精進，當前修為：Lv.${this.data.level}！`, "gold");
+        Msg.log(`【突破】修為精精，當前修為：Lv.${this.data.level}！`, "gold");
 
         this.save();
 
@@ -194,6 +194,36 @@ export const Player = {
         this.data.inventory.splice(index, 1);
 
         // 重新換算血量比例 (保持傷勢)
+        const newMaxHp = this.getBattleStats().maxHp;
+        const hpPercent = this.data.hp / oldMaxHp;
+        this.data.hp = Math.max(1, Math.floor(hpPercent * newMaxHp));
+
+        this.save();
+        return true;
+    },
+
+    /**
+     * 🟢 新增：裝備卸下邏輯 (V2.1 第一波修復)
+     */
+    unequip(slotId) {
+        if (!this.data || !this.data.equipped || !this.data.equipped[slotId]) return false;
+
+        // 檢查儲物袋空間防呆
+        const dataSrc = window.DB || window.DATA || window.GAMEDATA;
+        const maxSlots = (dataSrc && dataSrc.CONFIG && dataSrc.CONFIG.MAX_BAG_SLOTS) || 50; 
+        if (this.data.inventory.length >= maxSlots) {
+            Msg.log("儲物袋已滿，無法卸下裝備！", "system");
+            return false;
+        }
+
+        const item = this.data.equipped[slotId];
+        const oldMaxHp = this.getBattleStats().maxHp;
+
+        // 將裝備移回儲物袋，並清空穿戴槽
+        this.data.inventory.push(item);
+        this.data.equipped[slotId] = null;
+
+        // 重新換算血量比例 (扣除裝備血量加成後，保持傷勢比例不變)
         const newMaxHp = this.getBattleStats().maxHp;
         const hpPercent = this.data.hp / oldMaxHp;
         this.data.hp = Math.max(1, Math.floor(hpPercent * newMaxHp));
