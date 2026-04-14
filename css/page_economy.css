@@ -19,3 +19,36 @@
     border-radius: 12px;
     border: 1px dashed var(--border-color);
 }
+/* 解決儲物袋東西太多遮擋導覽列 */
+#page-bag {
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* 確保分頁高度固定 */
+    overflow: hidden;
+}
+
+#bag-content {
+    flex: 1;
+    overflow-y: auto; /* 超出時自動產生滾動條 */
+    padding-bottom: 80px; /* 留空間給底部導航 */
+}
+
+/* 強制修正 X 鈕樣式 (加上 !important 確保不被覆蓋) */
+.btn-modal-close {
+    background: rgba(255,255,255,0.1) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    color: #fff !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.3s !important;
+}
+
+.btn-modal-close:hover {
+    background: rgba(239, 68, 68, 0.4) !important;
+    transform: rotate(90deg);
+}
