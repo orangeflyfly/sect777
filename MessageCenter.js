@@ -29,6 +29,7 @@ window.Msg = Msg;
     notify(msg) {
         alert(msg); // 暫時用最簡單的方式，未來可換成漂亮的 Toast UI
     }
+window.Msg = MessageCenter;
 };
 
 // 為了方便呼叫，建立一個短別名
