@@ -1,6 +1,7 @@
 /**
- * V1.7.0 data_monsters.js
+ * V1.8.2 data_monsters.js
  * 職責：存放所有怪物數據
+ * 修正點：強化命名空間保護、加入數據載入監控
  */
 window.GAMEDATA = window.GAMEDATA || {};
 
@@ -16,3 +17,9 @@ GAMEDATA.MONSTERS = {
     "m009": { id: "m009", name: "玄水惡蛟", icon: "🐉", hp: 5000, atk: 350, exp: 2000, gold: 1000, isBoss: true },
     "m010": { id: "m010", name: "守境傀儡", icon: "🤖", hp: 10000, atk: 800, exp: 5000, gold: 3000, isBoss: true }
 };
+
+// --- 數據載入監控陣法 ---
+(function() {
+    const count = Object.keys(GAMEDATA.MONSTERS).length;
+    console.log(`%c【藏妖閣】已成功載入 ${count} 尊妖獸模板。`, "color: #ef4444; font-weight: bold;");
+})();
