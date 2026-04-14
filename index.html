@@ -32,7 +32,7 @@
     </header>
 
     <main id="game-container">
-        <section id="page-battle" class="game-page">
+        <section id="page-battle" class="game-page active">
             <div class="map-nav-header">
                 <span id="current-map-name">探尋天機中...</span>
                 <button onclick="UI_Battle.showMapSelect()" class="btn-travel">🗺️ 尋找歷練地</button>
@@ -70,7 +70,7 @@
                 </div>
             </div>
 
-            <div id="breakthrough-area" style="display:none;">
+            <div id="breakthrough-area" style="display:none; text-align:center; padding: 15px;">
                 <button id="btn-breakthrough" class="btn-special">✨ 突破境界</button>
             </div>
 
@@ -112,13 +112,11 @@
     </div>
 
     <script>window.GAMEDATA = window.GAMEDATA || {};</script>
-
     <script src="data/data_config.js"></script>
     <script src="data/data_items.js"></script>
     <script src="data/data_monsters.js"></script>
     <script src="data/data_world.js"></script>
     <script src="data/data_skills.js"></script>
-
     <script>
         window.DATA = window.GAMEDATA;
         console.log("【系統】數據加載鎖已合上，專案更名為：練功修練");
@@ -126,12 +124,11 @@
 
     <script src="MessageCenter.js"></script>
     <script>
-        if (typeof MessageCenter !== 'undefined') {
-            window.Msg = MessageCenter;
-        }
+        if (typeof MessageCenter !== 'undefined') window.Msg = MessageCenter;
     </script>
     <script src="SaveManager.js"></script>
     <script src="Formula.js"></script>
+    <script src="fx.js"></script> 
     <script src="ItemFactory.js"></script>
 
     <script src="player.js"></script>
@@ -146,17 +143,22 @@
     <script src="core.js"></script>
     
     <script>
+        /**
+         * 宗門啟動檢測
+         */
         window.onload = () => {
             console.log("%c【系統】練功修練 - 神識大陣啟動...", "color: #fbbf24; font-weight: bold;");
             
             try {
-                const requiredModules = ['DATA', 'Msg', 'Player', 'CombatEngine', 'Core'];
+                // 檢查關鍵模組是否載入成功 (含 V1.9.0 的 FX)
+                const requiredModules = ['DATA', 'Msg', 'Player', 'CombatEngine', 'Core', 'FX'];
                 requiredModules.forEach(mod => {
                     if (typeof window[mod] === 'undefined') {
                         throw new Error(`關鍵模組載入失敗: ${mod}`);
                     }
                 });
 
+                // 啟動大陣
                 Core.init();
                 console.log("%c【核心】 運行正常，祝仙途順遂。", "color: #10b981; font-weight: bold;");
 
@@ -167,7 +169,7 @@
                     realmEl.innerText = "啟動失敗";
                     realmEl.style.color = "#ef4444";
                 }
-                alert("啟動失敗：\n" + err.message);
+                alert("宗門大陣啟動失敗：\n" + err.message);
             }
         };
     </script>
