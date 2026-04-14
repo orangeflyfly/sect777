@@ -1,60 +1,56 @@
 /**
- * V2.0 ui_stats.js (飛升模組版)
- * 職責：修士屬性、裝備、神通與突破介面管理
- * 位置：/ui/ui_stats.js
+ * V2.1 ui_stats.js (第一波：修復優化版)
+ * 修正點：中文化、裝備卸載邏輯、彈窗按鈕優化
  */
 
-// 1. 導入核心邏輯與法則模組
 import { Player } from '../entities/player.js';
 import { Formula } from '../utils/Formula.js';
 import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 
+// 屬性翻譯映射陣法
+const ATTR_MAP = {
+    'str': '力量',
+    'con': '體質',
+    'dex': '敏捷',
+    'int': '悟性',
+    'hp': '血量',
+    'atk': '攻擊',
+    'def': '防禦',
+    'speed': '速度'
+};
+
 export const UI_Stats = {
-    /**
-     * 初始化監聽
-     */
     init() {
-        console.log("【UI_Stats】修士明鏡初始化，對接修士命格...");
+        console.log("【UI_Stats】修士明鏡初始化，屬性法陣歸位...");
         this.renderStats();
     },
 
-    /**
-     * 全量渲染：刷新所有數據與結構
-     */
     renderStats() {
         if (!Player.data) return;
         const d = Player.data;
 
-        // A. 更新標題 (對接練功修練正名)
         const realmTitle = document.getElementById('stat-realm-title');
         if (realmTitle) {
-            // 讀取全域設定檔中的境界名稱 (DATA 目前維持全域加載)
-            const dataSrc = window.DATA || window.GAMEDATA;
+            const dataSrc = window.DB || window.DATA || window.GAMEDATA;
             const realmName = (dataSrc && dataSrc.CONFIG && dataSrc.CONFIG.REALM_NAMES) 
                 ? dataSrc.CONFIG.REALM_NAMES[d.realm || 1] 
                 : "凡人";
             realmTitle.innerText = `【${realmName}】 Lv.${d.level}`;
         }
 
-        // B. 初始化或重刷結構
         this.ensureStatsStructure();
-
-        // C. 更新裝備欄位 (解決裝備失蹤問題)
-        this.renderEquipped();
-
-        // D. 更新突破按鈕顯示
+        this.renderEquipped(); // 渲染裝備 (含卸載按鈕)
         this.handleBreakthroughUI();
 
-        // E. 更新基礎屬性數值
+        // 基礎屬性更新 (對接 ATTR_MAP)
         this.updateValue('stat-str', d.stats.str);
         this.updateValue('stat-con', d.stats.con);
         this.updateValue('stat-dex', d.stats.dex);
         this.updateValue('stat-int', d.stats.int);
         this.updateValue('stat-points', d.statPoints);
 
-        // F. 更新戰鬥指標數值 (含裝備加成)
+        // 戰鬥指標更新
         const bStats = Player.getBattleStats();
-        // 對接 Formula 計算隱藏數值
         const critRate = Formula.calculateCritRate(d.stats.str, d.stats.dex);
         const dodgeRate = Formula.calculateEvasionRate(d.stats.dex);
 
@@ -65,22 +61,18 @@ export const UI_Stats = {
         this.updateValue('stat-crit-preview', critRate + "%");
         this.updateValue('stat-dodge-preview', dodgeRate + "%");
 
-        // G. 渲染神通
         this.renderSkills();
     },
 
-    /**
-     * 結構初始化 (2x2 與 3x2 佈局注入)
-     */
     ensureStatsStructure() {
         const container = document.getElementById('stats-content');
         if (!container || container.innerHTML.trim() !== "") return;
 
         const statsConfig = [
-            { id: 'str', name: '力量', icon: '⚔️' },
-            { id: 'con', name: '體質', icon: '❤️' },
-            { id: 'dex', name: '敏捷', icon: '⚡' },
-            { id: 'int', name: '悟性', icon: '🧠' }
+            { id: 'str', name: ATTR_MAP.str, icon: '⚔️' },
+            { id: 'con', name: ATTR_MAP.con, icon: '❤️' },
+            { id: 'dex', name: ATTR_MAP.dex, icon: '⚡' },
+            { id: 'int', name: ATTR_MAP.int, icon: '🧠' }
         ];
 
         let html = `
@@ -111,10 +103,10 @@ export const UI_Stats = {
                     <button class="btn-detail-lens" onclick="UI_Stats.showDetailModal()">詳細數據 🔍</button>
                 </div>
                 <div class="battle-grid-3x2">
-                    <div class="b-item"><em>血量</em><span id="stat-hp-preview">0</span></div>
-                    <div class="b-item"><em>攻擊</em><span id="stat-atk-preview">0</span></div>
-                    <div class="b-item"><em>防禦</em><span id="stat-def-preview">0</span></div>
-                    <div class="b-item"><em>速度</em><span id="stat-spd-preview">0</span></div>
+                    <div class="b-item"><em>${ATTR_MAP.hp}</em><span id="stat-hp-preview">0</span></div>
+                    <div class="b-item"><em>${ATTR_MAP.atk}</em><span id="stat-atk-preview">0</span></div>
+                    <div class="b-item"><em>${ATTR_MAP.def}</em><span id="stat-def-preview">0</span></div>
+                    <div class="b-item"><em>${ATTR_MAP.speed}</em><span id="stat-spd-preview">0</span></div>
                     <div class="b-item"><em>暴擊</em><span id="stat-crit-preview">0%</span></div>
                     <div class="b-item"><em>閃避</em><span id="stat-dodge-preview">0%</span></div>
                 </div>
@@ -128,7 +120,7 @@ export const UI_Stats = {
     },
 
     /**
-     * 渲染裝備槽位 (解決裝備不見的問題)
+     * 渲染裝備槽位 (新增：卸載法陣)
      */
     renderEquipped() {
         const listContainer = document.getElementById('equipped-list');
@@ -143,85 +135,49 @@ export const UI_Stats = {
         listContainer.innerHTML = slots.map(slot => {
             const item = Player.data.equipped[slot.id];
             if (!item) {
-                return `<div class="equip-slot empty">
-                            <span class="slot-icon">${slot.icon}</span>
-                            <span class="slot-label">${slot.label} (空)</span>
-                        </div>`;
-            }
-            return `<div class="equip-slot r-${item.rarity || 1}">
-                        <span class="slot-icon">${item.icon || '📦'}</span>
-                        <div class="slot-info">
-                            <span class="slot-name">${item.name}</span>
-                            <small>${slot.label}</small>
-                        </div>
+                return `
+                    <div class="equip-slot empty">
+                        <span class="slot-icon">${slot.icon}</span>
+                        <span class="slot-label">${slot.label}</span>
                     </div>`;
+            }
+            // 點擊裝備格觸發卸下
+            return `
+                <div class="equip-slot r-${item.rarity || 1}" onclick="UI_Stats.unequipItem('${slot.id}')">
+                    <span class="slot-icon">${item.icon || slot.icon}</span>
+                    <div class="slot-info">
+                        <span class="slot-name">${item.name}</span>
+                        <small class="c-green">點擊脫下</small>
+                    </div>
+                </div>`;
         }).join('');
     },
 
     /**
-     * 處理突破按鈕顯示邏輯
+     * 卸下裝備邏輯
      */
-    handleBreakthroughUI() {
-        const area = document.getElementById('breakthrough-area');
-        if (!area) return;
-
-        // 當經驗值滿的時候，顯示突破按鈕
-        if (Player.data.exp >= Player.data.maxExp) {
-            area.style.display = 'block';
-            const btn = document.getElementById('btn-breakthrough');
-            if (btn) {
-                btn.onclick = () => {
-                    // 對接 Player 模組的突破邏輯
-                    const success = Player.breakthrough();
-                    if (success) {
-                        this.renderStats();
-                        if (window.Core) window.Core.updateUI();
-                    } else {
-                        Msg.log("正在感應天劫，即將實裝更複雜的突破考驗...", "gold");
-                    }
-                };
-            }
-        } else {
-            area.style.display = 'none';
-        }
-    },
-
-    /**
-     * 執行屬性加點
-     */
-    addStat(type, event) {
-        // 安全檢查點數
-        if (Player.data.statPoints <= 0) {
-            Msg.log("剩餘自由點數不足！", "system");
-            return;
-        }
-
-        // 執行 Player 模組的加點邏輯
-        const success = Player.addStat(type);
-        
+    unequipItem(slotId) {
+        const success = Player.unequip(slotId);
         if (success) {
-            // 觸發跳字特效
-            if (event) this.createFloatingText(event.target, "+1");
-
-            // 刷新 UI
+            Msg.log(`已將裝備收回儲物袋。`, "system");
             this.renderStats();
-            
-            // 同步核心 UI (例如頂部血條、靈石)
             if (window.Core) window.Core.updateUI();
-            
-            if (type === 'int') {
-                Msg.log("悟性精進，對天地靈氣的感應更加敏銳了。", "system");
-            }
         }
     },
 
-    /**
-     * 詳細數據彈窗 (毛玻璃藝術化)
-     */
+    addStat(type, event) {
+        if (Player.data.statPoints <= 0) return Msg.log("自由點數不足！", "system");
+        const success = Player.addStat(type);
+        if (success) {
+            if (event) this.createFloatingText(event.target, "+1");
+            this.renderStats();
+            if (window.Core) window.Core.updateUI();
+        }
+    },
+
     showDetailModal() {
         const d = Player.data;
         const bStats = Player.getBattleStats();
-        
         const reduction = Formula.calculateDamageReduction(bStats.def);
         const efficiency = (Formula.calculateExpBonus(d.stats.int) * 100).toFixed(0);
         const critMult = Formula.calculateCritMultiplier(d.stats.str);
@@ -231,25 +187,38 @@ export const UI_Stats = {
                 <div class="detail-glass-card" onclick="event.stopPropagation()">
                     <div class="modal-header">
                         <h4>詳細修為數據</h4>
-                        <button onclick="document.getElementById('detail-modal-overlay').remove()">✕</button>
+                        <button class="btn-modal-close" onclick="document.getElementById('detail-modal-overlay').remove()">✕</button>
                     </div>
                     <div class="detail-list">
                         <div class="detail-row"><span>修煉效率</span><b class="c-green">${efficiency}%</b></div>
                         <div class="detail-row"><span>物理減傷</span><b class="c-blue">${reduction}%</b></div>
                         <div class="detail-row"><span>暴擊倍率</span><b class="c-gold">${critMult.toFixed(2)}x</b></div>
-                        <div class="detail-row"><span>基礎生命</span><b>${Math.ceil(bStats.maxHp)}</b></div>
-                        <div class="detail-row"><span>基礎攻擊</span><b>${Math.ceil(bStats.atk)}</b></div>
+                        <div class="detail-row"><span>${ATTR_MAP.hp}上限</span><b>${Math.ceil(bStats.maxHp)}</b></div>
+                        <div class="detail-row"><span>${ATTR_MAP.atk}總值</span><b>${Math.ceil(bStats.atk)}</b></div>
                     </div>
-                    <p class="modal-tip">※ 數值受基礎根骨與穿戴法寶共同影響</p>
                 </div>
             </div>
         `;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     },
 
-    /**
-     * 創建動態跳字
-     */
+    handleBreakthroughUI() {
+        const area = document.getElementById('breakthrough-area');
+        if (!area) return;
+        if (Player.data.exp >= Player.data.maxExp) {
+            area.style.display = 'block';
+            const btn = document.getElementById('btn-breakthrough');
+            if (btn) btn.onclick = () => {
+                if (Player.breakthrough()) {
+                    this.renderStats();
+                    if (window.Core) window.Core.updateUI();
+                }
+            };
+        } else {
+            area.style.display = 'none';
+        }
+    },
+
     createFloatingText(target, text) {
         const rect = target.getBoundingClientRect();
         const floatText = document.createElement('div');
@@ -261,28 +230,22 @@ export const UI_Stats = {
         setTimeout(() => floatText.remove(), 800);
     },
 
-    /**
-     * 渲染神通列表
-     */
     renderSkills() {
         const skillContainer = document.getElementById('skills-list');
-        if (!skillContainer) return; 
-
+        if (!skillContainer) return;
         const skills = Player.data.skills;
         if (!skills || skills.length === 0) {
             skillContainer.innerHTML = `<div class="empty-msg">尚未領悟任何神通...</div>`;
             return;
         }
-
         skillContainer.innerHTML = skills.map(s => `
             <div class="skill-card">
                 <div class="skill-info">
                     <span class="skill-name">${s.name}</span>
                     <span class="skill-level">Lv.${s.level || 1}</span>
                 </div>
-                <div class="skill-desc">${s.desc || '這是你領悟的強大神通。'}</div>
-            </div>
-        `).join('');
+                <div class="skill-desc">${s.desc || '修復中...'}</div>
+            </div>`).join('');
     },
 
     updateValue(id, val) {
@@ -291,5 +254,4 @@ export const UI_Stats = {
     }
 };
 
-// 確保掛載到全域，相容 HTML 上的 onclick
 window.UI_Stats = UI_Stats;
