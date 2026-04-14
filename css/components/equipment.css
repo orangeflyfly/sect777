@@ -1,0 +1,35 @@
+.equipped-section {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.equip-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.equip-slot {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 8px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60px;
+}
+
+.equip-slot.empty {
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    opacity: 0.5;
+}
+
+/* 稀有度邊框 */
+.equip-slot.r-2 { border-color: var(--r2-rare); }
+.equip-slot.r-3 { border-color: var(--r3-epic); }
+.equip-slot.r-4 { border-color: var(--r4-legendary); }
+.equip-slot.r-5 { border-color: var(--r5-mythic); animation: rarity-glow 2s infinite; }
