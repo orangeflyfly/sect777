@@ -1,5 +1,6 @@
 /* ============================================================
-   V1.8.2 歷練戰鬥系統專用佈局 (沉浸式修仙版)
+   V1.9.0 歷練戰鬥系統專用佈局 (練功修練沉浸版)
+   修正點：新增分頁式日誌面板樣式，取代舊版收合邏輯
    ============================================================ */
 
 /* ------------------------------------------------------------
@@ -52,7 +53,7 @@
    ------------------------------------------------------------ */
 .monster-card {
     background: linear-gradient(180deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95));
-    border: 1px solid rgba(239, 68, 68, 0.2); /* 帶有危險氣息的暗紅邊框 */
+    border: 1px solid rgba(239, 68, 68, 0.2); 
     border-radius: 16px;
     padding: 30px 20px;
     text-align: center;
@@ -62,7 +63,6 @@
     overflow: hidden;
 }
 
-/* 妖獸呼吸動畫 */
 @keyframes monsterBreathe {
     0% { transform: scale(1) translateY(0); filter: drop-shadow(0 0 10px rgba(239,68,68,0.2)); }
     100% { transform: scale(1.05) translateY(-5px); filter: drop-shadow(0 0 25px rgba(239,68,68,0.6)); }
@@ -84,7 +84,6 @@
     text-shadow: 0 2px 4px rgba(0,0,0,0.8);
 }
 
-/* 妖獸血條特化 */
 .monster-hp {
     height: 18px;
     background: rgba(0, 0, 0, 0.5);
@@ -138,17 +137,9 @@
     box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
 
-.act-icon {
-    font-size: 18px;
-}
+.act-icon { font-size: 18px; }
+.act-name { font-size: 14px; font-weight: bold; letter-spacing: 1px; }
 
-.act-name {
-    font-size: 14px;
-    font-weight: bold;
-    letter-spacing: 1px;
-}
-
-/* 普通攻擊專屬樣式 */
 .btn-atk-primary {
     background: linear-gradient(135deg, rgba(51, 65, 85, 0.9), rgba(30, 41, 59, 0.9));
 }
@@ -157,7 +148,6 @@
     border-color: rgba(255, 255, 255, 0.3);
 }
 
-/* 神通專屬樣式 (帶有靈氣發光感) */
 .btn-atk-skill {
     background: linear-gradient(135deg, rgba(79, 70, 229, 0.9), rgba(124, 58, 237, 0.9));
     border: 1px solid rgba(167, 139, 250, 0.4);
@@ -168,9 +158,9 @@
 }
 
 /* ------------------------------------------------------------
-   4. 戰鬥日誌 (深淵沉浸感)
+   4. NEW! V1.9.0 戰鬥日誌面板 (取代舊版 log-container)
    ------------------------------------------------------------ */
-.log-container {
+.log-panel {
     background: rgba(15, 23, 42, 0.85);
     border: 1px solid var(--border-color);
     border-radius: 12px;
@@ -178,29 +168,51 @@
     display: flex;
     flex-direction: column;
     box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+    margin-bottom: 20px; /* 避免貼底 */
 }
 
-.log-controls {
+.log-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 8px 12px;
     background: rgba(255, 255, 255, 0.03);
     border-bottom: 1px solid rgba(255,255,255,0.05);
-    font-size: 12px;
-    color: var(--text-dim);
+    font-size: 13px;
+    color: var(--text-main);
+    font-weight: bold;
 }
 
-#log-toggle {
+/* 日誌分頁按鈕 */
+#log-tabs {
+    display: flex;
+    gap: 5px;
+}
+
+.log-tab-btn {
     background: transparent;
     border: none;
-    color: var(--accent);
+    color: var(--text-dim);
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.log-tab-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+}
+
+.log-tab-btn.active {
+    background: rgba(99, 102, 241, 0.3);
+    color: var(--accent);
+    font-weight: bold;
 }
 
 #battle-log {
-    height: 180px;
+    height: 160px; /* 固定高度，不再變來變去 */
     padding: 12px;
     overflow-y: auto;
     font-family: 'Consolas', monospace;
@@ -208,17 +220,16 @@
     line-height: 1.6;
 }
 
-/* 自訂日誌捲軸 */
+/* 捲軸美化 */
 #battle-log::-webkit-scrollbar { width: 4px; }
 #battle-log::-webkit-scrollbar-track { background: transparent; }
 #battle-log::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 10px; }
 #battle-log::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
-/* 日誌條目與顏色 */
+/* 日誌顏色映射 */
 .log-item { margin-bottom: 4px; }
 .log-bullet { opacity: 0.4; font-size: 10px; margin-right: 6px; }
 
-/* 根據 JS 給予的 Type 上色 */
 .log-type-player-atk { color: #a78bfa; text-shadow: 0 0 5px rgba(167,139,250,0.3); }
 .log-type-monster-atk { color: #ef4444; }
 .log-type-reward { color: #34d399; font-weight: bold; }
