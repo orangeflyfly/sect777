@@ -1,0 +1,11 @@
+:root {
+    /* 靈魂色彩 */
+    --gold: #fbbf24;
+    --hp-red: #ef4444;
+    --exp-blue: #6366f1;
+    --glass-bg: rgba(255, 255, 255, 0.1);
+    
+    /* 陣法間距 */
+    --card-radius: 12px;
+    --common-padding: 15px;
+}
