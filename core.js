@@ -26,6 +26,18 @@ export const Core = {
             this.initAllUI();
             CombatEngine.init(); 
             this.updateUI();
+            init() {
+        console.log("%c🕉️ 練功修練：V2.0 飛升大陣啟動...", "color: #fbbf24; font-weight: bold; font-size: 1.2em;");
+
+        try {
+            Player.init();
+            this.initAllUI();
+            CombatEngine.init(); 
+            this.updateUI();
+            
+            SectManager.init(); // 🟢 啟動宗門大腦，計算離線收益
+
+            this.startGlobalRefresh();
             
             this.startGlobalRefresh();
             this.startAutoSave();
