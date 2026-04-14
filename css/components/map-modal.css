@@ -1,0 +1,96 @@
+/* css/components/map-modal.css */
+
+/* 5. 地圖選擇彈窗 (毛玻璃藝術化) */
+.region-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+}
+
+/* 隱藏原生捲軸，保持介面整潔 */
+.region-tabs::-webkit-scrollbar { display: none; }
+
+.region-tab-btn {
+    padding: 8px 16px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.region-tab-btn.active {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: var(--accent);
+    color: var(--text-main);
+    font-weight: bold;
+}
+
+.map-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.map-glass-card {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 12px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.map-glass-card:hover {
+    background: rgba(30, 41, 59, 0.9);
+    border-color: rgba(99, 102, 241, 0.4);
+    transform: translateX(4px);
+}
+
+.map-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.map-name { font-size: 16px; color: var(--text-main); }
+
+.map-lv-badge {
+    font-size: 10px;
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.map-desc-row { font-size: 12px; color: var(--text-dim); display: flex; align-items: center; }
+
+.map-monster-icons { display: flex; gap: 4px; margin-left: 6px; }
+
+.map-monster-icons .m-icon {
+    display: inline-block;
+    transition: transform 0.2s;
+}
+
+/* 妖獸圖標懸浮放大，增加互動感 */
+.map-monster-icons .m-icon:hover { transform: scale(1.4); }
+
+.btn-go-map {
+    background: transparent;
+    color: var(--accent);
+    border: none;
+    font-size: 12px;
+    font-weight: bold;
+}
