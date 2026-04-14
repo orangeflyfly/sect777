@@ -107,23 +107,27 @@
         </div>
     </div>
 
-    <script>window.GAMEDATA = window.GAMEDATA || {};</script>
-    <script src="data/data_config.js"></script>
-    <script src="data/data_items.js"></script>
-    <script src="data/data_monsters.js"></script>
-    <script src="data/data_world.js"></script>
-    <script src="data/data_skills.js"></script>
-    <script>window.DATA = window.GAMEDATA;</script>
-
     <script type="module">
-        // 導入核心中樞
+        // A. 導入所有神識模組
         import { Core } from './core.js';
-        
-        // 為了讓 HTML 裡的 onclick 還能找到 Core，我們手動暴露給 window
-        window.Core = Core;
+        import { DB } from './data/database.js';
+        import { UI_Battle } from './ui/ui_battle.js';
+        import { UI_Bag } from './ui/ui_bag.js';
+        import { UI_Shop } from './ui/ui_shop.js';
+        import { UI_Stats } from './ui/ui_stats.js';
 
+        // B. 建立全域橋樑 (為了 HTML 裡的 onclick 屬性能夠運作)
+        window.Core = Core;
+        window.DB = DB;           // V2.0 新版數據藏經閣
+        window.DATA = DB;         // 兼容舊版邏輯
+        window.UI_Battle = UI_Battle;
+        window.UI_Bag = UI_Bag;
+        window.UI_Shop = UI_Shop;
+        window.UI_Stats = UI_Stats;
+
+        // C. 點燃點火裝置
         window.onload = () => {
-            console.log("%c【系統】V2.0 飛升大陣啟動...", "color: #fbbf24; font-weight: bold;");
+            console.log("%c【系統】V2.0 飛升大陣點火啟動...", "color: #fbbf24; font-weight: bold;");
             Core.init();
         };
     </script>
