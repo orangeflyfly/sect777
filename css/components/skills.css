@@ -1,0 +1,45 @@
+/* css/components/skills.css */
+
+.skills-section {
+    margin-top: 15px;
+    width: 100%;
+}
+
+.section-title {
+    font-size: 13px;
+    color: var(--accent);
+    margin-bottom: 10px;
+    padding-left: 8px;
+    border-left: 2px solid var(--accent);
+}
+
+.skill-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 8px;
+}
+
+.skill-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.skill-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.skill-level {
+    font-size: 11px;
+    color: var(--accent);
+}
+
+.skill-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.4;
+}
