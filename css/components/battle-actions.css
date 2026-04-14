@@ -1,0 +1,51 @@
+/* css/components/battle-actions.css */
+
+/* 3. 戰鬥操作區 (技能按鈕網格) */
+.actions-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.btn-battle-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+/* 點擊時縮小效果：增加打擊回饋感 */
+.btn-battle-action:active {
+    transform: scale(0.95);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+}
+
+.act-icon { font-size: 18px; }
+.act-name { font-size: 14px; font-weight: bold; letter-spacing: 1px; }
+
+/* 普通攻擊：沉穩的深灰色 */
+.btn-atk-primary {
+    background: linear-gradient(135deg, rgba(51, 65, 85, 0.9), rgba(30, 41, 59, 0.9));
+}
+.btn-atk-primary:hover {
+    background: linear-gradient(135deg, rgba(71, 85, 105, 1), rgba(51, 65, 85, 1));
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* 神通按鈕：帶有靈氣感的紫色漸層 */
+.btn-atk-skill {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.9), rgba(124, 58, 237, 0.9));
+    border: 1px solid rgba(167, 139, 250, 0.4);
+}
+.btn-atk-skill:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+}
