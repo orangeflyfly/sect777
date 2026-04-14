@@ -1,6 +1,6 @@
 /**
- * V1.8.1 ui_battle.js
- * 修正點：對接 CombatEngine 命名、整合 Msg 訊號、強化技能按鈕點擊鎖
+ * V1.8.2 ui_battle.js (歷練介面重塑版)
+ * 修正點：對接 CombatEngine、優化按鈕與地圖卡片 DOM 結構、預留高級 CSS 接口
  */
 
 const UI_Battle = {
@@ -39,7 +39,7 @@ const UI_Battle = {
         }
     },
 
-    // 4. 更新怪物資訊
+    // 4. 更新怪物資訊 (預留受擊特效接口)
     updateMonster(monster) {
         const nameEl = document.getElementById('monster-name');
         const hpFill = document.getElementById('monster-hp-fill');
@@ -64,9 +64,10 @@ const UI_Battle = {
         if (!logContainer) return;
 
         const logEntry = document.createElement('div');
-        logEntry.className = `log-item log-${type}`;
+        // V1.8.2 改進：統一使用 class 控制樣式，方便後續 CSS 統一管理
+        logEntry.className = `log-item log-type-${type}`;
         
-        // 顏色映射 (保留道友原始設定)
+        // 顏色映射 (保留道友原始設定，轉為行內變數確保相容)
         const colorMap = {
             'player-atk': "#a78bfa",
             'monster-atk': "#ef4444",
@@ -75,10 +76,8 @@ const UI_Battle = {
             'system': "#94a3b8"
         };
 
-        logEntry.style.color = colorMap[type] || "#f8fafc";
-        logEntry.style.marginBottom = "4px";
-        logEntry.style.fontSize = "13px";
-        logEntry.innerText = `> ${msg}`;
+        logEntry.style.color = colorMap[type] || "var(--text-main)";
+        logEntry.innerHTML = `<span class="log-bullet">❯</span> <span class="log-text">${msg}</span>`;
 
         logContainer.appendChild(logEntry);
         logContainer.scrollTop = logContainer.scrollHeight;
@@ -90,7 +89,7 @@ const UI_Battle = {
         }
     },
 
-    // 6. 渲染技能按鈕
+    // 6. 渲染技能按鈕 (V1.8.2 結構升級)
     renderSkillButtons() {
         const actionContainer = document.getElementById('battle-actions');
         if (!actionContainer) return;
@@ -99,8 +98,8 @@ const UI_Battle = {
 
         // A. 普通攻擊
         const atkBtn = document.createElement('button');
-        atkBtn.className = 'action-btn primary';
-        atkBtn.innerHTML = '⚔️ 普通攻擊';
+        atkBtn.className = 'btn-battle-action btn-atk-primary';
+        atkBtn.innerHTML = `<span class="act-icon">⚔️</span><span class="act-name">普通攻擊</span>`;
         atkBtn.onclick = () => {
             // 對接 V1.8.1 戰鬥引擎
             if (window.CombatEngine) CombatEngine.playerAttack();
@@ -111,9 +110,8 @@ const UI_Battle = {
         if (Player.data && Player.data.skills) {
             Player.data.skills.forEach(skill => {
                 const sBtn = document.createElement('button');
-                sBtn.className = 'action-btn skill';
-                sBtn.style.background = 'linear-gradient(135deg, #4f46e5, #7c3aed)';
-                sBtn.innerHTML = `✨ ${skill.name}`;
+                sBtn.className = 'btn-battle-action btn-atk-skill';
+                sBtn.innerHTML = `<span class="act-icon">✨</span><span class="act-name">${skill.name}</span>`;
                 sBtn.onclick = () => {
                     if (window.CombatEngine && !CombatEngine.isProcessing) {
                         Msg.log(`施展神通：【${skill.name}】！`, 'player-atk');
@@ -144,15 +142,24 @@ const UI_Battle = {
             const btn = document.createElement('button');
             btn.className = 'region-tab-btn';
             btn.innerText = region.name;
-            btn.onclick = () => this.renderMapsInRegion(key);
+            btn.onclick = () => {
+                // 切換 active 狀態
+                document.querySelectorAll('.region-tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.renderMapsInRegion(key);
+            };
             regionList.appendChild(btn);
         });
         
         // 預設渲染第一個區域
         const firstKey = Object.keys(DATA.REGIONS)[0];
-        if (firstKey) this.renderMapsInRegion(firstKey);
+        if (firstKey) {
+            if(regionList.firstChild) regionList.firstChild.classList.add('active');
+            this.renderMapsInRegion(firstKey);
+        }
     },
 
+    // V1.8.2 地圖卡片結構升級
     renderMapsInRegion(regionKey) {
         const mapList = document.getElementById('map-list');
         if (!mapList) return;
@@ -160,22 +167,30 @@ const UI_Battle = {
         
         DATA.REGIONS[regionKey].maps.forEach(map => {
             const card = document.createElement('div');
-            card.className = 'map-card';
+            card.className = 'map-glass-card'; // 升級為毛玻璃卡片
             
             // 生成怪物預覽
-            let monstersHtml = '<div class="monster-previews">';
+            let monstersHtml = '<div class="map-monster-icons">';
             map.monsterIds.forEach(id => {
                 const m = DATA.MONSTERS[id];
-                monstersHtml += `<span>${m ? m.icon : '❓'}</span>`;
+                monstersHtml += `<span class="m-icon" title="${m ? m.name : '未知'}">${m ? m.icon : '❓'}</span>`;
             });
             monstersHtml += '</div>';
 
             card.innerHTML = `
-                <div class="map-info">
-                    <strong>${map.name}</strong>
-                    <small>Lv.${map.minLv}</small>
+                <div class="map-card-content">
+                    <div class="map-title-row">
+                        <strong class="map-name">${map.name}</strong>
+                        <span class="map-lv-badge">Lv.${map.minLv}</span>
+                    </div>
+                    <div class="map-desc-row">
+                        <span class="desc-label">出沒妖獸：</span>
+                        ${monstersHtml}
+                    </div>
                 </div>
-                ${monstersHtml}
+                <div class="map-action-row">
+                    <button class="btn-go-map">前往歷練 ❯</button>
+                </div>
             `;
             
             card.onclick = () => {
