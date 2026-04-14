@@ -1,9 +1,10 @@
 /**
- * V1.9.0 fx.js (戰鬥特效引擎)
+ * V2.0 fx.js (飛升模組版)
  * 職責：處理傷害飄字、經驗獲取提示、受擊震動等視覺回饋
+ * 位置：/utils/fx.js
  */
 
-const FX = {
+export const FX = {
     /**
      * 在畫面上生成飄字
      * @param {string|number} text - 顯示內容
@@ -33,21 +34,22 @@ const FX = {
         if (color) {
             pop.style.color = color;
         } else {
-            // 預設顏色：怪物受傷紅，玩家受傷紫/紅
+            // 預設顏色：怪物受傷紅，玩家受傷淺紅
             pop.style.color = (type === 'monster') ? '#ef4444' : '#f87171';
         }
 
-        // 5. 計算隨機偏移量 (讓多個數字不會完全重疊)
+        // 5. 計算隨機偏移量 (讓多個數字不會完全重疊，增加視覺層次)
         const offsetX = (Math.random() - 0.5) * 40; // 左右隨機偏移 20px
         const offsetY = (Math.random() - 0.5) * 20;
 
+        // 設定絕對定位座標
         pop.style.left = `${rect.left + rect.width / 2 + offsetX}px`;
         pop.style.top = `${rect.top + offsetY}px`;
 
         // 6. 放入大陣並開啟動畫
         document.body.appendChild(pop);
 
-        // 7. 動畫結束後(與 CSS 設定一致) 自動毀滅
+        // 7. 動畫結束後(與 fx.css 設定一致) 自動毀滅，節省神識 (記憶體)
         setTimeout(() => {
             pop.remove();
         }, 1000);
@@ -68,6 +70,10 @@ const FX = {
     }
 };
 
-// 全域對接
+/**
+ * --- 全域對接 ---
+ * 確保在傳統腳本環境中仍能存取 FX
+ */
 window.FX = FX;
-console.log("%c【系統】特效引擎 fx.js 已掛載成功。", "color: #ec4899; font-weight: bold;");
+
+console.log("%c【系統】特效引擎模組化完成，幻術陣法就緒。", "color: #ec4899; font-weight: bold;");
