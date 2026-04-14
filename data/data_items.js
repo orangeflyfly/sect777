@@ -1,11 +1,11 @@
 /**
- * V1.7.0 data_items.js
- * 職責：裝備詞條庫 (80組)、物品與殘卷資料
+ * V2.0 data_items.js
+ * 職責：物品數據庫、裝備詞條庫 (80組)、物品與殘卷資料
+ * 狀態：已轉化為 ES Module
  */
-window.GAMEDATA = window.GAMEDATA || {};
 
-// 裝備詞條庫
-GAMEDATA.PREFIXES = [
+// 1. 導出裝備詞條庫 (Prefixes)
+export const PREFIXES = [
     /* 力量系 (Str) - 20組 */
     { name: "破碎的", attr: "str", value: 1 }, { name: "生鏽的", attr: "str", value: 2 },
     { name: "粗糙的", attr: "str", value: 3 }, { name: "沉重的", attr: "str", value: 4 },
@@ -55,15 +55,30 @@ GAMEDATA.PREFIXES = [
     { name: "至聖的", attr: "int", value: 16000 }, { name: "道源的", attr: "int", value: 30000 }
 ];
 
-GAMEDATA.SUFFIXES = [
+// 2. 導出後綴庫 (Suffixes)
+export const SUFFIXES = [
     { name: "之劍", type: "weapon", baseAtk: 10 },
     { name: "之盾", type: "armor", baseHp: 50 },
     { name: "之戒", type: "accessory", baseAtk: 5, baseHp: 20 }
 ];
 
-GAMEDATA.ITEMS = {};
+// 3. 導出物品庫
+export const ITEMS = {};
 
-GAMEDATA.FRAGMENTS = {
+// 4. 導出殘卷庫
+export const FRAGMENTS = {
     "f001": { id: "f001", name: "殘卷：烈焰斬", type: "fragment", targetSkill: "s001", rarity: 2 },
     "f002": { id: "f002", name: "殘卷：回春術", type: "fragment", targetSkill: "s002", rarity: 2 }
 };
+
+/**
+ * --- 🛡️ 兼容性法陣 ---
+ * 為了確保舊的 window.GAMEDATA.ITEMS 依然能運作
+ */
+window.GAMEDATA = window.GAMEDATA || {};
+window.GAMEDATA.PREFIXES = PREFIXES;
+window.GAMEDATA.SUFFIXES = SUFFIXES;
+window.GAMEDATA.ITEMS = ITEMS;
+window.GAMEDATA.FRAGMENTS = FRAGMENTS;
+
+console.log("💎 物品數據庫 ESM 模組載入成功");
