@@ -61,6 +61,12 @@
             </div>
         </section>
 
+        <section id="page-world" class="game-page" style="display:none; flex-direction:column;">
+            <div class="page-title">隨身洞府</div>
+            <div id="world-content" style="flex:1; overflow-y:auto; padding-bottom:20px;">
+                </div>
+        </section>
+
         <section id="page-stats" class="game-page" style="display:none;">
             <div class="page-title">修為與境界</div>
             <div class="equipped-section">
@@ -90,6 +96,7 @@
 
     <nav class="bottom-nav">
         <button class="nav-btn active" onclick="Core.switchPage('battle')">⚔️ 歷練</button>
+        <button class="nav-btn" onclick="Core.switchPage('world')">🌌 洞府</button>
         <button class="nav-btn" onclick="Core.switchPage('stats')">🧘‍♂️ 修為</button>
         <button class="nav-btn" onclick="Core.switchPage('bag')">🎒 儲物</button>
         <button class="nav-btn" onclick="Core.switchPage('shop')">🏪 坊市</button>
@@ -116,15 +123,17 @@
         import { UI_Bag } from './ui/ui_bag.js';
         import { UI_Shop } from './ui/ui_shop.js';
         import { UI_Stats } from './ui/ui_stats.js';
+        import { UI_World } from './ui/ui_world.js'; // 🟢 導入小世界神識
 
         // B. 建立全域橋樑 (為了 HTML 裡的 onclick 屬性能夠運作)
         window.Core = Core;
-        window.DB = DB;           // V2.0 新版數據藏經閣
-        window.DATA = DB;         // 兼容舊版邏輯
+        window.DB = DB;           
+        window.DATA = DB;         
         window.UI_Battle = UI_Battle;
         window.UI_Bag = UI_Bag;
         window.UI_Shop = UI_Shop;
         window.UI_Stats = UI_Stats;
+        window.UI_World = UI_World; // 🟢 掛載小世界神識
 
         // C. 點燃點火裝置
         window.onload = () => {
