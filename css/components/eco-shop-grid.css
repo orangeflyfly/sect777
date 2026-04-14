@@ -1,0 +1,74 @@
+/* css/components/eco-shop-grid.css */
+
+/* 3. 雙欄精品卡片 (適用於坊市購買) */
+.eco-grid-2x2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.eco-shop-card {
+    background: linear-gradient(180deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* 頂部微光：增加法寶上架的儀式感 */
+.eco-shop-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.eco-shop-icon {
+    width: 56px;
+    height: 56px;
+    font-size: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 12px;
+    margin-bottom: 10px;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+    border: 1px solid var(--border-color);
+}
+
+.eco-shop-name {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    height: 40px; /* 固定高度，防止排版因文字長短崩潰 */
+    display: flex;
+    align-items: center;
+    color: var(--text-main);
+}
+
+.btn-eco-trade {
+    width: 100%;
+    padding: 8px 0;
+    border-radius: 6px;
+    background: rgba(251, 191, 36, 0.15); 
+    color: var(--coin-color);
+    font-weight: bold;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.btn-eco-trade:hover { 
+    background: rgba(251, 191, 36, 0.3); 
+}
+
+.btn-eco-trade:active { 
+    transform: scale(0.95); 
+}
