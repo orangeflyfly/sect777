@@ -1,5 +1,5 @@
 /**
- * V2.0 player.js (飛升模組版 - 殘卷五合一進化)
+ * V2.2 player.js (飛升模組版 - 宗門對接與遺忘測試)
  * 職責：修士狀態管理、境界突破邏輯、屬性點加持、裝備數值計算、道具與殘卷消耗
  * 位置：/entities/player.js
  */
@@ -24,9 +24,14 @@ export const Player = {
             // 載入數據，若無存檔則初始化新角色
             this.data = savedData || this.getInitialData();
             
-            // 數據補丁：確保舊存檔也有 realm 欄位
-            if (this.data && this.data.realm === undefined) {
-                this.data.realm = 1; 
+            // 🟢 數據補丁：確保舊存檔相容宗門大更新
+            if (this.data.realm === undefined) this.data.realm = 1; 
+            if (this.data.sectPoints === undefined) this.data.sectPoints = 0;
+            if (!this.data.world) {
+                this.data.world = {
+                    arrayLevel: 1, lastCollect: Date.now(),
+                    workers: 0, farm: { level: 0, assigned: 0 }, mine: { level: 0, assigned: 0 }
+                };
             }
 
             Msg.log(savedData ? "神識歸位，修為恢復。" : "新進修士踏入凡塵，開啟練功修練之路。", "system");
@@ -230,7 +235,7 @@ export const Player = {
     },
 
     /**
-     * 🟢 道具消耗與神通參悟 (V2.1 五卷合一版)
+     * 道具消耗與神通參悟 (V2.1 五卷合一版)
      */
     consumeItem(uuid) {
         if (!this.data || !this.data.inventory) return false;
@@ -316,7 +321,6 @@ export const Player = {
 
         // 處理非五合一邏輯的一般道具消耗 (疊加道具數量扣除)
         if (!consumedByFragmentLogic) {
-            // 注意：因為上面找的 index 在 splice 之後可能會偏移，所以重新找一次策全
             const currentIndex = this.data.inventory.findIndex(i => i.uuid === uuid);
             if (currentIndex !== -1) {
                 if (this.data.inventory[currentIndex].count && this.data.inventory[currentIndex].count > 1) {
@@ -329,6 +333,23 @@ export const Player = {
 
         this.save();
         return true;
+    },
+
+    /**
+     * 🟢 新增：自散修為 (測試專用，遺忘神通)
+     */
+    unlearnSkill(skillName) {
+        if (!this.data) return false;
+        const idx = this.data.skills.findIndex(s => s.name === skillName);
+        if (idx !== -1) {
+            this.data.skills.splice(idx, 1);
+            this.save();
+            Msg.log(`⚠️ 你自散修為，強行遺忘了神通【${skillName}】！`, "system");
+            if (window.Core) window.Core.updateUI();
+            return true;
+        }
+        Msg.log(`你並未掌握【${skillName}】。`, "system");
+        return false;
     },
 
     /**
@@ -361,6 +382,14 @@ export const Player = {
             maxExp: 100, 
             coin: 500,
             hp: 100,
+            sectPoints: 0, // 🟢 新增：宗門貢獻點
+            world: {       // 🟢 新增：宗門產業狀態
+                arrayLevel: 1, 
+                lastCollect: Date.now(),
+                workers: 0, 
+                farm: { level: 0, assigned: 0 }, 
+                mine: { level: 0, assigned: 0 }
+            },
             stats: { str: 10, con: 10, dex: 10, int: 10 },
             statPoints: 0, 
             inventory: [], 
@@ -370,5 +399,4 @@ export const Player = {
     }
 };
 
-// 暴露給全域以相容調試
 window.Player = Player;
