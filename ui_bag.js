@@ -96,10 +96,21 @@ const UI_Bag = {
         const item = Player.data.inventory.find(i => i.uuid === uuid);
         if (!item) return;
 
-        if (window.UI_Stats && event) {
-            UI_Stats.createFloatingText(event.target, "使用中");
-        }
+        let success = false;
         
-        Msg.log(`你${item.type === 'weapon' || item.type === 'armor' ? '裝備' : '使用'}了 【${item.name}】`, "system");
+        // 判斷是裝備還是消耗品
+        if (['weapon', 'armor', 'accessory'].includes(item.type)) {
+            success = Player.equipItem(uuid);
+            if (success) Msg.log(`👕 你穿上了 【${item.name}】`, "reward");
+        } else {
+            success = Player.consumeItem(uuid);
+        }
+
+        // 執行成功後，刷新畫面與全域狀態
+        if (success) {
+            if (window.UI_Stats && event) UI_Stats.createFloatingText(event.target.closest('.eco-card-right'), "完成");
+            this.renderBag(); // 刷新儲物袋，移除被消耗或穿上的物品
+            if (window.Core) Core.updateUI(); // 刷新戰鬥數值與靈石
+        }
     }
 };
