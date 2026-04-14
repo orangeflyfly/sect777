@@ -1,5 +1,5 @@
 /**
- * V2.1 core.js (飛升模組版 - 小世界對接)
+ * V2.1 core.js (飛升模組版 - 小世界對接與空間跳轉)
  * 職責：引擎啟動、分頁調度、數據同步、全局初始化
  */
 
@@ -70,6 +70,18 @@ export const Core = {
                 case 'world': UI_World.renderWorld(); break; 
             }
             
+            // 🟢 新增：處理浮空鈕切換 (界域跳轉邏輯)
+            const btnToSect = document.getElementById('btn-jump-sect');
+            const btnToBattle = document.getElementById('btn-jump-battle');
+
+            if (pageId === 'sect' || pageId === 'world') {
+                if (btnToSect) btnToSect.style.display = 'none';
+                if (btnToBattle) btnToBattle.style.display = 'flex';
+            } else {
+                if (btnToSect) btnToSect.style.display = 'flex';
+                if (btnToBattle) btnToBattle.style.display = 'none';
+            }
+
             console.log(`[Core] 視界切換至：${pageId}`);
         } catch (e) {
             console.error(`[Core] 分頁 ${pageId} 渲染異常:`, e);
@@ -131,3 +143,11 @@ export const Core = {
 };
 
 window.Core = Core;
+
+// 🟢 新增：開發者測試指令 (供控制台或秘密按鈕調用)
+window.DEBUG_RESET = () => {
+    if (confirm("⚠️ 警告：這將會清除所有本地存檔並重新開始，確定要逆轉時空嗎？")) {
+        localStorage.clear();
+        location.reload();
+    }
+};
