@@ -1,6 +1,6 @@
 /* ============================================================
-   V1.8.2 修為頁面專用佈局 (全局適配版)
-   修正點：解除冗餘的 max-width，完美對接 base.css 的容器設定
+   V1.9.0 修為頁面專用佈局 (練功修練增強版)
+   修正點：新增裝備欄位樣式、新增突破按鈕樣式、優化網格間距
    ============================================================ */
 
 .stats-grid {
@@ -8,7 +8,7 @@
     display: flex;
     flex-direction: column;
     gap: 12px; 
-    padding-bottom: 80px;
+    padding-bottom: 100px; /* 增加底部間距避免擋到導覽列 */
 
     /* --- 關鍵修正：配合 base.css，讓其自然撐滿父容器即可 --- */
     width: 100%;      
@@ -30,7 +30,123 @@
 }
 
 /* ------------------------------------------------------------
-   1. 2x2 基礎屬性網格 (瘦身重塑)
+   NEW! V1.9.0 裝備顯影槽位樣式 (解決裝備失蹤問題)
+   ------------------------------------------------------------ */
+.equipped-section {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 5px;
+}
+
+.section-label {
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 10px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.equip-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 武器、防具、飾品 三足鼎立 */
+    gap: 10px;
+}
+
+.equip-slot {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 8px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.equip-slot .slot-icon {
+    font-size: 20px;
+    margin-bottom: 4px;
+}
+
+.equip-slot .slot-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.equip-slot .slot-name {
+    font-size: 11px;
+    color: var(--text-main);
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80px;
+}
+
+.equip-slot small {
+    font-size: 9px;
+    color: var(--text-dim);
+}
+
+.equip-slot.empty {
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    opacity: 0.5;
+}
+
+.equip-slot.empty .slot-label {
+    font-size: 10px;
+    color: var(--text-dim);
+}
+
+/* 稀有度邊框 (對齊 fx.css) */
+.equip-slot.r-2 { border-color: #4ade80; } /* 靈品 */
+.equip-slot.r-3 { border-color: #60a5fa; } /* 仙品 */
+.equip-slot.r-4 { border-color: #a78bfa; } /* 神品 */
+.equip-slot.r-5 { border-color: #fbbf24; animation: rarity-glow 2s infinite; } /* 混沌 */
+
+/* ------------------------------------------------------------
+   NEW! V1.9.0 境界突破按鈕樣式 (對齊 breakthrough-area)
+   ------------------------------------------------------------ */
+#breakthrough-area {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin: 10px 0;
+}
+
+.btn-special {
+    width: 80%;
+    padding: 12px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+    transition: all 0.3s;
+}
+
+.btn-special:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.2);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+}
+
+.btn-special:active {
+    transform: translateY(0);
+}
+
+/* ------------------------------------------------------------
+   1. 2x2 基礎屬性網格 (保留原始精髓)
    ------------------------------------------------------------ */
 .stats-grid-2x2 {
     display: grid;
