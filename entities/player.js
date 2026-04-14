@@ -1,6 +1,6 @@
 /**
- * V2.0 player.js (飛升模組版)
- * 職責：修士狀態管理、境界突破邏輯、屬性點加持、裝備數值計算
+ * V2.0 player.js (飛升模組版 - 殘卷五合一進化)
+ * 職責：修士狀態管理、境界突破邏輯、屬性點加持、裝備數值計算、道具與殘卷消耗
  * 位置：/entities/player.js
  */
 
@@ -112,7 +112,7 @@ export const Player = {
         const pStats = this.getBattleStats();
         this.data.hp = pStats.maxHp;
         
-        Msg.log(`【突破】修為精精，當前修為：Lv.${this.data.level}！`, "gold");
+        Msg.log(`【突破】修為精進，當前修為：Lv.${this.data.level}！`, "gold");
 
         this.save();
 
@@ -203,12 +203,11 @@ export const Player = {
     },
 
     /**
-     * 🟢 新增：裝備卸下邏輯 (V2.1 第一波修復)
+     * 裝備卸下邏輯
      */
     unequip(slotId) {
         if (!this.data || !this.data.equipped || !this.data.equipped[slotId]) return false;
 
-        // 檢查儲物袋空間防呆
         const dataSrc = window.DB || window.DATA || window.GAMEDATA;
         const maxSlots = (dataSrc && dataSrc.CONFIG && dataSrc.CONFIG.MAX_BAG_SLOTS) || 50; 
         if (this.data.inventory.length >= maxSlots) {
@@ -219,11 +218,9 @@ export const Player = {
         const item = this.data.equipped[slotId];
         const oldMaxHp = this.getBattleStats().maxHp;
 
-        // 將裝備移回儲物袋，並清空穿戴槽
         this.data.inventory.push(item);
         this.data.equipped[slotId] = null;
 
-        // 重新換算血量比例 (扣除裝備血量加成後，保持傷勢比例不變)
         const newMaxHp = this.getBattleStats().maxHp;
         const hpPercent = this.data.hp / oldMaxHp;
         this.data.hp = Math.max(1, Math.floor(hpPercent * newMaxHp));
@@ -233,7 +230,7 @@ export const Player = {
     },
 
     /**
-     * 道具消耗
+     * 🟢 道具消耗與神通參悟 (V2.1 五卷合一版)
      */
     consumeItem(uuid) {
         if (!this.data || !this.data.inventory) return false;
@@ -242,17 +239,72 @@ export const Player = {
         if (index === -1) return false;
 
         const item = this.data.inventory[index];
+        let consumedByFragmentLogic = false;
 
         if (item.type === 'fragment') {
-            const skillName = item.name.replace('殘卷：', '');
+            const skillName = item.skillName || item.name.replace('殘卷：', '');
+
+            // 1. 重複學習判定
             const hasSkill = this.data.skills.some(s => s.name === skillName);
-            
             if (hasSkill) {
-                Msg.log(`已掌握神通【${skillName}】。`, "system");
+                Msg.log(`道友已掌握神通【${skillName}】，無需再次參悟。`, "system");
                 return false; 
             }
-            this.data.skills.push({ id: item.id, name: skillName });
-            Msg.log(`💡 領悟神通：【${skillName}】！`, "gold");
+
+            // 2. 五合一與門檻判定
+            if (item.volume) {
+                // 檢查是否集齊卷一至卷五
+                const vols = [1, 2, 3, 4, 5];
+                const missingVols = [];
+                for (let v of vols) {
+                    if (!this.data.inventory.some(i => i.type === 'fragment' && i.skillName === skillName && i.volume === v)) {
+                        missingVols.push(v);
+                    }
+                }
+
+                if (missingVols.length > 0) {
+                    // 翻譯卷數為中文顯示
+                    const volMap = {1:"一", 2:"二", 3:"三", 4:"四", 5:"五"};
+                    const missingText = missingVols.map(v => volMap[v]).join('、');
+                    Msg.log(`【${skillName}】尚缺卷 ${missingText}，須集齊五卷方可強行參悟！`, "system");
+                    return false;
+                }
+
+                // 悟性門檻檢查
+                if (this.data.stats.int < 12) {
+                    Msg.log(`你的悟性不足(需達 12 點)，強行合一恐有走火入魔之虞！`, "system");
+                    return false;
+                }
+
+                // 扣除卷一到卷五各一張
+                for (let v of vols) {
+                    const idx = this.data.inventory.findIndex(i => i.type === 'fragment' && i.skillName === skillName && i.volume === v);
+                    if (idx !== -1) {
+                        if (this.data.inventory[idx].count && this.data.inventory[idx].count > 1) {
+                            this.data.inventory[idx].count--;
+                        } else {
+                            this.data.inventory.splice(idx, 1);
+                        }
+                    }
+                }
+                consumedByFragmentLogic = true;
+
+            } else {
+                // 兼容：坊市買的舊版殘卷 (無卷數)，直接當作完整秘籍
+                if (this.data.stats.int < 12) {
+                    Msg.log(`你的悟性不足(需達 12 點)，無法參悟此秘籍！`, "system");
+                    return false;
+                }
+            }
+
+            // 3. 領悟神通
+            this.data.skills.push({ 
+                id: item.id || `sk_${Date.now()}`, 
+                name: skillName, 
+                level: 1,
+                desc: `集齊五卷殘篇領悟而成的天地神通。`
+            });
+            Msg.log(`💡 金光大作！五卷合一，領悟神通：【${skillName}】！`, "gold");
 
         } else if (item.type === 'special' && item.id === 'i001') {
             this.data.coin += 500;
@@ -262,11 +314,17 @@ export const Player = {
             return false;
         }
 
-        // 處理疊加道具數量
-        if (item.count && item.count > 1) {
-            item.count--;
-        } else {
-            this.data.inventory.splice(index, 1);
+        // 處理非五合一邏輯的一般道具消耗 (疊加道具數量扣除)
+        if (!consumedByFragmentLogic) {
+            // 注意：因為上面找的 index 在 splice 之後可能會偏移，所以重新找一次策全
+            const currentIndex = this.data.inventory.findIndex(i => i.uuid === uuid);
+            if (currentIndex !== -1) {
+                if (this.data.inventory[currentIndex].count && this.data.inventory[currentIndex].count > 1) {
+                    this.data.inventory[currentIndex].count--;
+                } else {
+                    this.data.inventory.splice(currentIndex, 1);
+                }
+            }
         }
 
         this.save();
