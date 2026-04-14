@@ -1,7 +1,11 @@
 /**
- * V1.8.2 player.js (終極穩定版)
- * 職責：修士狀態管理，對接公式與裝備加成
- * 修正點：加入依賴安全檢查、強化全域綁定、優化換裝血量計算、修正數據讀取路徑
+ * V1.9.0 player.js (練功修練核心版)
+ * 職責：修士狀態管理、境界突破邏輯、屬性點加持、裝備數值計算
+ * 修正點：
+ * 1. 廢除自動升級：經驗滿時進入「瓶頸期」，需手動點擊突破。
+ * 2. 引入境界系統：新增 realm 欄位，紀錄修士當前大層級。
+ * 3. 強化屬性加點：實裝 addStat 邏輯，與 ui_stats.js 完美對接。
+ * 4. 裝備比例修復：優化裝備穿脫時的血量百分比換算。
  */
 const Player = {
     data: null,
@@ -10,15 +14,20 @@ const Player = {
      * 初始化修士數據
      */
     init() {
-        console.log("【修士】正在引導神識歸位...");
+        console.log("【修士】引導神識歸位，感應天道中...");
         try {
-            // 確保 SaveManager 存在，防止崩潰
             const savedData = (typeof SaveManager !== 'undefined') ? SaveManager.load() : null;
             
+            // 載入數據，若無存檔則初始化新角色
             this.data = savedData || this.getInitialData();
             
+            // 數據補丁：確保舊存檔也有 realm 欄位
+            if (this.data && this.data.realm === undefined) {
+                this.data.realm = 1; 
+            }
+
             if (window.Msg) {
-                Msg.log(savedData ? "神識歸位，修為恢復。" : "新進修士踏入凡塵。", "system");
+                Msg.log(savedData ? "神識歸位，修為恢復。" : "新進修士踏入凡塵，開啟練功修練之路。", "system");
             }
             
             this.save();
@@ -27,9 +36,6 @@ const Player = {
         }
     },
 
-    /**
-     * 儲存神識 (存檔)
-     */
     save() { 
         if (this.data && typeof SaveManager !== 'undefined') {
             SaveManager.save(this.data); 
@@ -37,21 +43,28 @@ const Player = {
     },
 
     /**
-     * 獲得經驗值
+     * 獲得經驗值 (V1.9.0 修正：達到瓶頸後不再增加經驗)
      */
     gainExp(amount) {
         if (!this.data) return 0;
         
-        // 安全獲取公式加成
-        const intVal = (this.data.stats && this.data.stats.int) ? this.data.stats.int : 10;
+        // 1. 檢查是否處於瓶頸期 (經驗已滿但未突破)
+        if (this.data.exp >= this.data.maxExp) {
+            if (window.Msg) Msg.log("感應到修為瓶頸，請先嘗試突破境界！", "system");
+            return 0;
+        }
+
+        // 2. 安全獲取公式加成
+        const intVal = this.data.stats.int || 10;
         const bonus = (typeof Formula !== 'undefined') ? Formula.calculateExpBonus(intVal) : 1;
         
         const finalExp = Math.floor(amount * bonus);
         this.data.exp += finalExp;
         
-        // 自動突破等級
-        while (this.data.exp >= this.data.maxExp) { 
-            this.levelUp(); 
+        // 3. 經驗值封頂 (確保不會超過 maxExp)
+        if (this.data.exp >= this.data.maxExp) {
+            this.data.exp = this.data.maxExp;
+            if (window.Msg) Msg.log("✨ 體內靈氣充盈，已達修為瓶頸，隨時可嘗試突破！", "gold");
         }
         
         this.save();
@@ -59,30 +72,70 @@ const Player = {
     },
 
     /**
-     * 等級突破
+     * V1.9.0 新增：境界突破邏輯
+     * 由 UI_Stats 中的突破按鈕觸發
+     */
+    breakthrough() {
+        if (!this.data || this.data.exp < this.data.maxExp) return false;
+
+        // 預留：未來可在此加入突破成功率判斷
+        // const successChance = Formula.calculateBreakthroughSuccess(this.data);
+        
+        console.log("【核心】開始突破境界...");
+        this.levelUp(); // 執行升級程序
+        return true;
+    },
+
+    /**
+     * 等級與境界提升程序
      */
     levelUp() {
         if (!this.data) return;
         
-        this.data.exp -= this.data.maxExp;
+        // 消耗經驗並提升等級
+        this.data.exp = 0; 
         this.data.level++;
         
-        // 計算下一級經驗 (安全呼叫公式)
-        if (typeof Formula !== 'undefined') {
-            this.data.maxExp = Formula.calculateNextExp(this.data.maxExp);
-        } else {
-            this.data.maxExp = Math.floor(this.data.maxExp * 1.5);
+        // 每 10 級提升一個大境界 (例如：練氣一、練氣二... 轉為 築基)
+        if (this.data.level % 10 === 1 && this.data.level > 1) {
+            this.data.realm++;
+            if (window.Msg) Msg.log(`🎊 脫胎換骨！境界大突破，已晉升至新天地！`, "gold");
         }
         
+        // 重新計算下一級經驗需求
+        if (typeof Formula !== 'undefined') {
+            this.data.maxExp = Formula.calculateNextExp(this.data.maxExp, this.data.level);
+        } else {
+            this.data.maxExp = Math.floor(this.data.maxExp * 1.6);
+        }
+        
+        // 獲得自由屬性點
         this.data.statPoints += 5;
         
-        // 升級時補滿血量
+        // 突破時狀態補滿
         const pStats = this.getBattleStats();
         this.data.hp = pStats.maxHp;
         
         if (window.Msg) {
-            Msg.log(`【突破】修為精進，已達 Lv.${this.data.level}！`, "gold");
+            Msg.log(`【突破】修為精進，當前修為：Lv.${this.data.level}！`, "gold");
         }
+
+        this.save();
+        if (window.UI_Stats) UI_Stats.renderStats(); // 即時刷新介面
+    },
+
+    /**
+     * 屬性加點
+     * 與 UI_Stats 對接
+     */
+    addStat(type) {
+        if (this.data.statPoints <= 0) return false;
+
+        this.data.stats[type]++;
+        this.data.statPoints--;
+        
+        this.save();
+        return true;
     },
 
     /**
@@ -96,20 +149,19 @@ const Player = {
         let extraHp = 0;
         let extraStats = { str: 0, con: 0, dex: 0, int: 0 };
 
-        // 1. 統計所有已穿裝備屬性
+        // 統計所有裝備屬性
         for (let slot in equip) {
             const item = equip[slot];
-            if (item && typeof item === 'object' && item.stats) {
+            if (item && item.stats) {
                 if (item.stats.atk) extraAtk += item.stats.atk;
                 if (item.stats.hp) extraHp += item.stats.hp;
-                
                 for (let attr in extraStats) {
                     if (item.stats[attr]) extraStats[attr] += item.stats[attr];
                 }
             }
         }
 
-        // 2. 對接公式計算最終數值 (加入 Formula 安全檢查)
+        // 對接公式
         if (typeof Formula !== 'undefined') {
             return {
                 maxHp: Formula.calculateMaxHp(s.con + extraStats.con) + extraHp,
@@ -118,7 +170,6 @@ const Player = {
                 speed: Formula.calculateSpeed(s.dex + extraStats.dex)
             };
         } else {
-            // 公式缺失時的保底計算
             return {
                 maxHp: (s.con + extraStats.con) * 10 + extraHp,
                 atk: (s.str + extraStats.str) * 2 + extraAtk,
@@ -138,26 +189,25 @@ const Player = {
         if (index === -1) return false;
 
         const item = this.data.inventory[index];
-        const slot = item.type; // 'weapon', 'armor', 'accessory'
+        const slot = item.type;
 
         if (!['weapon', 'armor', 'accessory'].includes(slot)) {
-            if (window.Msg) Msg.log("此物品無法裝備！", "system");
+            if (window.Msg) Msg.log("此物品無法穿戴！", "system");
             return false;
         }
 
-        // 紀錄換裝前的最大血量比例
         const oldMaxHp = this.getBattleStats().maxHp;
 
-        // 脫下舊裝備
+        // 脫下
         if (this.data.equipped[slot]) {
             this.data.inventory.push(this.data.equipped[slot]);
         }
 
-        // 穿上新裝備
+        // 穿上
         this.data.equipped[slot] = item;
         this.data.inventory.splice(index, 1);
 
-        // 換裝後保持血量比例，避免脫裝即死
+        // 重新換算血量比例
         const newMaxHp = this.getBattleStats().maxHp;
         const hpPercent = this.data.hp / oldMaxHp;
         this.data.hp = Math.max(1, Math.floor(hpPercent * newMaxHp));
@@ -167,7 +217,7 @@ const Player = {
     },
 
     /**
-     * 道具消耗與殘卷領悟邏輯
+     * 道具消耗
      */
     consumeItem(uuid) {
         if (!this.data || !this.data.inventory) return false;
@@ -182,12 +232,11 @@ const Player = {
             const hasSkill = this.data.skills.some(s => s.name === skillName);
             
             if (hasSkill) {
-                if (window.Msg) Msg.log(`你已經掌握了【${skillName}】，無需再次領悟。`, "system");
+                if (window.Msg) Msg.log(`已掌握神通【${skillName}】。`, "system");
                 return false; 
             }
-
             this.data.skills.push({ id: item.id, name: skillName });
-            if (window.Msg) Msg.log(`💡 靈光一閃，成功領悟神通：【${skillName}】！`, "gold");
+            if (window.Msg) Msg.log(`💡 領悟神通：【${skillName}】！`, "gold");
 
         } else if (item.type === 'special' && item.id === 'i001') {
             this.data.coin += 500;
@@ -197,7 +246,6 @@ const Player = {
             return false;
         }
 
-        // 移除或減少數量
         if (item.count && item.count > 1) {
             item.count--;
         } else {
@@ -208,30 +256,14 @@ const Player = {
         return true;
     },
 
-    /**
-     * 加入物品到背包
-     */
     addItem(item) {
         if (!item || !this.data) return false;
 
-        // 1. 殘卷自動煉化
-        if (item.type === 'fragment' && item.targetSkill) {
-            const hasSkill = this.data.skills.some(s => s.id === item.targetSkill);
-            if (hasSkill) {
-                const refund = 100;
-                this.data.coin += refund;
-                if (window.Msg) Msg.log(`已掌握神通，【${item.name}】自動煉化為 ${refund} 靈石。`, "reward");
-                this.save();
-                return true;
-            }
-        }
-
-        // 2. 空間檢查 (修正數據讀取路徑的安全檢查)
         const dataSrc = window.DATA || window.GAMEDATA;
         const maxSlots = (dataSrc && dataSrc.CONFIG && dataSrc.CONFIG.MAX_BAG_SLOTS) || 50; 
         
         if (this.data.inventory.length >= maxSlots) {
-            if (window.Msg) Msg.log("儲物袋空間不足！", "system");
+            if (window.Msg) Msg.log("儲物袋已滿！", "system");
             return false;
         }
 
@@ -241,11 +273,12 @@ const Player = {
     },
 
     /**
-     * 初始玩家數據模板
+     * 初始數據
      */
     getInitialData() {
         return {
-            level: 1, 
+            realm: 1,      // 境界
+            level: 1,      // 等級
             exp: 0, 
             maxExp: 100, 
             coin: 500,
@@ -259,8 +292,4 @@ const Player = {
     }
 };
 
-// ==========================================
-// 🛡️ 全域對接鎖：確保 window.Player 絕對存在
-// ==========================================
 window.Player = Player;
-console.log("%c【系統】修士模組 Player 已成功掛載全域。", "color: #10b981; font-weight: bold;");
