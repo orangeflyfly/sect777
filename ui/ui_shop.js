@@ -1,10 +1,20 @@
 /**
- * V1.8.2 ui_shop.js (經濟系統雙修版)
- * 修正點：精品卡片佈局、實裝毛玻璃確認彈窗、結合動態跳字
+ * V2.0 ui_shop.js (飛升模組版)
+ * 職責：坊市交易介面渲染、購買/出售標籤切換、確認彈窗處理
+ * 位置：/ui/ui_shop.js
  */
-const UI_Shop = {
+
+// 1. 導入必要的神識模組
+import { Player } from '../entities/player.js';
+import { MessageCenter as Msg } from '../utils/MessageCenter.js';
+import { UI_Bag } from './ui_bag.js'; // 借用儲物袋的圖標邏輯
+// 注意：我們假設 ShopLogic 存放於 /systems/shop.js
+import { ShopLogic } from '../systems/shop.js'; 
+
+export const UI_Shop = {
     currentTab: 'buy', 
 
+    // 坊市固定商品清單
     shopItems: [
         { id: 's001', name: '殘卷：烈焰斬', type: 'fragment', price: 500, rarity: 2 },
         { id: 's002', name: '殘卷：回春術', type: 'fragment', price: 800, rarity: 2 },
@@ -12,6 +22,9 @@ const UI_Shop = {
         { id: 'i002', name: '粗糙的布衣', type: 'armor', price: 200, rarity: 1, stats: { con: 2 } }
     ],
 
+    /**
+     * 渲染坊市主頁面
+     */
     renderShop() {
         const shopArea = document.getElementById('shop-content'); 
         if (!shopArea) return;
@@ -32,7 +45,9 @@ const UI_Shop = {
         this.renderShop();
     },
 
-    // V1.8.2：雙欄精品卡片佈局
+    /**
+     * V1.8.2：雙欄精品卡片佈局
+     */
     renderBuyList() {
         return `
             <div class="eco-grid-2x2">
@@ -49,10 +64,12 @@ const UI_Shop = {
         `;
     },
 
-    // V1.8.2：出售列表沿用儲物袋的列表設計，但按鈕改為出售
+    /**
+     * V1.8.2：出售列表 (沿用列表設計，按鈕改為出售)
+     */
     renderSellList() {
         const inv = Player.data ? Player.data.inventory : [];
-        if (inv.length === 0) return `<div class="empty-msg">儲物袋空空如也...</div>`;
+        if (inv.length === 0) return `<div class="empty-msg">儲物袋空空如也，無物可換靈石...</div>`;
 
         return `
             <div class="eco-list-wrapper">
@@ -60,7 +77,9 @@ const UI_Shop = {
                     const price = item.price || Math.floor(item.value * 0.5) || 10;
                     return `
                     <div class="eco-list-card r-${item.rarity || 1}">
-                        <div class="eco-card-left"><div class="eco-icon-box r-bg-${item.rarity || 1}">${UI_Bag.getItemIcon(item.type)}</div></div>
+                        <div class="eco-card-left">
+                            <div class="eco-icon-box r-bg-${item.rarity || 1}">${UI_Bag.getItemIcon(item.type)}</div>
+                        </div>
                         <div class="eco-card-mid">
                             <div class="eco-item-name r-txt-${item.rarity || 1}">${item.name}</div>
                             <div class="eco-item-desc">回收價: 💰 ${price}</div>
@@ -75,7 +94,9 @@ const UI_Shop = {
         `;
     },
 
-    // V1.8.2 實裝毛玻璃確認彈窗
+    /**
+     * V1.8.2 實裝毛玻璃確認彈窗
+     */
     showTradeModal(actionType, id) {
         let item, title, desc, btnText, btnColor, actionCall;
         
@@ -118,20 +139,40 @@ const UI_Shop = {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     },
 
+    /**
+     * 執行購買
+     */
     executeBuy(itemId, event) {
         const item = this.shopItems.find(i => i.id === itemId);
-        if (ShopLogic.buy(item)) {
-            if (window.UI_Stats && event) UI_Stats.createFloatingText(event.target.closest('.detail-glass-card'), `-${item.price}`);
+        if (ShopLogic && ShopLogic.buy(item)) {
+            // 對接 UI_Stats 的飄字特效
+            if (window.UI_Stats && event) {
+                if (typeof window.UI_Stats.createFloatingText === 'function') {
+                    window.UI_Stats.createFloatingText(event.target.closest('.detail-glass-card'), `-${item.price}`);
+                }
+            }
             this.renderShop(); 
-            if (window.Core) Core.updateUI(); 
+            if (window.Core) window.Core.updateUI(); 
         }
     },
 
+    /**
+     * 執行出售
+     */
     executeSell(itemUuid, event) {
-        if (ShopLogic.sell(itemUuid)) {
-            if (window.UI_Stats && event) UI_Stats.createFloatingText(event.target.closest('.detail-glass-card'), `+靈石`);
+        if (ShopLogic && ShopLogic.sell(itemUuid)) {
+            if (window.UI_Stats && event) {
+                if (typeof window.UI_Stats.createFloatingText === 'function') {
+                    window.UI_Stats.createFloatingText(event.target.closest('.detail-glass-card'), `+靈石`);
+                }
+            }
             this.renderShop();
-            if (window.Core) Core.updateUI();
+            if (window.Core) window.Core.updateUI();
         }
     }
 };
+
+// ==========================================
+// 🛡️ 全域對接鎖
+// ==========================================
+window.UI_Shop = UI_Shop;
