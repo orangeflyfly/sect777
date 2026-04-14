@@ -1,18 +1,26 @@
 /* css/page_stats.css */
-/* 1. 先載入變數 (天道基礎) */
+
+/* 1. 先載入全局變數 */
 @import "./variables.css";
 
-/* 2. 載入各組件 (宗門各堂) */
+/* 2. 按順序導入各個法陣組件 */
 @import "./components/stats-layout.css";
 @import "./components/equipment.css";
 @import "./components/battle-master-card.css";
 @import "./components/skills.css";
 @import "./components/modals.css";
 
-/* 3. 頁面專屬的零散微調可以寫在下方 */
+/* 3. 頁面專屬的剩餘微調 */
 #breakthrough-area {
     width: 100%;
     display: flex;
     justify-content: center;
     margin: 10px 0;
+}
+
+.stat-group-header .highlight {
+    color: var(--r5-mythic); /* 這裡已換成我們 variables.css 裡的變數 */
+    font-weight: bold;
+    font-size: 16px; 
+    text-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
 }
