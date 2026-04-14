@@ -1,23 +1,318 @@
-.battle-display {
-    background: var(--bg-card); border-radius: 12px;
-    padding: 20px; text-align: center; margin-bottom: 15px;
-    border: 1px solid var(--border-color); position: relative;
+/* ============================================================
+   V1.8.2 歷練戰鬥系統專用佈局 (沉浸式修仙版)
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1. 頂部：地圖導航列
+   ------------------------------------------------------------ */
+.map-nav-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+#current-map-name {
+    font-size: 15px;
+    font-weight: bold;
+    color: var(--text-main);
+    letter-spacing: 1px;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+.btn-travel {
+    background: rgba(99, 102, 241, 0.2);
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    color: var(--accent);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-travel:hover {
+    background: rgba(99, 102, 241, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-travel:active {
+    transform: scale(0.95);
+}
+
+/* ------------------------------------------------------------
+   2. 中央：敵我對峙區 (妖獸卡片)
+   ------------------------------------------------------------ */
+.monster-card {
+    background: linear-gradient(180deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95));
+    border: 1px solid rgba(239, 68, 68, 0.2); /* 帶有危險氣息的暗紅邊框 */
+    border-radius: 16px;
+    padding: 30px 20px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(239, 68, 68, 0.05);
+    position: relative;
+    margin-bottom: 15px;
+    overflow: hidden;
+}
+
+/* 妖獸呼吸動畫 */
+@keyframes monsterBreathe {
+    0% { transform: scale(1) translateY(0); filter: drop-shadow(0 0 10px rgba(239,68,68,0.2)); }
+    100% { transform: scale(1.05) translateY(-5px); filter: drop-shadow(0 0 25px rgba(239,68,68,0.6)); }
+}
+
+.monster-avatar {
+    font-size: 64px;
+    margin-bottom: 15px;
+    display: inline-block;
+    animation: monsterBreathe 3s infinite alternate ease-in-out;
+}
+
+#monster-name {
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--text-main);
+    margin-bottom: 15px;
+    letter-spacing: 2px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+/* 妖獸血條特化 */
+.monster-hp {
+    height: 18px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+    width: 80%;
+    margin: 0 auto;
+}
+
+.monster-hp .fill-hp {
+    background: linear-gradient(90deg, #991b1b, #ef4444);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.monster-hp .bar-text {
+    font-size: 11px;
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0,0,0,1);
+    letter-spacing: 1px;
+}
+
+/* ------------------------------------------------------------
+   3. 戰鬥操作區 (技能按鈕網格)
+   ------------------------------------------------------------ */
+.actions-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.btn-battle-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.btn-battle-action:active {
+    transform: scale(0.95);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+}
+
+.act-icon {
+    font-size: 18px;
+}
+
+.act-name {
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+/* 普通攻擊專屬樣式 */
+.btn-atk-primary {
+    background: linear-gradient(135deg, rgba(51, 65, 85, 0.9), rgba(30, 41, 59, 0.9));
+}
+.btn-atk-primary:hover {
+    background: linear-gradient(135deg, rgba(71, 85, 105, 1), rgba(51, 65, 85, 1));
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* 神通專屬樣式 (帶有靈氣發光感) */
+.btn-atk-skill {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.9), rgba(124, 58, 237, 0.9));
+    border: 1px solid rgba(167, 139, 250, 0.4);
+}
+.btn-atk-skill:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+}
+
+/* ------------------------------------------------------------
+   4. 戰鬥日誌 (深淵沉浸感)
+   ------------------------------------------------------------ */
+.log-container {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+}
+
+.log-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+#log-toggle {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 12px;
 }
 
 #battle-log {
-    height: 200px; background: rgba(0,0,0,0.3);
-    border-radius: 8px; padding: 10px; overflow-y: auto;
-    font-family: monospace; font-size: 12px; border: 1px solid var(--border-color);
+    height: 180px;
+    padding: 12px;
+    overflow-y: auto;
+    font-family: 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.6;
 }
 
-.log-item { margin-bottom: 2px; }
-.log-player-atk { color: #a78bfa; font-weight: bold; }
-.log-monster-atk { color: #ef4444; }
-.log-reward, .log-gold { color: #fbbf24; }
-.log-system { color: #94a3b8; }
-
+/* 自訂日誌捲軸 */
 #battle-log::-webkit-scrollbar { width: 4px; }
-#battle-log::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
+#battle-log::-webkit-scrollbar-track { background: transparent; }
+#battle-log::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 10px; }
+#battle-log::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
-.monster-previews span { display: inline-block; transition: transform 0.2s; }
-.monster-previews span:hover { transform: scale(1.3); }
+/* 日誌條目與顏色 */
+.log-item { margin-bottom: 4px; }
+.log-bullet { opacity: 0.4; font-size: 10px; margin-right: 6px; }
+
+/* 根據 JS 給予的 Type 上色 */
+.log-type-player-atk { color: #a78bfa; text-shadow: 0 0 5px rgba(167,139,250,0.3); }
+.log-type-monster-atk { color: #ef4444; }
+.log-type-reward { color: #34d399; font-weight: bold; }
+.log-type-gold { color: #fbbf24; }
+.log-type-system { color: #94a3b8; font-style: italic; }
+
+/* ------------------------------------------------------------
+   5. 地圖選擇彈窗 (毛玻璃藝術化)
+   ------------------------------------------------------------ */
+.region-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+}
+
+.region-tabs::-webkit-scrollbar { display: none; }
+
+.region-tab-btn {
+    padding: 8px 16px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.region-tab-btn.active {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: var(--accent);
+    color: var(--text-main);
+    font-weight: bold;
+}
+
+.map-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+.map-grid::-webkit-scrollbar { width: 4px; }
+.map-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+
+.map-glass-card {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 12px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.map-glass-card:hover {
+    background: rgba(30, 41, 59, 0.9);
+    border-color: rgba(99, 102, 241, 0.4);
+    transform: translateX(4px);
+}
+
+.map-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.map-name { font-size: 16px; color: var(--text-main); }
+.map-lv-badge {
+    font-size: 10px;
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.map-desc-row { font-size: 12px; color: var(--text-dim); display: flex; align-items: center; }
+.map-monster-icons { display: flex; gap: 4px; margin-left: 6px; }
+.map-monster-icons .m-icon {
+    display: inline-block;
+    transition: transform 0.2s;
+}
+.map-monster-icons .m-icon:hover { transform: scale(1.4); }
+
+.btn-go-map {
+    background: transparent;
+    color: var(--accent);
+    border: none;
+    font-size: 12px;
+    font-weight: bold;
+}
