@@ -27,9 +27,9 @@ body {
     overflow: hidden;
 }
 
-/* 頂部資訊 */
+/* --- 頂部資訊區 --- */
 .header-info {
-    padding: 15px;
+    padding: 10px 15px;
     background: rgba(30, 41, 59, 0.8);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border-color);
@@ -37,26 +37,86 @@ body {
     justify-content: space-between;
     align-items: center;
     z-index: 100;
-    
-    /* V1.8.2 修正：限制最大寬度並居中對齊 */
     width: 100%;
     max-width: 500px;
     margin: 0 auto;
 }
 
+/* 玩家主狀態容器 (包含境界與條狀圖) */
+.player-main-stats {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+
 .realm-title {
     font-weight: bold; color: var(--accent);
     background: rgba(99, 102, 241, 0.1);
-    padding: 2px 8px; border-radius: 4px; font-size: 14px;
+    padding: 4px 8px; border-radius: 4px; font-size: 13px;
+    white-space: nowrap;
 }
 
-/* 底部導覽 */
+/* 狀態條堆疊區 */
+.bars-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    max-width: 150px; /* 避免條狀圖過長擠壓介面 */
+}
+
+/* 條狀圖容器 */
+.bar-container {
+    width: 100%;
+    height: 10px; /* 必須設定高度，否則會消失 */
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 5px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* 填充條 */
+.fill {
+    height: 100%;
+    width: 0%;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fill-hp { background: linear-gradient(90deg, #991b1b, var(--hp-color)); }
+.fill-exp { background: linear-gradient(90deg, #065f46, var(--exp-color)); }
+
+/* 條內數值文字 */
+.bar-text {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 8px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.8);
+    z-index: 5;
+    pointer-events: none;
+}
+
+/* 靈石顯示 */
+.currency-display {
+    font-size: 13px;
+    color: var(--coin-color);
+    font-weight: bold;
+    margin-left: 10px;
+    white-space: nowrap;
+}
+
+/* --- 底部導覽 --- */
 .bottom-nav {
     position: fixed; bottom: 0; height: 65px;
     background: var(--bg-card); display: flex;
     border-top: 1px solid var(--border-color); z-index: 1000;
-    
-    /* V1.8.2 修正：限制最大寬度並利用 translateX 絕對居中 */
     width: 100%;
     max-width: 500px;
     left: 50%;
@@ -71,7 +131,7 @@ body {
 
 .nav-btn.active { color: var(--accent); background: rgba(99, 102, 241, 0.05); }
 
-/* 公用彈窗 */
+/* --- 公用區域 --- */
 .modal {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,0.8); display: flex;
@@ -84,20 +144,16 @@ body {
     border-radius: 16px; overflow: hidden; border: 1px solid var(--border-color);
 }
 
-/* 確保遊戲主容器填滿中間剩餘空間 */
 #game-container {
     flex: 1;
     overflow-y: auto;
     padding: 15px;
-    padding-bottom: 80px; /* 預留底部導覽列的高度，避免內容被遮擋 */
-    
-    /* V1.8.2 修正：限制最大寬度並居中對齊 */
+    padding-bottom: 80px;
     width: 100%;
     max-width: 500px;
     margin: 0 auto;
 }
 
-/* 所有的遊戲頁面預設撐滿容器 */
 .game-page {
     width: 100%;
     height: 100%;
@@ -105,20 +161,19 @@ body {
     flex-direction: column;
 }
 
-/* 隱藏預設的按鈕邊框，提升美感 */
 button {
     outline: none;
     transition: all 0.2s ease;
 }
 
 button:active {
-    transform: scale(0.95); /* 增加點擊時的縮小反饋 */
+    transform: scale(0.95);
     opacity: 0.8;
 }
 
-/* 稀有度通用樣式 (對接 ItemFactory 與 UI_Bag) */
-.r-1 { border-left: 3px solid #94a3b8; } /* 凡品：灰 */
-.r-2 { border-left: 3px solid #10b981; } /* 良品：綠 */
-.r-3 { border-left: 3px solid #6366f1; } /* 上品：藍 */
-.r-4 { border-left: 3px solid #a78bfa; } /* 極品：紫 */
-.r-5 { border-left: 3px solid #fbbf24; box-shadow: 0 0 10px rgba(251, 191, 36, 0.3); } /* 神品：金 */
+/* --- 稀有度通用樣式 --- */
+.r-1 { border-left: 3px solid #94a3b8; }
+.r-2 { border-left: 3px solid #10b981; }
+.r-3 { border-left: 3px solid #6366f1; }
+.r-4 { border-left: 3px solid #a78bfa; }
+.r-5 { border-left: 3px solid #fbbf24; box-shadow: 0 0 10px rgba(251, 191, 36, 0.3); }
