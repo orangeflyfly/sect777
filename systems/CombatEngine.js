@@ -1,5 +1,5 @@
 /**
- * V2.0 CombatEngine.js (飛升模組版)
+ * V2.1 CombatEngine.js (飛升模組版 - 萬物掉落回歸)
  * 職責：處理戰鬥流程、怪物生成、傷害判定、獎勵結算
  * 位置：/systems/CombatEngine.js
  */
@@ -164,7 +164,7 @@ export const CombatEngine = {
     },
 
     /**
-     * 戰鬥勝利結算
+     * 戰鬥勝利結算 (🟢 新增萬物掉落機制)
      */
     handleVictory() {
         const m = this.currentMonster;
@@ -181,13 +181,54 @@ export const CombatEngine = {
             setTimeout(() => FX.spawnPopText(`+${m.gold} 靈石`, 'player', '#fbbf24'), 250);
         }
 
-        // 3. 隨機掉落裝備 (調用 ItemFactory)
+        // 3. 🟢 戰利品掉落判定
+
+        // 3.1 裝備掉落 (原有機率保留 20%)
         if (Math.random() < 0.2) {
             const item = ItemFactory.createEquipment();
             if (item) {
                 Player.addItem(item);
                 Msg.log(`🎊 獲得戰利品：【${item.name}】！`, "reward");
             }
+        }
+
+        // 3.2 素材掉落 (機率 40%) - 為日後小世界修復聚靈陣做準備
+        if (Math.random() < 0.4) {
+            const matNames = ["妖獸骨骸", "殘破皮毛", "低階妖丹", "陣法殘片"];
+            const randomMat = matNames[Math.floor(Math.random() * matNames.length)];
+            const material = {
+                uuid: 'mat_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                name: randomMat,
+                type: 'material',
+                rarity: 1,
+                count: 1,
+                desc: `從妖獸身上採集的素材，似乎可以用來換取靈石或修復法陣。`,
+                price: 15
+            };
+            Player.addItem(material);
+            Msg.log(`📦 採集到素材：【${randomMat}】`, "reward");
+        }
+
+        // 3.3 殘卷掉落 (機率 30%) - 卷一到卷五隨機掉落
+        if (Math.random() < 0.3) {
+            const skillList = ["烈焰斬", "回春術", "青元劍訣"]; // 可掉落的神通池
+            const skillName = skillList[Math.floor(Math.random() * skillList.length)];
+            const volNum = Math.floor(Math.random() * 5) + 1; // 產生 1 到 5 的數字
+            const volMap = {1:"一", 2:"二", 3:"三", 4:"四", 5:"五"};
+            
+            const fragment = {
+                uuid: 'frag_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                name: `殘卷：${skillName}(卷${volMap[volNum]})`,
+                type: 'fragment',
+                skillName: skillName, // 暗號：用於日後五卷合一判定
+                volume: volNum,       // 暗號：用於分辨是哪一卷
+                rarity: 3,
+                count: 1,
+                desc: `記載著【${skillName}】部分心法的殘卷，集齊五卷方可領悟。`,
+                price: 50
+            };
+            Player.addItem(fragment);
+            Msg.log(`📜 發現殘卷：【${fragment.name}】！`, "gold");
         }
 
         // 4. 更新全域 UI 
