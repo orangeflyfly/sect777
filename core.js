@@ -1,5 +1,5 @@
 /**
- * V2.0 core.js (飛升模組版)
+ * V2.0 core.js (數據對接版)
  * 職責：引擎啟動、分頁調度、數據同步、全局初始化
  * 位置：/core.js (根目錄)
  */
@@ -7,6 +7,7 @@
 // 1. 召喚所有子模組的神識
 import { Player } from './entities/player.js';
 import { CombatEngine } from './systems/CombatEngine.js';
+import { DB } from './data/database.js'; // 🔹 新增：直接導入藏經閣總索引
 import { UI_Battle } from './ui/ui_battle.js';
 import { UI_Stats } from './ui/ui_stats.js';
 import { UI_Bag } from './ui/ui_bag.js';
@@ -97,12 +98,12 @@ export const Core = {
         const d = Player.data;
         const bStats = Player.getBattleStats();
 
-        // A. 同步境界與等級文字 (對齊 V1.9.0 數據庫)
+        // A. 同步境界與等級文字 (直接對齊 DB 藏經閣)
         const realmEl = document.getElementById('player-realm');
         if (realmEl) {
-            const dataSrc = window.DATA || window.GAMEDATA;
-            const realmName = (dataSrc && dataSrc.CONFIG && dataSrc.CONFIG.REALM_NAMES) 
-                ? dataSrc.CONFIG.REALM_NAMES[d.realm || 1] 
+            // 🔹 優化：直接從 DB 模組取值，不再看 window.DATA
+            const realmName = (DB.CONFIG && DB.CONFIG.REALM_NAMES) 
+                ? DB.CONFIG.REALM_NAMES[d.realm || 1] 
                 : "凡人";
             realmEl.innerText = `${realmName} (Lv.${d.level})`;
         }
@@ -120,7 +121,6 @@ export const Core = {
             expFill.style.width = per + "%";
             
             if (per >= 100) {
-                // 經驗圓滿，呈現金色發光脈動
                 expFill.style.boxShadow = "0 0 15px #fbbf24";
                 expFill.style.background = "#fbbf24";
             } else {
@@ -137,7 +137,7 @@ export const Core = {
     },
 
     /**
-     * 定時背景刷新 (兜底同步機制)
+     * 定時背景刷新 (每 500ms 兜底)
      */
     startGlobalRefresh() {
         setInterval(() => {
@@ -152,15 +152,10 @@ export const Core = {
         setInterval(() => {
             if (Player.save) {
                 Player.save();
-                // console.log("[Core] 氣息穩健，自動存檔完成。");
             }
         }, 30000); 
     }
 };
 
-/**
- * --- 全域神識綁定 ---
- * 這是飛升最關鍵的一步：
- * 將 Core 暴露給 window，讓 HTML 裡的導覽按鈕 onclick="Core.switchPage" 能找到它。
- */
+// 確保全域可存取 (供 HTML onclick 調用)
 window.Core = Core;
