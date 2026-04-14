@@ -1,19 +1,20 @@
 /**
- * V1.9.0 ui_stats.js
+ * V2.0 ui_stats.js (飛升模組版)
  * 職責：修士屬性、裝備、神通與突破介面管理
- * 修正點：
- * 1. 實裝「裝備顯影術」，讓穿上的法寶出現在畫面上。
- * 2. 修復加點按鈕邏輯，確保與 Player.js 狀態同步。
- * 3. 預留境界突破 UI 切換邏輯。
- * 4. 配合 2x2 與 3x2 佈局重構 HTML 注入邏輯。
+ * 位置：/ui/ui_stats.js
  */
 
-const UI_Stats = {
+// 1. 導入核心邏輯與法則模組
+import { Player } from '../entities/player.js';
+import { Formula } from '../utils/Formula.js';
+import { MessageCenter as Msg } from '../utils/MessageCenter.js';
+
+export const UI_Stats = {
     /**
      * 初始化監聽
      */
     init() {
-        console.log("【介面】修為分頁初始化中...");
+        console.log("【UI_Stats】修士明鏡初始化，對接修士命格...");
         this.renderStats();
     },
 
@@ -27,9 +28,10 @@ const UI_Stats = {
         // A. 更新標題 (對接練功修練正名)
         const realmTitle = document.getElementById('stat-realm-title');
         if (realmTitle) {
-            // 讀取設定檔中的境界名稱
-            const realmName = (DATA.CONFIG && DATA.CONFIG.REALM_NAMES) 
-                ? DATA.CONFIG.REALM_NAMES[d.realm || 1] 
+            // 讀取全域設定檔中的境界名稱 (DATA 目前維持全域加載)
+            const dataSrc = window.DATA || window.GAMEDATA;
+            const realmName = (dataSrc && dataSrc.CONFIG && dataSrc.CONFIG.REALM_NAMES) 
+                ? dataSrc.CONFIG.REALM_NAMES[d.realm || 1] 
                 : "凡人";
             realmTitle.innerText = `【${realmName}】 Lv.${d.level}`;
         }
@@ -53,8 +55,8 @@ const UI_Stats = {
         // F. 更新戰鬥指標數值 (含裝備加成)
         const bStats = Player.getBattleStats();
         // 對接 Formula 計算隱藏數值
-        const critRate = (typeof Formula !== 'undefined') ? Formula.calculateCritRate(d.stats.str, d.stats.dex) : 5;
-        const dodgeRate = (typeof Formula !== 'undefined') ? Formula.calculateEvasionRate(d.stats.dex) : 5;
+        const critRate = Formula.calculateCritRate(d.stats.str, d.stats.dex);
+        const dodgeRate = Formula.calculateEvasionRate(d.stats.dex);
 
         this.updateValue('stat-hp-preview', Math.ceil(bStats.maxHp));
         this.updateValue('stat-atk-preview', Math.ceil(bStats.atk));
@@ -163,14 +165,20 @@ const UI_Stats = {
         const area = document.getElementById('breakthrough-area');
         if (!area) return;
 
-        // 當經驗值滿的時候，顯示突破按鈕 (預留 V1.9.0 邏輯)
+        // 當經驗值滿的時候，顯示突破按鈕
         if (Player.data.exp >= Player.data.maxExp) {
             area.style.display = 'block';
             const btn = document.getElementById('btn-breakthrough');
             if (btn) {
                 btn.onclick = () => {
-                    if (window.Msg) Msg.log("正在感應天劫，即將實裝突破功能...", "gold");
-                    // 未來這裡接 Player.breakthrough();
+                    // 對接 Player 模組的突破邏輯
+                    const success = Player.breakthrough();
+                    if (success) {
+                        this.renderStats();
+                        if (window.Core) window.Core.updateUI();
+                    } else {
+                        Msg.log("正在感應天劫，即將實裝更複雜的突破考驗...", "gold");
+                    }
                 };
             }
         } else {
@@ -184,39 +192,39 @@ const UI_Stats = {
     addStat(type, event) {
         // 安全檢查點數
         if (Player.data.statPoints <= 0) {
-            if (window.Msg) Msg.log("剩餘自由點數不足！", "system");
+            Msg.log("剩餘自由點數不足！", "system");
             return;
         }
 
-        // 執行加點邏輯
-        Player.data.stats[type]++;
-        Player.data.statPoints--;
+        // 執行 Player 模組的加點邏輯
+        const success = Player.addStat(type);
         
-        // 觸發跳字特效
-        if (event) this.createFloatingText(event.target, "+1");
+        if (success) {
+            // 觸發跳字特效
+            if (event) this.createFloatingText(event.target, "+1");
 
-        // 存檔並刷新 UI
-        Player.save();
-        this.renderStats();
-        
-        // 同步核心 UI (例如頂部血條)
-        if (window.Core) Core.updateUI();
-        
-        if (type === 'int' && window.Msg) {
-            Msg.log("悟性精進，對天地靈氣的感應更加敏銳了。", "system");
+            // 刷新 UI
+            this.renderStats();
+            
+            // 同步核心 UI (例如頂部血條、靈石)
+            if (window.Core) window.Core.updateUI();
+            
+            if (type === 'int') {
+                Msg.log("悟性精進，對天地靈氣的感應更加敏銳了。", "system");
+            }
         }
     },
 
     /**
-     * 詳細數據彈窗
+     * 詳細數據彈窗 (毛玻璃藝術化)
      */
     showDetailModal() {
         const d = Player.data;
         const bStats = Player.getBattleStats();
         
-        const reduction = (typeof Formula !== 'undefined') ? Formula.calculateDamageReduction(bStats.def) : 0;
-        const efficiency = (typeof Formula !== 'undefined') ? (Formula.calculateExpBonus(d.stats.int) * 100).toFixed(0) : 100;
-        const critMult = (typeof Formula !== 'undefined') ? Formula.calculateCritMultiplier(d.stats.str) : 1.5;
+        const reduction = Formula.calculateDamageReduction(bStats.def);
+        const efficiency = (Formula.calculateExpBonus(d.stats.int) * 100).toFixed(0);
+        const critMult = Formula.calculateCritMultiplier(d.stats.str);
 
         const modalHtml = `
             <div id="detail-modal-overlay" class="modal-overlay" onclick="this.remove()">
@@ -283,5 +291,5 @@ const UI_Stats = {
     }
 };
 
-// 確保掛載到全域
+// 確保掛載到全域，相容 HTML 上的 onclick
 window.UI_Stats = UI_Stats;
