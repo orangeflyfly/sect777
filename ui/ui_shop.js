@@ -13,10 +13,6 @@ import { ShopLogic } from '../systems/shop.js';
 
 export const UI_Shop = {
     currentTab: 'buy', 
-
-    // 坊市固定商品清單
-    export const UI_Shop = {
-    currentTab: 'buy', 
     shopItems: [
         { id: 's001_v1', name: '殘卷：烈焰斬(卷一)', type: 'fragment', skillName: '烈焰斬', volume: 1, price: 500, rarity: 2 },
         { id: 's002_v1', name: '殘卷：回春術(卷一)', type: 'fragment', skillName: '回春術', volume: 1, price: 800, rarity: 2 },
