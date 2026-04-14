@@ -1,6 +1,6 @@
 /**
- * V2.0 ui_battle.js (飛升模組版)
- * 職責：歷練介面管理、戰鬥日誌分頁、地圖選擇與突破 UI 對接
+ * V2.1 ui_battle.js (飛升模組版 - 神通顯化與冷卻陣法)
+ * 職責：歷練介面管理、戰鬥日誌分頁、地圖選擇、技能按鈕與冷卻渲染
  * 位置：/ui/ui_battle.js
  */
 
@@ -11,6 +11,9 @@ import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 import { FX } from '../utils/fx.js';
 
 export const UI_Battle = {
+    // 🟢 新增：技能冷卻紀錄 (記錄每個技能的解鎖時間戳)
+    skillCooldowns: {},
+
     // 1. 初始化監聽器與基礎渲染
     init() {
         console.log("【UI_Battle】歷練法鏡啟動，對接戰場數據...");
@@ -47,8 +50,6 @@ export const UI_Battle = {
             fill.style.width = `${percent}%`;
         }
 
-        // V1.9.0 境界突破連動：當經驗滿時，通知 UI_Stats 顯示突破按鈕
-        // 注意：UI_Stats 目前可能仍掛載於 window，採保守檢查調用
         if (current >= next && window.UI_Stats) {
             window.UI_Stats.handleBreakthroughUI();
         }
@@ -71,10 +72,8 @@ export const UI_Battle = {
             if (hpFill) hpFill.style.width = `${percent}%`;
             if (hpText) hpText.innerText = `${Math.ceil(monster.hp)} / ${maxHp}`;
 
-            // V1.9.0 受擊閃爍與震動特效
             const monsterCard = document.getElementById('monster-display');
             if (monsterCard && monster.hp < maxHp) {
-                // 如果 FX 模組存在，優先呼叫更專業的震動
                 if (FX && FX.shake) {
                     FX.shake('monster-display');
                 } else {
@@ -112,14 +111,12 @@ export const UI_Battle = {
         logContainer.appendChild(logEntry);
         logContainer.scrollTop = logContainer.scrollHeight;
 
-        // 限制日誌長度
         const dataSrc = window.DATA || window.GAMEDATA;
         const limit = (dataSrc && dataSrc.CONFIG && dataSrc.CONFIG.LOG_LIMIT) || 50;
         while (logContainer.children.length > limit) {
             logContainer.removeChild(logContainer.firstChild);
         }
 
-        // V1.9.0 對接飄字特效 (由 MessageCenter 轉接或此處直接攔截)
         if (type === 'player-atk' || type === 'monster-atk') {
             const val = msg.match(/\d+/); 
             if (val && FX && FX.spawnPopText) {
@@ -140,7 +137,6 @@ export const UI_Battle = {
             { id: 'loot', name: '掉落' }
         ];
 
-        // 注意：onclick 必須指向 window.UI_Battle 確保 HTML 呼叫得到
         tabContainer.innerHTML = tabs.map(tab => `
             <button class="log-tab-btn ${tab.id === 'all' ? 'active' : ''}" 
                     onclick="UI_Battle.switchLogTab('${tab.id}', this)">
@@ -152,19 +148,17 @@ export const UI_Battle = {
     switchLogTab(tabId, btn) {
         document.querySelectorAll('.log-tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-
-        // 核心邏輯：此處未來可實裝過濾功能
         Msg.log(`切換日誌頻道：${tabId}`, "system");
     },
 
-    // 7. 渲染技能按鈕
+    // 7. 🟢 渲染技能按鈕 (重構：加入冷卻遮罩與倒數)
     renderSkillButtons() {
         const actionContainer = document.getElementById('battle-actions');
         if (!actionContainer) return;
 
         actionContainer.innerHTML = '';
 
-        // 1. 普通攻擊
+        // 1. 普通攻擊 (無冷卻)
         const atkBtn = document.createElement('button');
         atkBtn.className = 'btn-battle-action btn-atk-primary';
         atkBtn.innerHTML = `<span class="act-icon">⚔️</span><span class="act-name">普通攻擊</span>`;
@@ -173,21 +167,98 @@ export const UI_Battle = {
         };
         actionContainer.appendChild(atkBtn);
 
-        // 2. 動態渲染已習得神通
+        // 2. 動態渲染已習得神通 (包含冷卻陣法)
         if (Player.data && Player.data.skills) {
             Player.data.skills.forEach(skill => {
                 const sBtn = document.createElement('button');
                 sBtn.className = 'btn-battle-action btn-atk-skill';
-                sBtn.innerHTML = `<span class="act-icon">✨</span><span class="act-name">${skill.name}</span>`;
-                sBtn.onclick = () => {
-                    if (CombatEngine && !CombatEngine.isProcessing) {
-                        Msg.log(`施展神通：【${skill.name}】！`, 'player-atk');
-                        CombatEngine.playerAttack();
-                    }
-                };
+                sBtn.id = `btn-skill-${skill.id}`;
+                sBtn.style.position = 'relative'; // 確保遮罩定位正確
+                sBtn.style.overflow = 'hidden';
+
+                // 檢查是否仍在冷卻中
+                const cdEndTime = this.skillCooldowns[skill.id] || 0;
+                const now = Date.now();
+                const isCooldown = now < cdEndTime;
+
+                sBtn.innerHTML = `
+                    <span class="act-icon">✨</span>
+                    <span class="act-name">${skill.name}</span>
+                    <div id="cd-mask-${skill.id}" style="position:absolute; bottom:0; left:0; width:100%; height:0%; background:rgba(0,0,0,0.6); pointer-events:none; transition:height 0.1s linear;"></div>
+                    <div id="cd-text-${skill.id}" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:#fff; font-weight:bold; font-size:18px; text-shadow:0 0 5px #000; pointer-events:none;"></div>
+                `;
+
+                if (isCooldown) {
+                    sBtn.disabled = true;
+                    sBtn.style.filter = 'grayscale(0.8)';
+                }
+
+                sBtn.onclick = () => this.executeSkill(skill);
                 actionContainer.appendChild(sBtn);
+
+                // 如果按鈕生成時仍在冷卻，則繼續播放動畫
+                if (isCooldown) {
+                    this.startCooldownUI(skill.id, cdEndTime, 8000); // 預設 8 秒 CD
+                }
             });
         }
+    },
+
+    // 🟢 執行神通邏輯
+    executeSkill(skill) {
+        if (!CombatEngine || CombatEngine.isProcessing) return;
+        
+        const now = Date.now();
+        // 防呆：如果還在冷卻中，拒絕施放
+        if (this.skillCooldowns[skill.id] && now < this.skillCooldowns[skill.id]) {
+            Msg.log(`【${skill.name}】仍在冷卻中！`, "system");
+            return;
+        }
+
+        Msg.log(`施展神通：【${skill.name}】！`, 'player-atk');
+        
+        // 觸發攻擊 (下一波可在此替換為 CombatEngine.playerSkillAttack)
+        CombatEngine.playerAttack(); 
+
+        // 設定冷卻時間 (8000 毫秒 = 8 秒)
+        const cdDuration = 8000; 
+        this.skillCooldowns[skill.id] = now + cdDuration;
+        
+        // 刷新按鈕狀態並啟動轉圈動畫
+        this.renderSkillButtons();
+    },
+
+    // 🟢 啟動冷卻視覺特效
+    startCooldownUI(skillId, endTime, totalDuration) {
+        const btn = document.getElementById(`btn-skill-${skillId}`);
+        const mask = document.getElementById(`cd-mask-${skillId}`);
+        const text = document.getElementById(`cd-text-${skillId}`);
+        
+        if (!btn || !mask || !text) return;
+
+        const updateCD = () => {
+            const remaining = endTime - Date.now();
+            
+            // 冷卻結束
+            if (remaining <= 0) {
+                btn.disabled = false;
+                btn.style.filter = 'none';
+                mask.style.height = '0%';
+                text.innerText = '';
+                return;
+            }
+            
+            // 計算剩餘百分比並更新畫面
+            const percent = (remaining / totalDuration) * 100;
+            mask.style.height = `${percent}%`;
+            text.innerText = (remaining / 1000).toFixed(1) + 's';
+            
+            // 要求瀏覽器渲染下一幀
+            requestAnimationFrame(updateCD);
+        };
+        
+        // 啟動動畫迴圈
+        updateCD();
     },
 
     // 8. 地圖選擇系統
