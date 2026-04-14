@@ -1,5 +1,5 @@
 /**
- * V2.0 ui_shop.js (飛升模組版)
+ * V2.1 ui_shop.js (飛升模組版 - 彈窗按鈕美化)
  * 職責：坊市交易介面渲染、購買/出售標籤切換、確認彈窗處理
  * 位置：/ui/ui_shop.js
  */
@@ -122,7 +122,7 @@ export const UI_Shop = {
                 <div class="detail-glass-card trade-card" onclick="event.stopPropagation()">
                     <div class="modal-header">
                         <h4>${title}</h4>
-                        <button onclick="document.getElementById('trade-modal-overlay').remove()">✕</button>
+                        <button class="btn-modal-close" onclick="document.getElementById('trade-modal-overlay').remove()">✕</button>
                     </div>
                     <div style="text-align:center; margin: 20px 0; font-size:15px;">${desc}</div>
                     <div style="display:flex; gap:10px; margin-top:20px;">
