@@ -1,60 +1,102 @@
 /**
- * V1.8.2 player.js (終極修正版)
+ * V1.8.2 player.js (終極穩定版)
  * 職責：修士狀態管理，對接公式與裝備加成
- * 修正：補齊當前 HP 初始值、實裝裝備穿脫邏輯 (equipItem)、實裝道具消耗邏輯 (consumeItem)
+ * 修正點：加入依賴安全檢查、強化全域綁定、優化換裝血量計算、修正數據讀取路徑
  */
 const Player = {
     data: null,
 
+    /**
+     * 初始化修士數據
+     */
     init() {
-        const savedData = SaveManager.load();
-        this.data = savedData || this.getInitialData();
-        Msg.log(savedData ? "神識歸位，修為恢復。" : "新進修士踏入凡塵。", "system");
-        this.save();
+        console.log("【修士】正在引導神識歸位...");
+        try {
+            // 確保 SaveManager 存在，防止崩潰
+            const savedData = (typeof SaveManager !== 'undefined') ? SaveManager.load() : null;
+            
+            this.data = savedData || this.getInitialData();
+            
+            if (window.Msg) {
+                Msg.log(savedData ? "神識歸位，修為恢復。" : "新進修士踏入凡塵。", "system");
+            }
+            
+            this.save();
+        } catch (e) {
+            console.error("【修士】初始化失敗:", e);
+        }
     },
 
+    /**
+     * 儲存神識 (存檔)
+     */
     save() { 
-        if (this.data) SaveManager.save(this.data); 
+        if (this.data && typeof SaveManager !== 'undefined') {
+            SaveManager.save(this.data); 
+        }
     },
 
+    /**
+     * 獲得經驗值
+     */
     gainExp(amount) {
         if (!this.data) return 0;
-        const bonus = Formula.calculateExpBonus(this.data.stats.int);
+        
+        // 安全獲取公式加成
+        const intVal = (this.data.stats && this.data.stats.int) ? this.data.stats.int : 10;
+        const bonus = (typeof Formula !== 'undefined') ? Formula.calculateExpBonus(intVal) : 1;
+        
         const finalExp = Math.floor(amount * bonus);
         this.data.exp += finalExp;
         
+        // 自動突破等級
         while (this.data.exp >= this.data.maxExp) { 
             this.levelUp(); 
         }
+        
         this.save();
         return finalExp;
     },
 
+    /**
+     * 等級突破
+     */
     levelUp() {
+        if (!this.data) return;
+        
         this.data.exp -= this.data.maxExp;
         this.data.level++;
-        this.data.maxExp = Formula.calculateNextExp(this.data.maxExp);
+        
+        // 計算下一級經驗 (安全呼叫公式)
+        if (typeof Formula !== 'undefined') {
+            this.data.maxExp = Formula.calculateNextExp(this.data.maxExp);
+        } else {
+            this.data.maxExp = Math.floor(this.data.maxExp * 1.5);
+        }
+        
         this.data.statPoints += 5;
         
         // 升級時補滿血量
         const pStats = this.getBattleStats();
         this.data.hp = pStats.maxHp;
         
-        Msg.log(`【突破】修為精進，已達 Lv.${this.data.level}！`, "gold");
+        if (window.Msg) {
+            Msg.log(`【突破】修為精進，已達 Lv.${this.data.level}！`, "gold");
+        }
     },
 
     /**
      * 核心：獲取即時戰鬥數值 (基礎屬性 + 裝備加成)
      */
     getBattleStats() {
-        const s = this.data.stats;
-        const equip = this.data.equipped;
+        const s = this.data.stats || { str: 10, con: 10, dex: 10, int: 10 };
+        const equip = this.data.equipped || {};
 
         let extraAtk = 0;
         let extraHp = 0;
         let extraStats = { str: 0, con: 0, dex: 0, int: 0 };
 
-        // 統計所有已穿裝備屬性 (強化安全檢查)
+        // 1. 統計所有已穿裝備屬性
         for (let slot in equip) {
             const item = equip[slot];
             if (item && typeof item === 'object' && item.stats) {
@@ -67,84 +109,95 @@ const Player = {
             }
         }
 
-        // 最終戰鬥數值公式：Formula(基礎點數 + 裝備詞條點數) + 裝備直加數值
-        return {
-            maxHp: Formula.calculateMaxHp(s.con + extraStats.con) + extraHp,
-            atk: Formula.calculateAtk(s.str + extraStats.str) + extraAtk,
-            def: Formula.calculateDef(s.dex + extraStats.dex),
-            speed: Formula.calculateSpeed(s.dex + extraStats.dex)
-        };
+        // 2. 對接公式計算最終數值 (加入 Formula 安全檢查)
+        if (typeof Formula !== 'undefined') {
+            return {
+                maxHp: Formula.calculateMaxHp(s.con + extraStats.con) + extraHp,
+                atk: Formula.calculateAtk(s.str + extraStats.str) + extraAtk,
+                def: Formula.calculateDef(s.dex + extraStats.dex),
+                speed: Formula.calculateSpeed(s.dex + extraStats.dex)
+            };
+        } else {
+            // 公式缺失時的保底計算
+            return {
+                maxHp: (s.con + extraStats.con) * 10 + extraHp,
+                atk: (s.str + extraStats.str) * 2 + extraAtk,
+                def: (s.dex + extraStats.dex),
+                speed: (s.dex + extraStats.dex)
+            };
+        }
     },
 
-    // ==========================================
-    // V1.8.2 新增：裝備穿戴邏輯
-    // ==========================================
+    /**
+     * 裝備穿戴邏輯
+     */
     equipItem(uuid) {
+        if (!this.data || !this.data.inventory) return false;
+        
         const index = this.data.inventory.findIndex(i => i.uuid === uuid);
         if (index === -1) return false;
 
         const item = this.data.inventory[index];
-        const slot = item.type; // 'weapon', 'armor', 'accessory' 等
+        const slot = item.type; // 'weapon', 'armor', 'accessory'
 
         if (!['weapon', 'armor', 'accessory'].includes(slot)) {
-            Msg.log("此物品無法裝備！", "system");
+            if (window.Msg) Msg.log("此物品無法裝備！", "system");
             return false;
         }
 
-        // 紀錄換裝前的最大血量
+        // 紀錄換裝前的最大血量比例
         const oldMaxHp = this.getBattleStats().maxHp;
 
-        // 若該部位已有裝備，先脫下放回背包
+        // 脫下舊裝備
         if (this.data.equipped[slot]) {
             this.data.inventory.push(this.data.equipped[slot]);
         }
 
-        // 穿上新裝備，並從背包移除
+        // 穿上新裝備
         this.data.equipped[slot] = item;
         this.data.inventory.splice(index, 1);
 
-        // 換裝後處理血量比例 (避免脫下加血裝備時死掉)
+        // 換裝後保持血量比例，避免脫裝即死
         const newMaxHp = this.getBattleStats().maxHp;
-        this.data.hp = Math.max(1, Math.floor((this.data.hp / oldMaxHp) * newMaxHp));
+        const hpPercent = this.data.hp / oldMaxHp;
+        this.data.hp = Math.max(1, Math.floor(hpPercent * newMaxHp));
 
         this.save();
         return true;
     },
 
-    // ==========================================
-    // V1.8.2 新增：道具使用與殘卷煉化邏輯
-    // ==========================================
+    /**
+     * 道具消耗與殘卷領悟邏輯
+     */
     consumeItem(uuid) {
+        if (!this.data || !this.data.inventory) return false;
+        
         const index = this.data.inventory.findIndex(i => i.uuid === uuid);
         if (index === -1) return false;
 
         const item = this.data.inventory[index];
 
         if (item.type === 'fragment') {
-            // 領悟殘卷神通
-            const skillName = item.name.replace('殘卷：', ''); // 簡單萃取技能名稱
+            const skillName = item.name.replace('殘卷：', '');
             const hasSkill = this.data.skills.some(s => s.name === skillName);
             
             if (hasSkill) {
-                Msg.log(`你已經掌握了【${skillName}】，無需再次領悟。`, "system");
+                if (window.Msg) Msg.log(`你已經掌握了【${skillName}】，無需再次領悟。`, "system");
                 return false; 
             }
 
-            // 存入神通庫 (為了相容性，先建構簡單物件，未來可對接 DATA.SKILLS)
             this.data.skills.push({ id: item.id, name: skillName });
-            Msg.log(`💡 靈光一閃，成功領悟神通：【${skillName}】！`, "gold");
+            if (window.Msg) Msg.log(`💡 靈光一閃，成功領悟神通：【${skillName}】！`, "gold");
 
-        } else if (item.type === 'special') {
-            if (item.id === 'i001') { // 針對低階靈石袋的特判
-                this.data.coin += 500;
-                Msg.log(`💰 打開靈石袋，獲得 500 靈石！`, "gold");
-            }
+        } else if (item.type === 'special' && item.id === 'i001') {
+            this.data.coin += 500;
+            if (window.Msg) Msg.log(`💰 打開靈石袋，獲得 500 靈石！`, "gold");
         } else {
-            Msg.log("此物品無法直接使用。", "system");
+            if (window.Msg) Msg.log("此物品無法直接使用。", "system");
             return false;
         }
 
-        // 消耗品扣除數量或移除
+        // 移除或減少數量
         if (item.count && item.count > 1) {
             item.count--;
         } else {
@@ -155,25 +208,30 @@ const Player = {
         return true;
     },
 
+    /**
+     * 加入物品到背包
+     */
     addItem(item) {
-        if (!item) return false;
+        if (!item || !this.data) return false;
 
-        // 1. 殘卷自動煉化邏輯 (防止重複學習技能)
+        // 1. 殘卷自動煉化
         if (item.type === 'fragment' && item.targetSkill) {
             const hasSkill = this.data.skills.some(s => s.id === item.targetSkill);
             if (hasSkill) {
-                const refund = 100; // 煉化補償靈石
+                const refund = 100;
                 this.data.coin += refund;
-                Msg.log(`已掌握神通，【${item.name}】自動煉化為 ${refund} 靈石。`, "reward");
+                if (window.Msg) Msg.log(`已掌握神通，【${item.name}】自動煉化為 ${refund} 靈石。`, "reward");
                 this.save();
                 return true;
             }
         }
 
-        // 2. 空間檢查 (對齊全域配置)
-        const maxSlots = (window.DATA && DATA.CONFIG.MAX_BAG_SLOTS) || 50; 
+        // 2. 空間檢查 (修正數據讀取路徑的安全檢查)
+        const dataSrc = window.DATA || window.GAMEDATA;
+        const maxSlots = (dataSrc && dataSrc.CONFIG && dataSrc.CONFIG.MAX_BAG_SLOTS) || 50; 
+        
         if (this.data.inventory.length >= maxSlots) {
-            Msg.log("儲物袋空間不足！", "system"); // 修正：配合新 log 系統改為 system
+            if (window.Msg) Msg.log("儲物袋空間不足！", "system");
             return false;
         }
 
@@ -182,18 +240,27 @@ const Player = {
         return true;
     },
 
+    /**
+     * 初始玩家數據模板
+     */
     getInitialData() {
         return {
             level: 1, 
             exp: 0, 
             maxExp: 100, 
             coin: 500,
-            hp: 50, // V1.8.2 補齊：初始血量，避免 combat engine 報錯
+            hp: 100,
             stats: { str: 10, con: 10, dex: 10, int: 10 },
             statPoints: 0, 
             inventory: [], 
             skills: [],
-            equipped: { weapon: null, armor: null, accessory: null } // 補齊飾品欄位
+            equipped: { weapon: null, armor: null, accessory: null }
         };
     }
 };
+
+// ==========================================
+// 🛡️ 全域對接鎖：確保 window.Player 絕對存在
+// ==========================================
+window.Player = Player;
+console.log("%c【系統】修士模組 Player 已成功掛載全域。", "color: #10b981; font-weight: bold;");
