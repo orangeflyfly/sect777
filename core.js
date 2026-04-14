@@ -11,7 +11,8 @@ import { UI_Battle } from './ui/ui_battle.js';
 import { UI_Stats } from './ui/ui_stats.js';
 import { UI_Bag } from './ui/ui_bag.js';
 import { UI_Shop } from './ui/ui_shop.js';
-import { UI_World } from './ui/ui_world.js'; // 🟢 新增：導入小世界神識
+import { UI_World } from './ui/ui_world.js';// 🟢 新增：導入小世界神識
+import { SectManager } from './systems/SectManager.js'; // 🟢 新增：導入宗門大腦
 
 export const Core = {
     /**
