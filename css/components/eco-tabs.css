@@ -1,0 +1,38 @@
+/* css/components/eco-tabs.css */
+
+/* 1. 共用導覽頁籤 (Tabs) - 儲物袋過濾與坊市分頁 */
+.bag-filters, .eco-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+}
+
+/* 隱藏捲軸，保持視覺純淨 */
+.bag-filters::-webkit-scrollbar, 
+.eco-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.filter-btn, .eco-tab-btn {
+    flex: 1;
+    min-width: 60px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-dim);
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+/* 啟用狀態：發出淡淡的靈氣紫光 */
+.filter-btn.active, .eco-tab-btn.active {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: var(--accent);
+    color: var(--text-main);
+    font-weight: bold;
+}
