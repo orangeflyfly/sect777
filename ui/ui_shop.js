@@ -15,11 +15,12 @@ export const UI_Shop = {
     currentTab: 'buy', 
 
     // 坊市固定商品清單
+    export const UI_Shop = {
+    currentTab: 'buy', 
     shopItems: [
-        { id: 's001', name: '殘卷：烈焰斬', type: 'fragment', price: 500, rarity: 2 },
-        { id: 's002', name: '殘卷：回春術', type: 'fragment', price: 800, rarity: 2 },
-        { id: 'i001', name: '低階靈石袋', type: 'special', price: 1000, rarity: 3 },
-        { id: 'i002', name: '粗糙的布衣', type: 'armor', price: 200, rarity: 1, stats: { con: 2 } }
+        { id: 's001_v1', name: '殘卷：烈焰斬(卷一)', type: 'fragment', skillName: '烈焰斬', volume: 1, price: 500, rarity: 2 },
+        { id: 's002_v1', name: '殘卷：回春術(卷一)', type: 'fragment', skillName: '回春術', volume: 1, price: 800, rarity: 2 },
+        { id: 'i001', name: '低階靈石袋', type: 'special', price: 1000, rarity: 3 }
     ],
 
     /**
