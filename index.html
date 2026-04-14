@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sect777 - 歷練修仙 (V1.8.2 極致版)</title>
+    <title>練功修練 - 凡人逆天之路 (V1.9.0)</title>
     
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/page_battle.css">
@@ -51,10 +51,10 @@
 
             <div id="battle-actions" class="actions-container"></div>
 
-            <div id="log-system" class="log-container expanded">
-                <div class="log-controls">
-                    <span>戰鬥日誌</span>
-                    <button id="log-toggle" onclick="UI_Battle.toggleLog()">收合 🔼</button>
+            <div class="log-panel">
+                <div class="log-header">
+                    <span>📜 戰鬥日誌</span>
+                    <div id="log-tabs"></div>
                 </div>
                 <div id="battle-log" class="log-content"></div>
             </div>
@@ -62,7 +62,20 @@
 
         <section id="page-stats" class="game-page" style="display:none;">
             <div class="page-title">修為與境界</div>
+            
+            <div class="equipped-section">
+                <div class="section-label">🧥 當前披掛</div>
+                <div id="equipped-list" class="equip-grid">
+                    <div class="equip-slot empty">載入中...</div>
+                </div>
+            </div>
+
+            <div id="breakthrough-area" style="display:none;">
+                <button id="btn-breakthrough" class="btn-special">✨ 突破境界</button>
+            </div>
+
             <h2 id="stat-realm-title" style="text-align:center; color:var(--accent); margin-bottom:20px;"></h2>
+            
             <div id="stats-content" class="stats-grid"></div>
         </section>
 
@@ -108,15 +121,13 @@
 
     <script>
         window.DATA = window.GAMEDATA;
-        console.log("【系統】數據加載鎖已合上，當前數據庫：", window.DATA);
+        console.log("【系統】數據加載鎖已合上，專案更名為：練功修練");
     </script>
 
     <script src="MessageCenter.js"></script>
     <script>
-        // 強制建立 Msg 別名，防止 CombatEngine 報錯
         if (typeof MessageCenter !== 'undefined') {
             window.Msg = MessageCenter;
-            console.log("【系統】Msg 別名綁定成功。");
         }
     </script>
     <script src="SaveManager.js"></script>
@@ -136,10 +147,9 @@
     
     <script>
         window.onload = () => {
-            console.log("%c【系統】開始點燃神識大陣...", "color: #fbbf24; font-weight: bold;");
+            console.log("%c【系統】練功修練 - 神識大陣啟動...", "color: #fbbf24; font-weight: bold;");
             
             try {
-                // 檢查關鍵模組是否載入成功
                 const requiredModules = ['DATA', 'Msg', 'Player', 'CombatEngine', 'Core'];
                 requiredModules.forEach(mod => {
                     if (typeof window[mod] === 'undefined') {
@@ -147,23 +157,17 @@
                     }
                 });
 
-                // 啟動大陣
                 Core.init();
-                console.log("%c【核心】 Sect777 運行正常，祝仙途順遂。", "color: #10b981; font-weight: bold;");
+                console.log("%c【核心】 運行正常，祝仙途順遂。", "color: #10b981; font-weight: bold;");
 
             } catch (err) {
-                console.error("【致命錯誤】大陣啟動失敗:", err.message);
-                
-                // 視覺化回饋：如果載入失敗，讓玩家知道
+                console.error("【致命錯誤】啟動失敗:", err.message);
                 const realmEl = document.getElementById('player-realm');
                 if (realmEl) {
                     realmEl.innerText = "啟動失敗";
-                    realmEl.style.background = "rgba(239, 68, 68, 0.2)";
                     realmEl.style.color = "#ef4444";
                 }
-                
-                // 彈窗警告
-                alert("宗門大陣初始化失敗：\n" + err.message + "\n請按 F12 檢查控制台錯誤訊息。");
+                alert("啟動失敗：\n" + err.message);
             }
         };
     </script>
