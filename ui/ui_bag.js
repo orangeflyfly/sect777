@@ -1,5 +1,5 @@
 /**
- * V2.0 ui_bag.js (飛升模組版)
+ * V2.0 ui_bag.js (飛升模組版 - 屬性中文化顯影)
  * 職責：儲物袋介面管理、物品分類篩選、裝備與消耗品使用對接
  * 位置：/ui/ui_bag.js
  */
@@ -7,6 +7,18 @@
 // 1. 導入必要的神識模組
 import { Player } from '../entities/player.js';
 import { MessageCenter as Msg } from '../utils/MessageCenter.js';
+
+// 🟢 新增：翻譯對照表 (確保舊存檔內的裝備也能即時翻譯)
+const ATTR_MAP = {
+    'str': '力量',
+    'con': '體質',
+    'dex': '敏捷',
+    'int': '悟性',
+    'hp': '血量',
+    'atk': '攻擊',
+    'def': '防禦',
+    'speed': '速度'
+};
 
 export const UI_Bag = {
     currentFilter: 'all',
@@ -79,7 +91,14 @@ export const UI_Bag = {
 
         // 渲染列表內容
         bagGrid.innerHTML = filteredItems.map(item => {
-            const statsDesc = item.stats ? Object.entries(item.stats).map(([k, v]) => `${k}+${v}`).join(' ') : '無特殊加成';
+            // 🟢 修正：優先讀取中文烙印 (statTexts)，若無則即時翻譯舊裝備
+            let statsDesc = '無特殊加成';
+            if (item.statTexts && item.statTexts.length > 0) {
+                statsDesc = item.statTexts.join(' ');
+            } else if (item.stats) {
+                statsDesc = Object.entries(item.stats).map(([k, v]) => `${ATTR_MAP[k] || k} +${v}`).join(' ');
+            }
+            
             const rarity = item.rarity || 1;
             
             let actionBtn = '';
