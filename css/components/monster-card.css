@@ -1,0 +1,60 @@
+/* css/components/monster-card.css */
+
+/* 2. 中央：敵我對峙區 (妖獸卡片) */
+.monster-card {
+    background: linear-gradient(180deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95));
+    border: 1px solid rgba(239, 68, 68, 0.2); 
+    border-radius: 16px;
+    padding: 30px 20px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(239, 68, 68, 0.05);
+    position: relative;
+    margin-bottom: 15px;
+    overflow: hidden;
+}
+
+/* 妖獸呼吸律動動畫 */
+@keyframes monsterBreathe {
+    0% { transform: scale(1) translateY(0); filter: drop-shadow(0 0 10px rgba(239,68,68,0.2)); }
+    100% { transform: scale(1.05) translateY(-5px); filter: drop-shadow(0 0 25px rgba(239,68,68,0.6)); }
+}
+
+.monster-avatar {
+    font-size: 64px;
+    margin-bottom: 15px;
+    display: inline-block;
+    animation: monsterBreathe 3s infinite alternate ease-in-out;
+}
+
+#monster-name {
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--text-main);
+    margin-bottom: 15px;
+    letter-spacing: 2px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+.monster-hp {
+    height: 18px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+    width: 80%;
+    margin: 0 auto;
+}
+
+.monster-hp .fill-hp {
+    background: linear-gradient(90deg, #991b1b, #ef4444);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.monster-hp .bar-text {
+    font-size: 11px;
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0,0,0,1);
+    letter-spacing: 1px;
+}
