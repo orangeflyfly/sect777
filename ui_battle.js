@@ -1,17 +1,18 @@
 /**
  * V1.8.2 ui_battle.js (歷練介面重塑版)
- * 修正點：對接 CombatEngine、優化按鈕與地圖卡片 DOM 結構、預留高級 CSS 接口
+ * 修正點：補齊全域對接鎖、實裝日誌收合邏輯、強化怪物數據容錯、加入空數據清理
  */
 
 const UI_Battle = {
     // 1. 初始化監聽器
     init() {
-        console.log("UI_Battle 模組啟動：正在加載戰鬥配置...");
+        console.log("【UI_Battle】模組啟動：正在加載戰鬥配置...");
         this.renderSkillButtons();
-        // 初始同步一次玩家狀態
-        if (Player.data) {
+        
+        // 初始同步一次玩家狀態 (確保 Player 與數據已加載)
+        if (typeof Player !== 'undefined' && Player.data) {
             const stats = Player.getBattleStats();
-            this.updatePlayerHP(stats.maxHp, stats.maxHp); // 初始滿血
+            this.updatePlayerHP(Player.data.hp || stats.maxHp, stats.maxHp);
             this.updateExp(Player.data.exp, Player.data.maxExp);
         }
     },
@@ -39,7 +40,7 @@ const UI_Battle = {
         }
     },
 
-    // 4. 更新怪物資訊 (預留受擊特效接口)
+    // 4. 更新怪物資訊 (V1.8.2 強化：支援怪物消失/清空)
     updateMonster(monster) {
         const nameEl = document.getElementById('monster-name');
         const hpFill = document.getElementById('monster-hp-fill');
@@ -47,6 +48,7 @@ const UI_Battle = {
         const iconEl = document.getElementById('monster-icon');
 
         if (monster) {
+            // 怪物現身
             if (nameEl) nameEl.innerText = monster.name;
             if (iconEl) iconEl.innerText = monster.icon || '👾';
             
@@ -55,6 +57,12 @@ const UI_Battle = {
             
             if (hpFill) hpFill.style.width = `${percent}%`;
             if (hpText) hpText.innerText = `${Math.ceil(monster.hp)} / ${maxHp}`;
+        } else {
+            // 怪物消失 (例如戰鬥結束或搜尋中)
+            if (nameEl) nameEl.innerText = "搜尋妖氣中...";
+            if (iconEl) iconEl.innerText = "❓";
+            if (hpFill) hpFill.style.width = "0%";
+            if (hpText) hpText.innerText = "0 / 0";
         }
     },
 
@@ -64,10 +72,9 @@ const UI_Battle = {
         if (!logContainer) return;
 
         const logEntry = document.createElement('div');
-        // V1.8.2 改進：統一使用 class 控制樣式，方便後續 CSS 統一管理
         logEntry.className = `log-item log-type-${type}`;
         
-        // 顏色映射 (保留道友原始設定，轉為行內變數確保相容)
+        // 顏色映射
         const colorMap = {
             'player-atk': "#a78bfa",
             'monster-atk': "#ef4444",
@@ -80,10 +87,12 @@ const UI_Battle = {
         logEntry.innerHTML = `<span class="log-bullet">❯</span> <span class="log-text">${msg}</span>`;
 
         logContainer.appendChild(logEntry);
+        
+        // 自動滾動到底部
         logContainer.scrollTop = logContainer.scrollHeight;
 
         // 限制日誌長度
-        const limit = DATA.CONFIG.LOG_LIMIT || 50;
+        const limit = (typeof DATA !== 'undefined' && DATA.CONFIG && DATA.CONFIG.LOG_LIMIT) || 50;
         while (logContainer.children.length > limit) {
             logContainer.removeChild(logContainer.firstChild);
         }
@@ -101,21 +110,20 @@ const UI_Battle = {
         atkBtn.className = 'btn-battle-action btn-atk-primary';
         atkBtn.innerHTML = `<span class="act-icon">⚔️</span><span class="act-name">普通攻擊</span>`;
         atkBtn.onclick = () => {
-            // 對接 V1.8.1 戰鬥引擎
             if (window.CombatEngine) CombatEngine.playerAttack();
         };
         actionContainer.appendChild(atkBtn);
 
-        // B. 動態技能
-        if (Player.data && Player.data.skills) {
+        // B. 動態技能 (從 Player 數據中讀取)
+        if (typeof Player !== 'undefined' && Player.data && Player.data.skills) {
             Player.data.skills.forEach(skill => {
                 const sBtn = document.createElement('button');
                 sBtn.className = 'btn-battle-action btn-atk-skill';
                 sBtn.innerHTML = `<span class="act-icon">✨</span><span class="act-name">${skill.name}</span>`;
                 sBtn.onclick = () => {
                     if (window.CombatEngine && !CombatEngine.isProcessing) {
-                        Msg.log(`施展神通：【${skill.name}】！`, 'player-atk');
-                        CombatEngine.playerAttack(); // 未來這裡改為 CombatEngine.useSkill(skill.id)
+                        if (window.Msg) Msg.log(`施展神通：【${skill.name}】！`, 'player-atk');
+                        CombatEngine.playerAttack(); // 這裡未來可擴充不同技能效果
                     }
                 };
                 actionContainer.appendChild(sBtn);
@@ -134,16 +142,17 @@ const UI_Battle = {
 
     renderRegions() {
         const regionList = document.getElementById('region-list');
-        if (!regionList) return;
+        const dataSrc = window.DATA || window.GAMEDATA;
+        if (!regionList || !dataSrc || !dataSrc.REGIONS) return;
+
         regionList.innerHTML = '';
         
-        Object.keys(DATA.REGIONS).forEach(key => {
-            const region = DATA.REGIONS[key];
+        Object.keys(dataSrc.REGIONS).forEach(key => {
+            const region = dataSrc.REGIONS[key];
             const btn = document.createElement('button');
             btn.className = 'region-tab-btn';
             btn.innerText = region.name;
             btn.onclick = () => {
-                // 切換 active 狀態
                 document.querySelectorAll('.region-tab-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 this.renderMapsInRegion(key);
@@ -152,27 +161,28 @@ const UI_Battle = {
         });
         
         // 預設渲染第一個區域
-        const firstKey = Object.keys(DATA.REGIONS)[0];
+        const firstKey = Object.keys(dataSrc.REGIONS)[0];
         if (firstKey) {
             if(regionList.firstChild) regionList.firstChild.classList.add('active');
             this.renderMapsInRegion(firstKey);
         }
     },
 
-    // V1.8.2 地圖卡片結構升級
     renderMapsInRegion(regionKey) {
         const mapList = document.getElementById('map-list');
-        if (!mapList) return;
+        const dataSrc = window.DATA || window.GAMEDATA;
+        if (!mapList || !dataSrc) return;
+        
         mapList.innerHTML = '';
         
-        DATA.REGIONS[regionKey].maps.forEach(map => {
+        dataSrc.REGIONS[regionKey].maps.forEach(map => {
             const card = document.createElement('div');
-            card.className = 'map-glass-card'; // 升級為毛玻璃卡片
+            card.className = 'map-glass-card';
             
             // 生成怪物預覽
             let monstersHtml = '<div class="map-monster-icons">';
             map.monsterIds.forEach(id => {
-                const m = DATA.MONSTERS[id];
+                const m = dataSrc.MONSTERS[id];
                 monstersHtml += `<span class="m-icon" title="${m ? m.name : '未知'}">${m ? m.icon : '❓'}</span>`;
             });
             monstersHtml += '</div>';
@@ -195,7 +205,8 @@ const UI_Battle = {
             
             card.onclick = () => {
                 this.selectMap(map);
-                document.getElementById('modal-map').style.display = 'none';
+                const modal = document.getElementById('modal-map');
+                if (modal) modal.style.display = 'none';
             };
             mapList.appendChild(card);
         });
@@ -205,7 +216,30 @@ const UI_Battle = {
         const mapNameEl = document.getElementById('current-map-name');
         if (mapNameEl) mapNameEl.innerText = map.name;
         
-        Msg.log(`前往「${map.name}」進行歷練...`, "system");
+        if (window.Msg) Msg.log(`前往「${map.name}」進行歷練...`, "system");
         if (window.CombatEngine) CombatEngine.init(map.id);
+    },
+
+    // 8. V1.8.2 新增：對接 HTML 的日誌收合功能
+    toggleLog() {
+        const logSystem = document.getElementById('log-system');
+        const toggleBtn = document.getElementById('log-toggle');
+        if (!logSystem || !toggleBtn) return;
+
+        if (logSystem.classList.contains('expanded')) {
+            logSystem.classList.remove('expanded');
+            logSystem.classList.add('collapsed');
+            toggleBtn.innerText = "展開 🔽";
+        } else {
+            logSystem.classList.remove('collapsed');
+            logSystem.classList.add('expanded');
+            toggleBtn.innerText = "收合 🔼";
+        }
     }
 };
+
+// ==========================================
+// 🛡️ 全域對接鎖：確保 window.UI_Battle 絕對存在
+// ==========================================
+window.UI_Battle = UI_Battle;
+console.log("%c【系統】歷練介面模組 UI_Battle 已成功掛載全域。", "color: #10b981; font-weight: bold;");
