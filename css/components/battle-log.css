@@ -1,0 +1,78 @@
+/* css/components/battle-log.css */
+
+/* 4. 戰鬥日誌面板 */
+.log-panel {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+    margin-bottom: 20px; 
+}
+
+.log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 13px;
+    color: var(--text-main);
+    font-weight: bold;
+}
+
+/* 日誌分頁按鈕 */
+#log-tabs {
+    display: flex;
+    gap: 5px;
+}
+
+.log-tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.log-tab-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+}
+
+.log-tab-btn.active {
+    background: rgba(99, 102, 241, 0.3);
+    color: var(--accent);
+    font-weight: bold;
+}
+
+#battle-log {
+    height: 160px; /* 固定高度，確保佈局穩定 */
+    padding: 12px;
+    overflow-y: auto;
+    font-family: 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+/* 捲軸美化 (Webkit 內核) */
+#battle-log::-webkit-scrollbar { width: 4px; }
+#battle-log::-webkit-scrollbar-track { background: transparent; }
+#battle-log::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 10px; }
+#battle-log::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* 日誌顏色映射：根據訊息類型賦予靈力色彩 */
+.log-item { margin-bottom: 4px; }
+.log-bullet { opacity: 0.4; font-size: 10px; margin-right: 6px; }
+
+.log-type-player-atk { color: #a78bfa; text-shadow: 0 0 5px rgba(167,139,250,0.3); }
+.log-type-monster-atk { color: #ef4444; }
+.log-type-reward { color: #34d399; font-weight: bold; }
+.log-type-gold { color: #fbbf24; }
+.log-type-system { color: #94a3b8; font-style: italic; }
