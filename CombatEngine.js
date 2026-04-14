@@ -1,6 +1,9 @@
 /**
- * V1.8.2 CombatEngine.js (穩定強化版)
- * 修正點：加入數據安全鎖、防止靜默失敗、強化日誌輸出、確保 UI 更新順序
+ * V1.9.0 CombatEngine.js (練功修練對接版)
+ * 修正點：
+ * 1. 實裝「地圖記憶」：刷新頁面不再跳回 101 新手村，會讀取存檔紀錄。
+ * 2. 對接 FX 特效引擎：實裝怪物與玩家受擊時的「震動」回饋。
+ * 3. 實裝「勝利飄字」：擊敗妖獸後，經驗與靈石會以綠色/金色在玩家頭頂彈出。
  */
 const CombatEngine = {
     currentMonster: null,
@@ -8,15 +11,27 @@ const CombatEngine = {
     currentMapId: 101, // 預設地圖 ID
 
     /**
-     * 初始化戰鬥引擎
+     * 初始化戰鬥引擎 (V1.9.0 新增地圖記憶邏輯)
      */
-    init(mapId = 101) {
-        console.log(`%c【戰鬥引擎】啟動歷練，目標地圖 ID: ${mapId}`, "color: #a78bfa; font-weight: bold;");
-        this.currentMapId = mapId;
+    init(mapId = null) {
+        // 如果沒有傳入 mapId (例如重整網頁時)，優先從玩家存檔讀取
+        let targetMap = mapId;
+        if (!targetMap) {
+            targetMap = (Player.data && Player.data.currentMapId) ? Player.data.currentMapId : 101;
+        }
+
+        console.log(`%c【戰鬥引擎】啟動歷練，目標地圖 ID: ${targetMap}`, "color: #a78bfa; font-weight: bold;");
+        this.currentMapId = targetMap;
+
+        // 將當前地圖寫入修士命格(存檔)，確保重新整理不迷路
+        if (Player.data) {
+            Player.data.currentMapId = targetMap;
+            if (typeof Player.save === 'function') Player.save();
+        }
         
         // 延遲執行，確保全域資料 (DATA/GAMEDATA) 與 UI 已經準備就緒
         setTimeout(() => {
-            this.spawnMonster(mapId);
+            this.spawnMonster(targetMap);
         }, 100); 
     },
 
@@ -92,7 +107,7 @@ const CombatEngine = {
     },
 
     /**
-     * 執行戰鬥回合
+     * 執行戰鬥回合 (V1.9.0 新增受擊震動)
      */
     executeTurn(isPlayerTurn) {
         // 安全檢查
@@ -112,10 +127,17 @@ const CombatEngine = {
             // 玩家攻擊怪物
             this.currentMonster.hp -= damage;
             if (window.Msg) Msg.log(`你攻擊造成 ${damage} 點傷害。`, "player-atk");
+            
+            // 觸發怪物受擊震動
+            if (window.FX) FX.shake('monster-display');
+            
         } else {
             // 怪物反擊玩家
             Player.data.hp -= damage;
             if (window.Msg) Msg.log(`${this.currentMonster.name} 反擊造成 ${damage} 點傷害。`, "monster-atk");
+            
+            // 觸發玩家狀態列震動
+            if (window.FX) FX.shake('player-hp-fill');
             
             // 同步更新玩家血條
             if (window.UI_Battle) {
@@ -142,7 +164,7 @@ const CombatEngine = {
     },
 
     /**
-     * 戰鬥勝利處理
+     * 戰鬥勝利處理 (V1.9.0 新增獎勵飄字特效)
      */
     handleVictory() {
         const m = this.currentMonster;
@@ -152,6 +174,15 @@ const CombatEngine = {
         const exp = Player.gainExp(m.exp);
         Player.data.coin += (m.gold || 0);
         if (window.Msg) Msg.log(`獲得經驗 ${exp}，靈石 ${m.gold || 0}`, "reward");
+
+        // 觸發勝利飄字 (綠色經驗、金色靈石)
+        if (window.FX) {
+            if (exp > 0) FX.spawnPopText(`+${exp} EXP`, 'player', '#2ecc71');
+            if (m.gold > 0) {
+                // 稍微延遲靈石跳字，避免與經驗字重疊
+                setTimeout(() => FX.spawnPopText(`+${m.gold} 靈石`, 'player', '#fbbf24'), 250);
+            }
+        }
 
         // 隨機掉落裝備
         if (Math.random() < 0.2 && typeof ItemFactory !== 'undefined') {
