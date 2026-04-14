@@ -24,6 +24,7 @@
                 </div>
                 <div class="bar-container exp">
                     <div id="exp-fill" class="fill fill-exp" style="width: 0%;"></div>
+                    <div class="bar-text">EXP</div>
                 </div>
             </div>
         </div>
@@ -31,11 +32,12 @@
     </header>
 
     <main id="game-container">
-        <section id="page-battle" class="game-page active">
+        <section id="page-battle" class="game-page">
             <div class="map-nav-header">
                 <span id="current-map-name">探尋天機中...</span>
                 <button onclick="UI_Battle.showMapSelect()" class="btn-travel">🗺️ 尋找歷練地</button>
             </div>
+            
             <div id="combat-area">
                 <div id="monster-display" class="monster-card">
                     <div id="monster-icon" class="monster-avatar">❓</div>
@@ -46,7 +48,9 @@
                     </div>
                 </div>
             </div>
+
             <div id="battle-actions" class="actions-container"></div>
+
             <div id="log-system" class="log-container expanded">
                 <div class="log-controls">
                     <span>戰鬥日誌</span>
@@ -81,8 +85,6 @@
         <button class="nav-btn" onclick="Core.switchPage('shop')">🏪 坊市</button>
     </nav>
 
-    <div id="ui-layer-top"></div>
-
     <div id="modal-map" class="modal" style="display:none;">
         <div class="modal-box">
             <div class="modal-header">
@@ -97,24 +99,24 @@
     </div>
 
     <script>window.GAMEDATA = window.GAMEDATA || {};</script>
+
     <script src="data/data_config.js"></script>
     <script src="data/data_items.js"></script>
     <script src="data/data_monsters.js"></script>
     <script src="data/data_world.js"></script>
     <script src="data/data_skills.js"></script>
+
     <script>
-        // 數據加載鎖：確保全域 DATA 映射成功
         window.DATA = window.GAMEDATA;
-        console.log("【系統】數據加載鎖已合上。");
+        console.log("【系統】數據加載鎖已合上，當前數據庫：", window.DATA);
     </script>
 
     <script src="MessageCenter.js"></script>
     <script>
-        // 🛠️ 關鍵對接：確保全域都能用 Msg 這個短名
+        // 強制建立 Msg 別名，防止 CombatEngine 報錯
         if (typeof MessageCenter !== 'undefined') {
             window.Msg = MessageCenter;
-        } else {
-            console.error("❌ MessageCenter 未能加載！");
+            console.log("【系統】Msg 別名綁定成功。");
         }
     </script>
     <script src="SaveManager.js"></script>
@@ -123,27 +125,45 @@
 
     <script src="player.js"></script>
     <script src="CombatEngine.js"></script>
-    <script src="shop.js"></script>
+    <script src="shop.js"></script> 
 
     <script src="ui_battle.js"></script>
     <script src="ui_bag.js"></script>
     <script src="ui_stats.js"></script>
     <script src="ui_shop.js"></script>
+    
     <script src="core.js"></script>
     
     <script>
         window.onload = () => {
-            console.log("【系統】開始點燃神識大陣...");
+            console.log("%c【系統】開始點燃神識大陣...", "color: #fbbf24; font-weight: bold;");
+            
             try {
-                if (window.Core && typeof Core.init === 'function') {
-                    Core.init();
-                } else {
-                    throw new Error("Core 模組未正確加載");
-                }
+                // 檢查關鍵模組是否載入成功
+                const requiredModules = ['DATA', 'Msg', 'Player', 'CombatEngine', 'Core'];
+                requiredModules.forEach(mod => {
+                    if (typeof window[mod] === 'undefined') {
+                        throw new Error(`關鍵模組載入失敗: ${mod}`);
+                    }
+                });
+
+                // 啟動大陣
+                Core.init();
+                console.log("%c【核心】 Sect777 運行正常，祝仙途順遂。", "color: #10b981; font-weight: bold;");
+
             } catch (err) {
                 console.error("【致命錯誤】大陣啟動失敗:", err.message);
+                
+                // 視覺化回饋：如果載入失敗，讓玩家知道
                 const realmEl = document.getElementById('player-realm');
-                if (realmEl) realmEl.innerText = "加載失敗，請按 F12 檢查控制台";
+                if (realmEl) {
+                    realmEl.innerText = "啟動失敗";
+                    realmEl.style.background = "rgba(239, 68, 68, 0.2)";
+                    realmEl.style.color = "#ef4444";
+                }
+                
+                // 彈窗警告
+                alert("宗門大陣初始化失敗：\n" + err.message + "\n請按 F12 檢查控制台錯誤訊息。");
             }
         };
     </script>
