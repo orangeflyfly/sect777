@@ -1,11 +1,19 @@
+/* css/variables.css */
 :root {
-    /* 靈魂色彩 */
-    --gold: #fbbf24;
-    --hp-red: #ef4444;
-    --exp-blue: #6366f1;
-    --glass-bg: rgba(255, 255, 255, 0.1);
+    /* 核心色彩 */
+    --accent-glow: rgba(99, 102, 241, 0.8);
+    --card-bg: rgba(255, 255, 255, 0.03);
+    --card-border: rgba(255, 255, 255, 0.08);
+    --modal-overlay: rgba(0, 0, 0, 0.75);
+    --glass-dark: rgba(23, 31, 45, 0.95);
     
-    /* 陣法間距 */
-    --card-radius: 12px;
-    --common-padding: 15px;
+    /* 稀有度色彩 (天道色譜) */
+    --r1-common: #94a3b8;
+    --r2-rare: #4ade80;
+    --r3-epic: #60a5fa;
+    --r4-legendary: #a78bfa;
+    --r5-mythic: #fbbf24;
+
+    /* 動畫時間 */
+    --anim-speed: 0.3s;
 }
