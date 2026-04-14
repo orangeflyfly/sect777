@@ -1,11 +1,11 @@
 /**
- * V1.8.2 data_monsters.js
- * 職責：存放所有怪物數據
- * 修正點：強化命名空間保護、加入數據載入監控
+ * V2.0 data_monsters.js (模組化版)
+ * 職責：存放所有妖獸數據
+ * 狀態：已轉化為 ES Module，支持精準調用
  */
-window.GAMEDATA = window.GAMEDATA || {};
 
-GAMEDATA.MONSTERS = {
+// 1. 導出妖獸數據庫 (MONSTERS)
+export const MONSTERS = {
     "m001": { id: "m001", name: "野兔", icon: "🐇", hp: 30, atk: 5, exp: 10, gold: 5 },
     "m002": { id: "m002", name: "山雞", icon: "🐔", hp: 50, atk: 8, exp: 15, gold: 8 },
     "m003": { id: "m003", name: "灰狼", icon: "🐺", hp: 120, atk: 18, exp: 40, gold: 20 },
@@ -18,8 +18,13 @@ GAMEDATA.MONSTERS = {
     "m010": { id: "m010", name: "守境傀儡", icon: "🤖", hp: 10000, atk: 800, exp: 5000, gold: 3000, isBoss: true }
 };
 
-// --- 數據載入監控陣法 ---
-(function() {
-    const count = Object.keys(GAMEDATA.MONSTERS).length;
-    console.log(`%c【藏妖閣】已成功載入 ${count} 尊妖獸模板。`, "color: #ef4444; font-weight: bold;");
-})();
+/**
+ * --- 🛡️ 兼容性法陣 ---
+ * 確保尚未飛升的舊系統仍能透過全域變數讀取數據
+ */
+window.GAMEDATA = window.GAMEDATA || {};
+window.GAMEDATA.MONSTERS = MONSTERS;
+
+// --- 數據載入監控 (模組化日誌) ---
+const count = Object.keys(MONSTERS).length;
+console.log(`%c【藏妖閣】ESM 陣法啟動，已監控到 ${count} 尊妖獸氣息。`, "color: #ef4444; font-weight: bold;");
