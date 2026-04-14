@@ -146,18 +146,24 @@ export const UI_Bag = {
      * 使用物品邏輯 (對接 Player 模組)
      */
     useItem(uuid, event) {
-        const item = Player.data.inventory.find(i => i.uuid === uuid);
-        if (!item) return;
+    const item = Player.data.inventory.find(i => i.uuid === uuid);
+    if (!item) return;
 
-        let success = false;
-        
-        // 判斷是裝備還是消耗品
-        if (['weapon', 'armor', 'accessory'].includes(item.type)) {
-            success = Player.equipItem(uuid);
-            if (success) Msg.log(`👕 你穿上了 【${item.name}】`, "reward");
-        } else {
-            success = Player.consumeItem(uuid);
-        }
+    let success = false;
+    
+    if (['weapon', 'armor', 'accessory'].includes(item.type)) {
+        success = Player.equipItem(uuid);
+        if (success) Msg.log(`👕 你穿上了 【${item.name}】`, "reward");
+    } else {
+        // 這裡會執行我們在 Player.js 寫的「五合一」或「已習得」判定
+        success = Player.consumeItem(uuid);
+    }
+
+    // 🟢 重點：即使失敗，Player.consumeItem 裡面也會透過 Msg.log 發出警告
+    // 刷新 UI 讓玩家看到結果
+    this.renderBag();
+    if (window.Core) window.Core.updateUI();
+}
 
         // 執行成功後，刷新畫面與全域狀態
         if (success) {
