@@ -1,15 +1,13 @@
 /**
- * V1.9.0 SaveManager.js
+ * V2.0 SaveManager.js (飛升模組版)
  * 職責：數據持久化 (LocalStorage) 與版本遷移
- * 修正點：
- * 1. 更新 SAVE_KEY 至 V1.9。
- * 2. 實裝「舊版存檔繼承」邏輯，無縫轉移 V1.8 的進度並補齊新欄位。
- * 3. 確保地圖記憶 (currentMapId) 與境界 (realm) 能被正確讀寫。
+ * 位置：/utils/SaveManager.js
  */
-const SaveManager = {
-    // V1.9.0 全新存檔金鑰
+
+export const SaveManager = {
+    // V1.9.0 存檔金鑰 (目前維持 V1.9 以相容道友當前進度)
     SAVE_KEY: 'CultivationGame_Save_V1.9',
-    // 舊版金鑰，用於向下兼容
+    // 舊版金鑰，用於向下兼容傳承
     LEGACY_KEY: 'CultivationGame_Save_V1.8',
 
     /**
@@ -20,10 +18,10 @@ const SaveManager = {
         if (!data) return false;
         
         try {
-            // 使用 JSON 序列化進行深拷貝，避免直接修改原始 Player.data
+            // 使用 JSON 序列化進行深拷貝，避免直接修改運行中的 Player.data 導致物件引用問題
             const dataToSave = JSON.parse(JSON.stringify(data));
             
-            // 更新最後存檔時間（僅在存檔副本中更新）
+            // 更新最後存檔時間
             dataToSave.lastSaveTime = Date.now();
             
             const jsonStr = JSON.stringify(dataToSave);
@@ -60,7 +58,7 @@ const SaveManager = {
                     if (parsedData.realm === undefined) parsedData.realm = 1;
                     if (parsedData.currentMapId === undefined) parsedData.currentMapId = 101;
                     
-                    // 轉化完成後，立刻自動存入 V1.9 的新金鑰中
+                    // 轉化完成後，立刻自動存入 V1.9 的新金鑰中，完成飛升升級
                     this.save(parsedData);
                 }
             }
@@ -77,15 +75,18 @@ const SaveManager = {
     },
 
     /**
-     * 重置存檔
+     * 重置存檔 (重入輪迴)
      */
     clear() {
-        // 同時抹除新舊版本的記憶，徹底重入輪迴
+        // 同時抹除新舊版本的記憶，徹底清空
         localStorage.removeItem(this.SAVE_KEY);
         localStorage.removeItem(this.LEGACY_KEY);
         console.log("【司庫房】神識記憶已徹底抹除，準備重入輪迴。");
     }
 };
 
-// 確保全域可存取
+/**
+ * --- 全域對接 ---
+ * 確保在過渡期內，非模組化的 JS 或 Debug 工具仍能通過 window 存取
+ */
 window.SaveManager = SaveManager;
