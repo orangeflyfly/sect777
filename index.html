@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>練功修練 - 凡人逆天之路 (V1.9.0)</title>
+    <title>練功修練 - 飛升 2.0 (ESM 模組化版)</title>
     
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/page_battle.css">
@@ -62,20 +62,16 @@
 
         <section id="page-stats" class="game-page" style="display:none;">
             <div class="page-title">修為與境界</div>
-            
             <div class="equipped-section">
                 <div class="section-label">🧥 當前披掛</div>
                 <div id="equipped-list" class="equip-grid">
                     <div class="equip-slot empty">載入中...</div>
                 </div>
             </div>
-
             <div id="breakthrough-area" style="display:none; text-align:center; padding: 15px;">
                 <button id="btn-breakthrough" class="btn-special">✨ 突破境界</button>
             </div>
-
             <h2 id="stat-realm-title" style="text-align:center; color:var(--accent); margin-bottom:20px;"></h2>
-            
             <div id="stats-content" class="stats-grid"></div>
         </section>
 
@@ -117,60 +113,18 @@
     <script src="data/data_monsters.js"></script>
     <script src="data/data_world.js"></script>
     <script src="data/data_skills.js"></script>
-    <script>
-        window.DATA = window.GAMEDATA;
-        console.log("【系統】數據加載鎖已合上，專案更名為：練功修練");
-    </script>
+    <script>window.DATA = window.GAMEDATA;</script>
 
-    <script src="MessageCenter.js"></script>
-    <script>
-        if (typeof MessageCenter !== 'undefined') window.Msg = MessageCenter;
-    </script>
-    <script src="SaveManager.js"></script>
-    <script src="Formula.js"></script>
-    <script src="fx.js"></script> 
-    <script src="ItemFactory.js"></script>
+    <script type="module">
+        // 導入核心中樞
+        import { Core } from './core.js';
+        
+        // 為了讓 HTML 裡的 onclick 還能找到 Core，我們手動暴露給 window
+        window.Core = Core;
 
-    <script src="player.js"></script>
-    <script src="CombatEngine.js"></script>
-    <script src="shop.js"></script> 
-
-    <script src="ui_battle.js"></script>
-    <script src="ui_bag.js"></script>
-    <script src="ui_stats.js"></script>
-    <script src="ui_shop.js"></script>
-    
-    <script src="core.js"></script>
-    
-    <script>
-        /**
-         * 宗門啟動檢測
-         */
         window.onload = () => {
-            console.log("%c【系統】練功修練 - 神識大陣啟動...", "color: #fbbf24; font-weight: bold;");
-            
-            try {
-                // 檢查關鍵模組是否載入成功 (含 V1.9.0 的 FX)
-                const requiredModules = ['DATA', 'Msg', 'Player', 'CombatEngine', 'Core', 'FX'];
-                requiredModules.forEach(mod => {
-                    if (typeof window[mod] === 'undefined') {
-                        throw new Error(`關鍵模組載入失敗: ${mod}`);
-                    }
-                });
-
-                // 啟動大陣
-                Core.init();
-                console.log("%c【核心】 運行正常，祝仙途順遂。", "color: #10b981; font-weight: bold;");
-
-            } catch (err) {
-                console.error("【致命錯誤】啟動失敗:", err.message);
-                const realmEl = document.getElementById('player-realm');
-                if (realmEl) {
-                    realmEl.innerText = "啟動失敗";
-                    realmEl.style.color = "#ef4444";
-                }
-                alert("宗門大陣啟動失敗：\n" + err.message);
-            }
+            console.log("%c【系統】V2.0 飛升大陣啟動...", "color: #fbbf24; font-weight: bold;");
+            Core.init();
         };
     </script>
 </body>
