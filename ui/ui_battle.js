@@ -1,22 +1,24 @@
 /**
- * V1.9.0 ui_battle.js
+ * V2.0 ui_battle.js (飛升模組版)
  * 職責：歷練介面管理、戰鬥日誌分頁、地圖選擇與突破 UI 對接
- * 修正點：
- * 1. 實裝日誌分頁切換邏輯 (取代舊有的收合按鈕)。
- * 2. 強化更新怪物資訊的視覺回饋。
- * 3. 預留戰鬥飄字 (Damage FX) 的觸發接口。
- * 4. 加入經驗滿值時的突破按鈕監聽。
+ * 位置：/ui/ui_battle.js
  */
 
-const UI_Battle = {
-    // 1. 初始化監聽器
+// 1. 導入核心邏輯與工具模組
+import { Player } from '../entities/player.js';
+import { CombatEngine } from '../systems/CombatEngine.js';
+import { MessageCenter as Msg } from '../utils/MessageCenter.js';
+import { FX } from '../utils/fx.js';
+
+export const UI_Battle = {
+    // 1. 初始化監聽器與基礎渲染
     init() {
-        console.log("【UI_Battle】練功修練介面啟動...");
+        console.log("【UI_Battle】歷練法鏡啟動，對接戰場數據...");
         this.renderSkillButtons();
         this.renderLogTabs(); // 初始化日誌分頁標籤
         
         // 初始同步玩家數據
-        if (typeof Player !== 'undefined' && Player.data) {
+        if (Player.data) {
             const stats = Player.getBattleStats();
             this.updatePlayerHP(Player.data.hp || stats.maxHp, stats.maxHp);
             this.updateExp(Player.data.exp, Player.data.maxExp);
@@ -37,7 +39,7 @@ const UI_Battle = {
         }
     },
 
-    // 3. 更新經驗條與偵測突破
+    // 3. 更新經驗條與偵測突破 (對接修為介面)
     updateExp(current, next) {
         const fill = document.getElementById('exp-fill');
         if (fill) {
@@ -46,12 +48,13 @@ const UI_Battle = {
         }
 
         // V1.9.0 境界突破連動：當經驗滿時，通知 UI_Stats 顯示突破按鈕
+        // 注意：UI_Stats 目前可能仍掛載於 window，採保守檢查調用
         if (current >= next && window.UI_Stats) {
-            UI_Stats.handleBreakthroughUI();
+            window.UI_Stats.handleBreakthroughUI();
         }
     },
 
-    // 4. 更新怪物資訊 (預留特效接口)
+    // 4. 更新怪物資訊 (觸發受擊 shake 特效)
     updateMonster(monster) {
         const nameEl = document.getElementById('monster-name');
         const hpFill = document.getElementById('monster-hp-fill');
@@ -68,11 +71,16 @@ const UI_Battle = {
             if (hpFill) hpFill.style.width = `${percent}%`;
             if (hpText) hpText.innerText = `${Math.ceil(monster.hp)} / ${maxHp}`;
 
-            // V1.9.0 預留：受擊閃爍特效 (需配合 fx.css)
+            // V1.9.0 受擊閃爍與震動特效
             const monsterCard = document.getElementById('monster-display');
             if (monsterCard && monster.hp < maxHp) {
-                monsterCard.classList.add('hit-shake');
-                setTimeout(() => monsterCard.classList.remove('hit-shake'), 200);
+                // 如果 FX 模組存在，優先呼叫更專業的震動
+                if (FX && FX.shake) {
+                    FX.shake('monster-display');
+                } else {
+                    monsterCard.classList.add('hit-shake');
+                    setTimeout(() => monsterCard.classList.remove('hit-shake'), 200);
+                }
             }
         } else {
             if (nameEl) nameEl.innerText = "搜尋妖氣中...";
@@ -82,7 +90,7 @@ const UI_Battle = {
         }
     },
 
-    // 5. 戰鬥日誌渲染 (對齊 V1.9.0 新結構)
+    // 5. 戰鬥日誌渲染 (分頁機制預留)
     log(msg, type = 'system') {
         const logContainer = document.getElementById('battle-log');
         if (!logContainer) return;
@@ -111,17 +119,17 @@ const UI_Battle = {
             logContainer.removeChild(logContainer.firstChild);
         }
 
-        // V1.9.0 預留：觸發飄字特效 (對接 fx.js)
+        // V1.9.0 對接飄字特效 (由 MessageCenter 轉接或此處直接攔截)
         if (type === 'player-atk' || type === 'monster-atk') {
-            const val = msg.match(/\d+/); // 萃取數字
-            if (val && window.FX) {
+            const val = msg.match(/\d+/); 
+            if (val && FX && FX.spawnPopText) {
                 const target = (type === 'player-atk') ? 'monster' : 'player';
                 FX.spawnPopText(val[0], target);
             }
         }
     },
 
-    // 6. 渲染日誌分頁標籤 (取代舊收合鈕)
+    // 6. 渲染日誌分頁標籤
     renderLogTabs() {
         const tabContainer = document.getElementById('log-tabs');
         if (!tabContainer) return;
@@ -132,6 +140,7 @@ const UI_Battle = {
             { id: 'loot', name: '掉落' }
         ];
 
+        // 注意：onclick 必須指向 window.UI_Battle 確保 HTML 呼叫得到
         tabContainer.innerHTML = tabs.map(tab => `
             <button class="log-tab-btn ${tab.id === 'all' ? 'active' : ''}" 
                     onclick="UI_Battle.switchLogTab('${tab.id}', this)">
@@ -141,11 +150,10 @@ const UI_Battle = {
     },
 
     switchLogTab(tabId, btn) {
-        // 切換按鈕樣式
         document.querySelectorAll('.log-tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
-        // 這裡未來可以加入過濾邏輯
+        // 核心邏輯：此處未來可實裝過濾功能
         Msg.log(`切換日誌頻道：${tabId}`, "system");
     },
 
@@ -156,22 +164,24 @@ const UI_Battle = {
 
         actionContainer.innerHTML = '';
 
+        // 1. 普通攻擊
         const atkBtn = document.createElement('button');
         atkBtn.className = 'btn-battle-action btn-atk-primary';
         atkBtn.innerHTML = `<span class="act-icon">⚔️</span><span class="act-name">普通攻擊</span>`;
         atkBtn.onclick = () => {
-            if (window.CombatEngine) CombatEngine.playerAttack();
+            if (CombatEngine) CombatEngine.playerAttack();
         };
         actionContainer.appendChild(atkBtn);
 
-        if (typeof Player !== 'undefined' && Player.data && Player.data.skills) {
+        // 2. 動態渲染已習得神通
+        if (Player.data && Player.data.skills) {
             Player.data.skills.forEach(skill => {
                 const sBtn = document.createElement('button');
                 sBtn.className = 'btn-battle-action btn-atk-skill';
                 sBtn.innerHTML = `<span class="act-icon">✨</span><span class="act-name">${skill.name}</span>`;
                 sBtn.onclick = () => {
-                    if (window.CombatEngine && !CombatEngine.isProcessing) {
-                        if (window.Msg) Msg.log(`施展神通：【${skill.name}】！`, 'player-atk');
+                    if (CombatEngine && !CombatEngine.isProcessing) {
+                        Msg.log(`施展神通：【${skill.name}】！`, 'player-atk');
                         CombatEngine.playerAttack();
                     }
                 };
@@ -260,8 +270,8 @@ const UI_Battle = {
     selectMap(map) {
         const mapNameEl = document.getElementById('current-map-name');
         if (mapNameEl) mapNameEl.innerText = map.name;
-        if (window.Msg) Msg.log(`前往「${map.name}」進行歷練...`, "system");
-        if (window.CombatEngine) CombatEngine.init(map.id);
+        Msg.log(`前往「${map.name}」進行歷練...`, "system");
+        if (CombatEngine) CombatEngine.init(map.id);
     }
 };
 
