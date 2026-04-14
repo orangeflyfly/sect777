@@ -1,0 +1,111 @@
+/**
+ * V2.1 page_world.css
+ * 職責：小世界與聚靈陣的專屬視覺樣式
+ */
+
+/* 洞府掛機區卡片 */
+.world-array-card {
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 16px;
+    padding: 25px 20px;
+    text-align: center;
+    margin: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(99, 102, 241, 0.05);
+}
+
+.array-title {
+    font-size: 18px;
+    color: #c084fc;
+    margin-bottom: 20px;
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(192, 132, 252, 0.5);
+    letter-spacing: 2px;
+}
+
+/* 🟢 聚靈陣核心動畫 (會呼吸的光圈) */
+.array-core {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 25px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    background: rgba(0, 0, 0, 0.4);
+    border: 2px dashed rgba(74, 222, 128, 0.3);
+}
+
+.array-core.active {
+    animation: rotateArray 20s linear infinite;
+    border-color: rgba(74, 222, 128, 0.6);
+}
+
+.array-core.full {
+    border-color: rgba(239, 68, 68, 0.8);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+}
+
+.array-glow {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%; height: 80%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(74, 222, 128, 0.4) 0%, transparent 70%);
+    z-index: 1;
+}
+
+.array-core.active .array-glow {
+    animation: breathGlow 3s ease-in-out infinite alternate;
+}
+
+.array-core.full .array-glow {
+    background: radial-gradient(circle, rgba(239, 68, 68, 0.4) 0%, transparent 70%);
+    animation: breathGlowFast 1s ease-in-out infinite alternate;
+}
+
+/* 狀態文字 */
+.array-status p {
+    margin: 8px 0;
+    color: var(--text-main);
+    font-size: 15px;
+}
+
+.array-status .time-limit {
+    color: var(--text-dim);
+    font-size: 13px;
+}
+
+/* 修復區塊 */
+.world-upgrade-card {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 0 15px 20px;
+    text-align: center;
+}
+
+.world-upgrade-card h4 {
+    margin: 0 0 10px 0;
+    color: #fcd34d;
+    font-size: 16px;
+}
+
+/* 動畫定義 */
+@keyframes rotateArray {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes breathGlow {
+    0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.5; }
+    100% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+}
+
+@keyframes breathGlowFast {
+    0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.7; }
+    100% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+}
