@@ -1,0 +1,40 @@
+/* css/components/item-rarity.css */
+
+/* 4. 稀有度色彩系統 (文字與背景邊框) */
+
+/* 文字顏色：讓名稱展現品階威壓 */
+.r-txt-1 { color: var(--r1-common); } 
+.r-txt-2 { color: var(--r2-rare); } 
+.r-txt-3 { color: var(--r3-epic); } 
+.r-txt-4 { color: var(--r4-legendary); } 
+.r-txt-5 { 
+    color: var(--r5-mythic); 
+    text-shadow: 0 0 8px rgba(251, 191, 36, 0.4); 
+} 
+
+/* 圖示邊框色：讓寶物圖標更有質感 */
+.r-bg-1 { border-color: var(--r1-common); }
+.r-bg-2 { 
+    border-color: var(--r2-rare); 
+    background: rgba(74, 222, 128, 0.05); 
+}
+.r-bg-3 { 
+    border-color: var(--r3-epic); 
+    background: rgba(96, 165, 250, 0.05); 
+}
+.r-bg-4 { 
+    border-color: var(--r4-legendary); 
+    background: rgba(167, 139, 250, 0.05); 
+}
+.r-bg-5 { 
+    border-color: var(--r5-mythic); 
+    background: rgba(251, 191, 36, 0.1); 
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.2); 
+}
+
+/* 整體卡片邊框色 (隱性提示：左側色條) */
+.r-1 { border-left: 3px solid var(--r1-common); }
+.r-2 { border-left: 3px solid var(--r2-rare); }
+.r-3 { border-left: 3px solid var(--r3-epic); }
+.r-4 { border-left: 3px solid var(--r4-legendary); }
+.r-5 { border-left: 3px solid var(--r5-mythic); }
