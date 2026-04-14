@@ -1,0 +1,70 @@
+/* css/components/battle-master-card.css */
+
+.battle-master-card {
+    background: linear-gradient(160deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 14px;
+    padding: 12px; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.card-header span {
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.btn-detail-lens {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-detail-lens:hover {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-main);
+}
+
+.battle-grid-3x2 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px 8px; 
+    justify-items: center; 
+}
+
+.b-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.b-item em {
+    font-style: normal;
+    font-size: 10px;
+    color: var(--text-dim);
+    opacity: 0.8;
+}
+
+.b-item span {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-main);
+}
