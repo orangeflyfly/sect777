@@ -1,10 +1,11 @@
 /**
- * V1.7.0 data_world.js
+ * V2.0 data_world.js
  * 職責：區域與地圖關卡配置
+ * 狀態：已轉化為 ES Module，支持地圖導航系統
  */
-window.GAMEDATA = window.GAMEDATA || {};
 
-GAMEDATA.REGIONS = {
+// 1. 導出區域數據 (REGIONS)
+export const REGIONS = {
     "region_01": {
         id: "region_01",
         name: "青雲山脈",
@@ -24,3 +25,12 @@ GAMEDATA.REGIONS = {
         ]
     }
 };
+
+/**
+ * --- 🛡️ 兼容性法陣 ---
+ * 確保 UI_Battle 的地圖選擇器仍能正常讀取
+ */
+window.GAMEDATA = window.GAMEDATA || {};
+window.GAMEDATA.REGIONS = REGIONS;
+
+console.log("%c【山河誌】ESM 陣法啟動，地圖記憶已載入。", "color: #3b82f6; font-weight: bold;");
