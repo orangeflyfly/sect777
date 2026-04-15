@@ -1,6 +1,6 @@
 /**
- * V2.3.1 CombatEngine.js (飛升模組版 - 狀態可視化更新)
- * 職責：處理戰鬥流程、怪物AI、狀態異常(Debuff)渲染、神通倍率計算與獎勵結算
+ * V2.4 CombatEngine.js (主被動分流與境界壓制 - 完整全功能版)
+ * 職責：處理主動/被動技能、冷卻管理、境界壓制、完整掉落機制、色彩日誌
  * 位置：/systems/CombatEngine.js
  */
 
@@ -14,14 +14,14 @@ export const CombatEngine = {
     currentMonster: null,
     isProcessing: false,
     currentMapId: 101, 
+    skillCDs: {}, // 存儲技能冷卻狀態 { '烈焰斬': 0 }
 
     init(mapId = null) {
         let targetMap = mapId;
         if (!targetMap) {
             targetMap = (Player.data && Player.data.currentMapId) ? Player.data.currentMapId : 101;
         }
-
-        console.log(`%c【戰鬥引擎】啟動歷練，目標地圖 ID: ${targetMap}`, "color: #a78bfa; font-weight: bold;");
+        console.log(`%c【戰鬥引擎】啟動歷練，地圖 ID: ${targetMap}`, "color: #a78bfa; font-weight: bold;");
         this.currentMapId = targetMap;
 
         if (Player.data) {
@@ -31,7 +31,7 @@ export const CombatEngine = {
 
         setTimeout(() => {
             this.spawnMonster(targetMap);
-            this.renderBuffsUI(); // 初始化時渲染狀態
+            this.renderBuffsUI(); 
         }, 100); 
     },
 
@@ -62,88 +62,116 @@ export const CombatEngine = {
         Msg.log(`【歷練】遇到 ${template.name}！`, "system"); 
     },
 
-    playerAttack() {
+    /**
+     * 🟢 執行主動技能 (由 UI 按鈕點擊呼叫)
+     */
+    useSkill(skillName) {
         if (this.isProcessing || !this.currentMonster) return;
-        if (Player.data && Player.data.hp <= 0) return Msg.log("你體力耗盡，無法發動攻擊！", "system");
+        
+        // 冷卻檢查
+        if (this.skillCDs[skillName] > 0) {
+            Msg.log(`神通【${skillName}】靈力運轉中，還需 ${this.skillCDs[skillName]} 秒。`, "system");
+            return;
+        }
+
+        const dataSrc = window.DB || window.DATA;
+        const skillDef = dataSrc.SKILLS[skillName];
+        if (!skillDef) return;
 
         this.isProcessing = true;
         
-        // 回合開始前，先結算身上的異常狀態 (如中毒)
-        this.processBuffs();
-        
+        // 設置冷卻 (存入 skillCDs)
+        this.skillCDs[skillName] = skillDef.cd || 5;
+
+        // 觸發戰鬥回合
+        this.processBuffs(); 
         if (Player.data.hp > 0) {
-            this.executeTurn(true);
+            this.executeTurn(true, skillDef, skillName);
         } else {
-            this.handleDefeat(); // 毒發身亡
+            this.handleDefeat();
         }
     },
 
-    executeTurn(isPlayerTurn) {
+    /**
+     * 🟢 普通攻擊
+     */
+    playerAttack() {
+        if (this.isProcessing || !this.currentMonster) return;
+        if (Player.data.hp <= 0) return Msg.log("你重傷未癒，無法出招！", "system");
+
+        this.isProcessing = true;
+        this.processBuffs(); 
+        
+        if (Player.data.hp > 0) {
+            this.executeTurn(true, null, null); 
+        } else {
+            this.handleDefeat();
+        }
+    },
+
+    executeTurn(isPlayerTurn, skillUsed = null, skillName = "") {
         if (!this.currentMonster || !Player.data) {
             this.isProcessing = false;
             return;
         }
 
         const dataSrc = window.DB || window.DATA;
-        let attackerAtk = isPlayerTurn ? Player.getBattleStats().atk : this.currentMonster.atk;
+        const pStats = Player.getBattleStats();
+        
+        // 境界壓制計算
+        const playerRealm = Player.data.realm || 1;
+        const monsterLevel = this.currentMonster.level || 1;
+        const monsterRealm = Math.floor((monsterLevel - 1) / 10) + 1;
+        const realmDiff = Math.max(0, playerRealm - monsterRealm);
+        const realmBonus = 1 + (realmDiff * 0.2);
+
+        let attackerAtk = isPlayerTurn ? pStats.atk : this.currentMonster.atk;
         let baseDamage = Formula.getDamageRange(attackerAtk);
-        let finalDamage = baseDamage;
+        let finalDamage = Math.floor(baseDamage * realmBonus);
 
         if (isPlayerTurn) {
-            // 玩家回合：神通觸發邏輯
-            if (Player.data.skills && Player.data.skills.length > 0) {
-                if (Math.random() < 0.3) {
-                    const randomSkill = Player.data.skills[Math.floor(Math.random() * Player.data.skills.length)];
-                    const skillDef = dataSrc.SKILLS ? dataSrc.SKILLS[randomSkill.name] : null;
-                    
-                    if (skillDef) {
-                        const boost = 1 + ((randomSkill.level - 1) * (dataSrc.CONFIG.SKILL_UPGRADE_BOOST || 0.2));
-                        const mult = (skillDef.multiplier || 1.5) * boost;
-                        finalDamage = Math.floor(baseDamage * mult);
-                        Msg.log(`🔥 觸發神通【${randomSkill.name}】Lv.${randomSkill.level}！威力大增！`, "gold");
-                        FX.shake('combat-area'); // 大招震動畫面
-                    }
-                }
+            if (skillUsed) {
+                const playerSkill = Player.data.skills.find(s => s.name === skillName);
+                const skillLv = playerSkill ? playerSkill.level : 1;
+                const boost = 1 + ((skillLv - 1) * (dataSrc.CONFIG.SKILL_UPGRADE_BOOST || 0.2));
+                
+                finalDamage = Math.floor(finalDamage * skillUsed.multiplier * boost);
+                Msg.log(`🔥 施展神通【${skillName}】(Lv.${skillLv})！`, "gold");
+                FX.shake('combat-area');
+            } else {
+                Msg.log(`你發動普通攻擊，造成 ${finalDamage} 點傷害。`, "default");
             }
 
+            // 觸發攻擊時的被動 (吸血等)
+            this.handlePassiveSkills('onAttack', { damage: finalDamage });
+
             this.currentMonster.hp -= finalDamage;
-            Msg.log(`你攻擊造成 ${finalDamage} 點傷害。`, "player-atk");
             FX.shake('monster-display');
             FX.spawnPopText(finalDamage, 'monster');
 
         } else {
-            // 怪物回合：妖獸開智 (AI 技能)
-            let usedSkill = false;
-            
-            if (this.currentMonster.skill && dataSrc.SKILLS && dataSrc.SKILLS[this.currentMonster.skill]) {
-                const skillDef = dataSrc.SKILLS[this.currentMonster.skill];
-                
-                if (Math.random() < (skillDef.chance || 0.2)) {
-                    usedSkill = true;
-                    Msg.log(`⚠️ ${this.currentMonster.name} 發動了天賦【${this.currentMonster.skill}】！`, "monster-atk");
-                    
-                    if (skillDef.type === 'damage') {
-                        finalDamage = Math.floor(baseDamage * (skillDef.multiplier || 2.0));
+            // 怪物回合 AI
+            let monsterFinalDmg = finalDamage;
+            if (this.currentMonster.skill && dataSrc.SKILLS[this.currentMonster.skill]) {
+                const mSkill = dataSrc.SKILLS[this.currentMonster.skill];
+                if (Math.random() < (mSkill.chance || 0.2)) {
+                    Msg.log(`⚠️ ${this.currentMonster.name} 發動【${this.currentMonster.skill}】！`, "monster-atk");
+                    if (mSkill.type === 'damage') {
+                        monsterFinalDmg = Math.floor(monsterFinalDmg * mSkill.multiplier);
                         FX.shake('combat-area');
-                    } else if (skillDef.type === 'debuff') {
-                        this.applyDebuffToPlayer(skillDef);
+                    } else if (mSkill.type === 'debuff') {
+                        this.applyDebuffToPlayer(mSkill);
                     }
                 }
             }
 
-            Player.data.hp -= finalDamage;
-            if (!usedSkill) {
-                Msg.log(`${this.currentMonster.name} 撲咬造成 ${finalDamage} 點傷害。`, "monster-atk");
-            } else if (finalDamage > baseDamage) {
-                Msg.log(`遭受重擊！損失 ${finalDamage} 點氣血。`, "monster-atk");
-            }
-            
-            // 🟢 修正：讓修士的立繪震動，而不再只是頂部血條
-            FX.shake('player-display'); 
-            FX.spawnPopText(finalDamage, 'player');
+            Player.data.hp -= monsterFinalDmg;
+            Msg.log(`${this.currentMonster.name} 造成 ${monsterFinalDmg} 點傷害。`, "monster-atk");
+            FX.shake('player-display');
+            FX.spawnPopText(monsterFinalDmg, 'player');
             
             if (window.UI_Battle) {
-                window.UI_Battle.updatePlayerHP(Player.data.hp, Player.getBattleStats().maxHp);
+                window.UI_Battle.updatePlayerHP(Player.data.hp, pStats.maxHp);
             }
         }
 
@@ -157,118 +185,122 @@ export const CombatEngine = {
         } else if (isPlayerTurn) {
             setTimeout(() => this.executeTurn(false), 600);
         } else {
+            this.updateCDs();
+            this.handlePassiveSkills('onTurnEnd');
             this.isProcessing = false; 
         }
     },
 
-    // 處理異常狀態 (中毒結算)
+    handlePassiveSkills(trigger, context = {}) {
+        const dataSrc = window.DB || window.DATA;
+        if (!Player.data.skills) return;
+
+        Player.data.skills.forEach(s => {
+            const def = dataSrc.SKILLS[s.name];
+            if (!def || !def.isPassive) return;
+
+            if (trigger === 'onTurnEnd' && def.type === 'auto_heal') {
+                const heal = Math.floor(Player.getBattleStats().maxHp * def.multiplier);
+                Player.data.hp = Math.min(Player.data.hp + heal, Player.getBattleStats().maxHp);
+                Msg.log(`☘️ 被動【${s.name}】運轉，恢復 ${heal} 氣血。`, "gold");
+            }
+
+            if (trigger === 'onAttack' && def.type === 'lifesteal') {
+                if (Math.random() < (def.chance || 0.15)) {
+                    const heal = Math.floor(context.damage * def.multiplier);
+                    Player.data.hp = Math.min(Player.data.hp + heal, Player.getBattleStats().maxHp);
+                    Msg.log(`🧛 被動【${s.name}】觸發，吸取 ${heal} 氣血！`, "gold");
+                    FX.spawnPopText(`+${heal}`, 'player', '#ef4444');
+                }
+            }
+        });
+    },
+
+    updateCDs() {
+        for (let key in this.skillCDs) {
+            if (this.skillCDs[key] > 0) this.skillCDs[key]--;
+        }
+    },
+
     processBuffs() {
         if (!Player.data || !Player.data.buffs || Player.data.buffs.length === 0) return;
-
         let toRemove = [];
         Player.data.buffs.forEach((b, idx) => {
             if (b.effect === 'poison') {
-                const dmg = Math.max(1, Math.floor(Player.getBattleStats().maxHp * 0.05)); // 毒發扣 5% 最大生命
+                const dmg = Math.max(1, Math.floor(Player.getBattleStats().maxHp * 0.05));
                 Player.data.hp -= dmg;
-                Msg.log(`🤢 妖毒發作！損失 ${dmg} 點氣血。`, 'monster-atk');
+                Msg.log(`🤢 妖毒發作，損失 ${dmg} 氣血。`, 'monster-atk');
                 FX.spawnPopText(dmg, 'player', '#22c55e');
                 FX.shake('player-display');
             }
-            
             b.duration--;
-            if (b.duration <= 0) {
-                toRemove.push(idx);
-                Msg.log(`✨ 體內靈氣流轉，【${b.name}】狀態已解除。`, 'system');
-            }
+            if (b.duration <= 0) toRemove.push(idx);
         });
-
-        // 移除過期狀態
-        for (let i = toRemove.length - 1; i >= 0; i--) {
-            Player.data.buffs.splice(toRemove[i], 1);
-        }
-        
-        this.renderBuffsUI(); // 🟢 刷新 UI 顯示
-        
-        if (window.UI_Battle) {
-            window.UI_Battle.updatePlayerHP(Player.data.hp, Player.getBattleStats().maxHp);
-        }
+        for (let i = toRemove.length - 1; i >= 0; i--) Player.data.buffs.splice(toRemove[i], 1);
+        this.renderBuffsUI();
     },
 
-    // 賦予玩家減益狀態
     applyDebuffToPlayer(skillDef) {
         if (!Player.data.buffs) Player.data.buffs = [];
-        
         const existing = Player.data.buffs.find(b => b.effect === skillDef.effect);
-        if (existing) {
-            existing.duration = skillDef.duration; // 重置持續時間
-        } else {
-            Player.data.buffs.push({ 
-                name: this.currentMonster.skill, 
-                effect: skillDef.effect, 
-                duration: skillDef.duration 
-            });
-        }
-        Msg.log(`⚠️ 你中了【${this.currentMonster.skill}】！`, "monster-atk");
-        this.renderBuffsUI(); // 🟢 立即渲染圖標
+        if (existing) existing.duration = skillDef.duration;
+        else Player.data.buffs.push({ name: this.currentMonster.skill, effect: skillDef.effect, duration: skillDef.duration });
+        this.renderBuffsUI();
     },
 
-    // 🟢 新增：渲染異常狀態 UI
     renderBuffsUI() {
         const buffContainer = document.getElementById('player-buffs');
         if (!buffContainer) return;
-        
-        if (!Player.data || !Player.data.buffs || Player.data.buffs.length === 0) {
-            buffContainer.innerHTML = '';
-            return;
-        }
-
+        if (!Player.data.buffs || Player.data.buffs.length === 0) { buffContainer.innerHTML = ''; return; }
         buffContainer.innerHTML = Player.data.buffs.map(b => {
-            if (b.effect === 'poison') {
-                return `<span style="background: #22c55e; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; box-shadow: 0 0 5px #22c55e;">🤢 毒 (${b.duration})</span>`;
-            }
-            if (b.effect === 'stun') {
-                return `<span style="background: #eab308; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; box-shadow: 0 0 5px #eab308;">💫 暈 (${b.duration})</span>`;
-            }
-            return `<span style="background: #64748b; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px;">${b.name}</span>`;
+            const color = b.effect === 'poison' ? '#22c55e' : '#eab308';
+            return `<span style="background:${color}; color:white; padding:2px 6px; border-radius:4px; font-size:11px; margin-right:4px;">${b.name}(${b.duration})</span>`;
         }).join('');
     },
 
+    /**
+     * 🟢 戰鬥勝利結算 (一字不漏恢復版)
+     */
     handleVictory() {
         const m = this.currentMonster;
-        Msg.log(`${m.name} 已被擊敗。`, "system");
+        Msg.log(`${m.name} 已被擊敗！`, "system");
 
+        // 1. 基礎獎勵
         const exp = Player.gainExp(m.exp);
         Player.data.coin += (m.gold || 0);
-        Msg.log(`獲得經驗 ${exp}，靈石 ${m.gold || 0}`, "reward");
+        Msg.log(`獲得修為 ${exp}，靈石 ${m.gold || 0}`, "reward");
 
         if (exp > 0) FX.spawnPopText(`+${exp} EXP`, 'player', '#2ecc71');
         if (m.gold > 0) {
             setTimeout(() => FX.spawnPopText(`+${m.gold} 靈石`, 'player', '#fbbf24'), 250);
         }
 
+        // 2. 戰利品：裝備 (10%)
         if (Math.random() < 0.1) {
             const item = ItemFactory.createEquipment();
             if (item) {
                 Player.addItem(item);
-                Msg.log(`🎊 獲得戰利品：【${item.name}】！`, "reward");
+                Msg.log(`🎊 獲得：【${item.name}】！`, "reward");
             }
         }
 
+        // 3. 戰利品：素材 (60%)
         if (Math.random() < 0.6) {
             const matNames = ["妖獸骨骸", "殘破皮毛", "低階妖丹", "陣法殘片"];
             const randomMat = matNames[Math.floor(Math.random() * matNames.length)];
             const material = {
                 uuid: 'mat_' + Date.now() + Math.random().toString(36).substr(2, 5),
                 name: randomMat, type: 'material', rarity: 1, count: 1,
-                desc: `從妖獸身上採集的素材，似乎可以用來換取靈石或修復法陣。`,
+                desc: `從妖獸身上採集的素材，可用於換取靈石或修復法陣。`,
                 price: 15
             };
             Player.addItem(material);
             Msg.log(`📦 採集到素材：【${randomMat}】`, "reward");
         }
 
+        // 4. 戰利品：神通殘卷 (15%)
         if (Math.random() < 0.15) {
-            const skillList = ["烈焰斬", "回春術", "青元劍訣"];
+            const skillList = ["烈焰斬", "回春術", "青元劍訣", "破軍劍擊", "天雷正法"];
             const skillName = skillList[Math.floor(Math.random() * skillList.length)];
             const volNum = Math.floor(Math.random() * 5) + 1; 
             const volMap = {1:"一", 2:"二", 3:"三", 4:"四", 5:"五"};
@@ -284,10 +316,9 @@ export const CombatEngine = {
             Msg.log(`📜 發現殘卷：【${fragment.name}】！`, "gold");
         }
 
-        // 清除戰鬥結束後的殘留異常狀態
-        if (Player.data.buffs) Player.data.buffs = [];
+        // 清理狀態
+        Player.data.buffs = [];
         this.renderBuffsUI();
-
         if (window.Core) window.Core.updateUI();
         this.currentMonster = null;
 
@@ -298,31 +329,22 @@ export const CombatEngine = {
     },
 
     handleDefeat() {
-        Msg.log(`你被 ${this.currentMonster.name} 擊敗了... 重傷昏迷。`, "monster-atk");
+        Msg.log(`你被 ${this.currentMonster.name} 擊敗了...`, "monster-atk");
         this.currentMonster = null;
-
-        // 戰敗清除所有狀態
-        if (Player.data.buffs) Player.data.buffs = [];
+        Player.data.buffs = [];
         this.renderBuffsUI();
-
-        const pStats = Player.getBattleStats();
-        Player.data.hp = pStats.maxHp; 
-
+        Player.data.hp = Player.getBattleStats().maxHp; 
         setTimeout(() => {
-            Msg.log(`在宗門長老的救治下，你已甦醒。`, "system");
-            if (window.UI_Battle) {
-                window.UI_Battle.updatePlayerHP(Player.data.hp, pStats.maxHp);
-                window.UI_Battle.updateMonster(null);
-            }
+            Msg.log(`神魂歸位，你已回到宗門救治。`, "system");
+            if (window.UI_Battle) window.UI_Battle.updateMonster(null);
             if (window.Core) window.Core.updateUI();
-
             this.isProcessing = false;
             this.spawnMonster(this.currentMapId);
         }, 2000);
     },
 
     findMapData(id) {
-        const dataSrc = window.DATA || window.GAMEDATA;
+        const dataSrc = window.DB || window.DATA || window.GAMEDATA;
         if (!dataSrc || !dataSrc.REGIONS) return null;
         for (let r in dataSrc.REGIONS) {
             const map = dataSrc.REGIONS[r].maps.find(m => m.id == id);
