@@ -1,6 +1,6 @@
 /**
- * V2.4 CombatEngine.js (主被動分流與視覺特寫整合版)
- * 職責：處理主動/被動技能、冷卻管理、境界壓制、完整掉落機制、色彩日誌、招式特寫對接
+ * V2.4.1 CombatEngine.js (心跳計時與視覺特寫整合版)
+ * 職責：處理主動/被動技能、獨立冷卻計時、境界壓制、完整掉落機制、招式特寫對接
  * 位置：/systems/CombatEngine.js
  */
 
@@ -14,7 +14,8 @@ export const CombatEngine = {
     currentMonster: null,
     isProcessing: false,
     currentMapId: 101, 
-    skillCDs: {}, // 存儲技能冷卻狀態 { '烈焰斬': 0 }
+    skillCDs: {},     // 存儲技能冷卻狀態 { '烈焰斬': 0 }
+    heartbeat: null,  // 🟢 獨立計時器，解決 CD 卡住問題
 
     init(mapId = null) {
         let targetMap = mapId;
@@ -29,10 +30,23 @@ export const CombatEngine = {
             Player.save(); 
         }
 
+        // 🟢 啟動天道心跳：每秒減少 CD，不受戰鬥回合限制
+        this.startHeartbeat();
+
         setTimeout(() => {
             this.spawnMonster(targetMap);
             this.renderBuffsUI(); 
         }, 100); 
+    },
+
+    /**
+     * 🟢 核心修正：獨立於戰鬥的 CD 計時器
+     */
+    startHeartbeat() {
+        if (this.heartbeat) clearInterval(this.heartbeat);
+        this.heartbeat = setInterval(() => {
+            this.updateCDs();
+        }, 1000);
     },
 
     spawnMonster(mapId) {
@@ -63,7 +77,7 @@ export const CombatEngine = {
     },
 
     /**
-     * 🟢 執行主動技能 (對接 FX.skillCutIn 異步版)
+     * 🟢 執行主動技能 (完美對接 FX.skillCutIn 異步版)
      */
     async useSkill(skillName) {
         if (this.isProcessing || !this.currentMonster) return;
@@ -80,13 +94,13 @@ export const CombatEngine = {
 
         this.isProcessing = true;
         
-        // --- 🟢 視覺特寫演出 ---
-        // 取得技能對應的圖示 (若無則預設 ✨)
-        const icon = skillDef.icon || "🔥"; 
+        // --- 🟢 修正：視覺特寫演出 (確保等待動畫) ---
+        // 從資料庫抓取 Icon，若無則根據類型預設
+        const icon = skillDef.icon || (skillDef.type === 'heal' ? "✨" : "🔥"); 
         await FX.skillCutIn(skillName, icon); 
-        // ----------------------
+        // ---------------------------------------
 
-        // 設置冷卻
+        // 設置冷卻 (秒數)
         this.skillCDs[skillName] = skillDef.cd || 5;
 
         // 觸發戰鬥回合結算
@@ -124,7 +138,7 @@ export const CombatEngine = {
         const dataSrc = window.DB || window.DATA;
         const pStats = Player.getBattleStats();
         
-        // 境界壓制計算
+        // 境界壓制計算 (每高一階增傷 20%)
         const playerRealm = Player.data.realm || 1;
         const monsterLevel = this.currentMonster.level || 1;
         const monsterRealm = Math.floor((monsterLevel - 1) / 10) + 1;
@@ -148,7 +162,7 @@ export const CombatEngine = {
                 Msg.log(`你發動普通攻擊，造成 ${finalDamage} 點傷害。`, "default");
             }
 
-            // 觸發攻擊時的被動 (吸血等)
+            // 觸發攻擊被動
             this.handlePassiveSkills('onAttack', { damage: finalDamage });
 
             this.currentMonster.hp -= finalDamage;
@@ -191,7 +205,7 @@ export const CombatEngine = {
         } else if (isPlayerTurn) {
             setTimeout(() => this.executeTurn(false), 600);
         } else {
-            this.updateCDs();
+            // 被動掃描 (每回合末)
             this.handlePassiveSkills('onTurnEnd');
             this.isProcessing = false; 
         }
@@ -222,10 +236,18 @@ export const CombatEngine = {
         });
     },
 
+    /**
+     * 🟢 修正版：更新冷卻時間 (由心跳計時器調用)
+     */
     updateCDs() {
+        let needsUpdate = false;
         for (let key in this.skillCDs) {
-            if (this.skillCDs[key] > 0) this.skillCDs[key]--;
+            if (this.skillCDs[key] > 0) {
+                this.skillCDs[key]--;
+                needsUpdate = true;
+            }
         }
+        // 如果 CD 有變動且 UI 存在，可以考慮手動通知 UI (目前 UI_Battle 使用 requestAnimationFrame 自行同步)
     },
 
     processBuffs() {
@@ -278,7 +300,7 @@ export const CombatEngine = {
         }
 
         if (Math.random() < 0.1) {
-            const item = ItemFactory.createEquipment();
+            const item = ItemFactory.createEquipment(Player.data.level); // 🟢 傳入等級權重
             if (item) {
                 Player.addItem(item);
                 Msg.log(`🎊 獲得：【${item.name}】！`, "reward");
