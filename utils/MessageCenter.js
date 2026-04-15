@@ -1,21 +1,19 @@
 /**
- * V2.0 MessageCenter.js (飛升模組版)
- * 職責：傳接遊戲訊號，解耦邏輯層與 UI 層
- * 特性：ES Module 導出，提供給 Player, CombatEngine, UI_Stats 等所有模組引用
+ * V2.1 MessageCenter.js
+ * 職責：解耦邏輯層與 UI 層，提供全域訊息傳遞 (Msg)
  */
 
 export const MessageCenter = {
     /**
      * 普通日誌紀錄
-     * @param {string} content - 訊息內容
-     * @param {string} type - 訊息類型 (system, player-atk, monster-atk, reward)
+     * @param {string} content - 內容
+     * @param {string} type - 類型 (system, player-atk, monster-atk, reward, gold)
      */
     log(content, type = 'system') {
-        // 保留開發者調試日誌
+        // 核心調試日誌
         console.log(`%c[${type}] %c${content}`, "font-weight: bold; color: #3b82f6;", "color: inherit;");
         
-        // 只有在 UI_Battle 存在時才呼叫其渲染邏輯
-        // 在 ESM 架構下，UI_Battle 通常會由 core.js 初始化並掛載或被直接引用
+        // 對接 UI_Battle 渲染邏輯
         if (window.UI_Battle && typeof window.UI_Battle.log === 'function') {
             window.UI_Battle.log(content, type);
         }
@@ -23,8 +21,8 @@ export const MessageCenter = {
 
     /**
      * 戰鬥數字彈跳特效
-     * @param {number} value - 傷害數值
-     * @param {string} target - 目標類型 ('player' 或 'monster')
+     * @param {number} value - 傷害值
+     * @param {string} target - 目標 ('player' 或 'monster')
      */
     damagePop(value, target) {
         console.log(`[傷害彈跳] ${target} 受到了 ${value} 點傷害`);
@@ -37,21 +35,15 @@ export const MessageCenter = {
     },
 
     /**
-     * 系統通知 (如彈窗或置頂提示)
-     * @param {string} msg - 通知內容
+     * 系統通知
      */
     notify(msg) {
-        // 暫時保留簡單方式，未來可擴充為自定義的 Glassmorphism 彈窗
         alert(msg);
     }
 };
 
-/**
- * --- 全域對接與別名 ---
- * 雖然是 ES Module，但為了開發方便以及 HTML 上的舊代碼相容，
- * 我們仍可有選擇性地掛載短別名 Msg 到 window 上。
- */
+// 全域掛載與別名
 window.MessageCenter = MessageCenter;
 window.Msg = MessageCenter;
 
-console.log("%c【系統】訊息傳遞中心模組化完成，Msg 神識已就緒。", "color: #3b82f6; font-weight: bold;");
+console.log("%c【系統】訊息傳遞中心 Msg 神識已就緒。", "color: #3b82f6; font-weight: bold;");
