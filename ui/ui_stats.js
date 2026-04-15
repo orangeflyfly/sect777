@@ -1,13 +1,14 @@
 /**
- * V2.3 ui_stats.js (第二波：雷劫分流版)
- * 修正點：中文化、裝備卸載邏輯、彈窗按鈕優化、精準觸發雷劫
+ * V2.4 ui_stats.js (架構瘦身 - 絕對無損搬遷版)
+ * 職責：管理修為介面、注入 HTML 結構、屬性加點、雷劫觸發、裝備卸載
+ * 位置：/ui/ui_stats.js
  */
 
 import { Player } from '../entities/player.js';
 import { Formula } from '../utils/Formula.js';
 import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 
-// 屬性翻譯映射陣法
+// 屬性翻譯映射陣法 (天工爐與明鏡共用)
 const ATTR_MAP = {
     'str': '力量',
     'con': '體質',
@@ -20,9 +21,48 @@ const ATTR_MAP = {
 };
 
 export const UI_Stats = {
+    // 1. 初始化
     init() {
-        console.log("【UI_Stats】修士明鏡初始化，屬性法陣歸位...");
+        console.log("【UI_Stats】修士明鏡初始化，注入修為場景...");
+        
+        // 🟢 注入原本在 index.html 的原始 HTML 片段 (保證與道友原版 100% 一致)
+        this.renderLayout();
+
         this.renderStats();
+    },
+
+    // 🟢 瘦身核心：將道友 index.html 的 page-stats 內容完整搬遷至此
+    renderLayout() {
+        const container = document.getElementById('page-stats');
+        if (!container) return;
+
+        // 完全保留道友原本在 HTML 裡的標籤、樣式、以及 onclick 事件
+        container.innerHTML = `
+            <div class="page-title">修為與境界</div>
+
+            <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 20px;">
+                <button onclick="if(window.Player){ window.Player.save(); alert('💾 宗門紀載已更新，修為存檔成功！'); }" class="btn-eco-action" style="background: var(--exp-color); padding: 8px 15px; border-radius: 8px; border: none; color: white; cursor: pointer; font-weight: bold; flex: 1; max-width: 150px;">
+                    💾 手動存檔
+                </button>
+                <button onclick="window.DEBUG_RESET()" class="btn-eco-action" style="background: #ef4444; padding: 8px 15px; border-radius: 8px; border: none; color: white; cursor: pointer; font-weight: bold; flex: 1; max-width: 150px;">
+                    💀 重新開始
+                </button>
+            </div>
+
+            <div class="equipped-section">
+                <div class="section-label">🧥 當前披掛</div>
+                <div id="equipped-list" class="equip-grid">
+                    <div class="equip-slot empty">載入中...</div>
+                </div>
+            </div>
+
+            <div id="breakthrough-area" style="display:none; text-align:center; padding: 15px;">
+                <button id="btn-breakthrough" class="btn-special">應劫突破</button>
+            </div>
+
+            <h2 id="stat-realm-title" style="text-align:center; color:var(--accent); margin-bottom:20px;"></h2>
+            <div id="stats-content" class="stats-grid"></div>
+        `;
     },
 
     renderStats() {
