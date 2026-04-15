@@ -1,6 +1,6 @@
 /**
- * V2.3 core.js
- * 職責：引擎啟動、分頁調度、數據同步、全局初始化
+ * V2.4 core.js
+ * 職責：引擎啟動、分頁調度、數據同步、全局初始化 (新增防崩潰機制)
  */
 
 import { Player } from './entities/player.js';
@@ -20,31 +20,36 @@ export const Core = {
 
         try {
             Player.init();
+            
+            // 🟢 安全啟動所有 UI
             this.initAllUI();
+            
             CombatEngine.init(); 
             this.updateUI();
             
-            SectManager.init(); 
-            TaskSystem.init();  
+            // 🟢 安全啟動外部系統 (即使報錯也不影響主體)
+            try { if (SectManager && SectManager.init) SectManager.init(); } catch (e) { console.warn("SectManager 尚未準備好", e); }
+            try { if (TaskSystem && TaskSystem.init) TaskSystem.init(); } catch (e) { console.warn("TaskSystem 尚未準備好", e); }
 
             this.startGlobalRefresh();
-            
-            // 關閉自動存檔 (改為手動)
-            // this.startAutoSave(); 
 
+            // 預設切換到歷練頁面
             this.switchPage('battle');
 
             console.log("%c✅ 宗門運轉穩定，諸天模組連結成功。", "color: #10b981; font-weight: bold;");
         } catch (error) {
-            console.error("❌ 飛升大陣點火失敗，請檢查各卷宗導入路徑：", error);
+            console.error("❌ 飛升大陣點火發生致命錯誤：", error);
         }
     },
 
     initAllUI() {
-        if (UI_Battle.init) UI_Battle.init();
-        if (UI_Stats.init) UI_Stats.init();
-        if (UI_Bag.init) UI_Bag.init();
-        if (UI_World.init) UI_World.init(); 
+        // 🟢 加入 try-catch，防止單一 UI 報錯導致整個遊戲黑屏，並補齊漏掉的 Shop 與 Sect
+        try { if (UI_Battle.init) UI_Battle.init(); } catch(e) { console.error("UI_Battle 啟動失敗", e); }
+        try { if (UI_Stats.init) UI_Stats.init(); } catch(e) { console.error("UI_Stats 啟動失敗", e); }
+        try { if (UI_Bag.init) UI_Bag.init(); } catch(e) { console.error("UI_Bag 啟動失敗", e); }
+        try { if (UI_Shop.init) UI_Shop.init(); } catch(e) { console.error("UI_Shop 啟動失敗", e); }   // 修復：已補上
+        try { if (UI_World.init) UI_World.init(); } catch(e) { console.error("UI_World 啟動失敗", e); }
+        try { if (UI_Sect.init) UI_Sect.init(); } catch(e) { console.error("UI_Sect 啟動失敗", e); }   // 修復：已補上
     },
 
     switchPage(pageId) {
@@ -61,7 +66,7 @@ export const Core = {
                         document.querySelector(`.nav-btn[onclick*="${pageId}"]`);
             if (btn) btn.classList.add('active');
 
-            // 觸發特定分頁渲染
+            // 觸發特定分頁動態渲染
             switch (pageId) {
                 case 'bag': UI_Bag.renderBag(); break;
                 case 'shop': UI_Shop.renderShop(); break;
@@ -130,18 +135,6 @@ export const Core = {
         setInterval(() => {
             this.updateUI();
         }, 500);
-    },
-
-    // 自動存檔邏輯 (已停用)
-    startAutoSave() {
-        console.log("[Core] 自動存檔已關閉，請修士善用修為頁面的手動存檔。");
-        /*
-        setInterval(() => {
-            if (Player.save) {
-                Player.save();
-            }
-        }, 30000); 
-        */
     }
 };
 
