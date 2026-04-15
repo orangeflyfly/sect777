@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>練功修練 - 飛升 2.5 (架構優化版)</title>
+    <title>練功修練 - 飛升 2.7 (系統加固版)</title>
     
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/page_battle.css">
@@ -64,6 +64,7 @@
     <div id="tribulation-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; flex-direction:column; justify-content:center; align-items:center; color:white;"></div>
 
     <script type="module">
+        // 1. 引入所有核心模組
         import { Core } from './core.js';
         import { DB } from './data/database.js';
         import { UI_Battle } from './ui/ui_battle.js';
@@ -72,8 +73,10 @@
         import { UI_Stats } from './ui/ui_stats.js';
         import { UI_World } from './ui/ui_world.js';
         import { UI_Sect } from './ui/ui_sect.js';
+        import { UI_System } from './ui/ui_system.js'; // 🟢 修正：新增系統控制模組
         import { TribulationSystem } from './systems/TribulationSystem.js'; 
 
+        // 2. 導向全域 window 空間 (確保 HTML onclick 可用)
         window.Core = Core;
         window.DB = DB;            
         window.DATA = DB;          
@@ -83,11 +86,22 @@
         window.UI_Stats = UI_Stats;
         window.UI_World = UI_World; 
         window.UI_Sect = UI_Sect; 
+        window.UI_System = UI_System; // 🟢 修正：掛載系統物件
         window.TribulationSystem = TribulationSystem; 
 
+        // 3. 🟢 相容性補丁：對接舊的 DEBUG_RESET 名稱
+        window.DEBUG_RESET = () => {
+            if (window.UI_System) window.UI_System.restartGame();
+        };
+
+        // 4. 大陣啟動
         window.onload = () => {
-            console.log("%c【系統】V2.5 架構優化啟動，神識歸位...", "color: #fbbf24; font-weight: bold;");
-            Core.init();
+            console.log("%c【系統】V2.7 加固版啟動，存檔與系統法眼已就緒。", "color: #fbbf24; font-weight: bold;");
+            
+            // 延遲一點點初始化，確保所有模組都已經掛載到 window
+            setTimeout(() => {
+                Core.init();
+            }, 50);
         };
     </script>
 </body>
