@@ -1,5 +1,5 @@
 /**
- * V2.2 player.js (飛升模組版 - 宗門對接與遺忘測試)
+ * V2.3 player.js (飛升模組版 - 神通突破與狀態承載)
  * 職責：修士狀態管理、境界突破邏輯、屬性點加持、裝備數值計算、道具與殘卷消耗
  * 位置：/entities/player.js
  */
@@ -24,9 +24,10 @@ export const Player = {
             // 載入數據，若無存檔則初始化新角色
             this.data = savedData || this.getInitialData();
             
-            // 🟢 數據補丁：確保舊存檔相容宗門大更新
+            // 🟢 數據補丁：確保舊存檔相容宗門大更新與戰鬥狀態
             if (this.data.realm === undefined) this.data.realm = 1; 
             if (this.data.sectPoints === undefined) this.data.sectPoints = 0;
+            if (this.data.buffs === undefined) this.data.buffs = []; // 🟢 新增：異常狀態容器
             if (!this.data.world) {
                 this.data.world = {
                     arrayLevel: 1, lastCollect: Date.now(),
@@ -235,7 +236,7 @@ export const Player = {
     },
 
     /**
-     * 道具消耗與神通參悟 (V2.1 五卷合一版)
+     * 🟢 道具消耗與神通參悟 (神通升級版)
      */
     consumeItem(uuid) {
         if (!this.data || !this.data.inventory) return false;
@@ -249,14 +250,7 @@ export const Player = {
         if (item.type === 'fragment') {
             const skillName = item.skillName || item.name.replace('殘卷：', '');
 
-            // 1. 重複學習判定
-            const hasSkill = this.data.skills.some(s => s.name === skillName);
-            if (hasSkill) {
-                Msg.log(`道友已掌握神通【${skillName}】，無需再次參悟。`, "system");
-                return false; 
-            }
-
-            // 2. 五合一與門檻判定
+            // 1. 五合一與門檻判定 (不再阻擋已學會的神通)
             if (item.volume) {
                 // 檢查是否集齊卷一至卷五
                 const vols = [1, 2, 3, 4, 5];
@@ -271,7 +265,7 @@ export const Player = {
                     // 翻譯卷數為中文顯示
                     const volMap = {1:"一", 2:"二", 3:"三", 4:"四", 5:"五"};
                     const missingText = missingVols.map(v => volMap[v]).join('、');
-                    Msg.log(`【${skillName}】尚缺卷 ${missingText}，須集齊五卷方可強行參悟！`, "system");
+                    Msg.log(`【${skillName}】尚缺卷 ${missingText}，須集齊五卷方可參悟或突破！`, "system");
                     return false;
                 }
 
@@ -302,14 +296,23 @@ export const Player = {
                 }
             }
 
-            // 3. 領悟神通
-            this.data.skills.push({ 
-                id: item.id || `sk_${Date.now()}`, 
-                name: skillName, 
-                level: 1,
-                desc: `集齊五卷殘篇領悟而成的天地神通。`
-            });
-            Msg.log(`💡 金光大作！五卷合一，領悟神通：【${skillName}】！`, "gold");
+            // 2. 🟢 領悟神通 或 升級神通
+            const existingSkill = this.data.skills.find(s => s.name === skillName);
+            
+            if (existingSkill) {
+                // 升級邏輯
+                existingSkill.level = (existingSkill.level || 1) + 1;
+                Msg.log(`🔥 融會貫通！【${skillName}】境界突破至 Lv.${existingSkill.level}！威力大增！`, "gold");
+            } else {
+                // 初次領悟邏輯
+                this.data.skills.push({ 
+                    id: item.id || `sk_${Date.now()}`, 
+                    name: skillName, 
+                    level: 1,
+                    desc: `集齊五卷殘篇領悟而成的天地神通。`
+                });
+                Msg.log(`💡 金光大作！五卷合一，領悟神通：【${skillName}】！`, "gold");
+            }
 
         } else if (item.type === 'special' && item.id === 'i001') {
             this.data.coin += 500;
@@ -336,7 +339,7 @@ export const Player = {
     },
 
     /**
-     * 🟢 新增：自散修為 (測試專用，遺忘神通)
+     * 自散修為 (測試專用，遺忘神通)
      */
     unlearnSkill(skillName) {
         if (!this.data) return false;
@@ -382,14 +385,15 @@ export const Player = {
             maxExp: 100, 
             coin: 500,
             hp: 100,
-            sectPoints: 0, // 🟢 新增：宗門貢獻點
-            world: {       // 🟢 新增：宗門產業狀態
+            sectPoints: 0, // 宗門貢獻點
+            world: {       // 宗門產業狀態
                 arrayLevel: 1, 
                 lastCollect: Date.now(),
                 workers: 0, 
                 farm: { level: 0, assigned: 0 }, 
                 mine: { level: 0, assigned: 0 }
             },
+            buffs: [],     // 🟢 新增：異常狀態(中毒/眩暈)容器
             stats: { str: 10, con: 10, dex: 10, int: 10 },
             statPoints: 0, 
             inventory: [], 
