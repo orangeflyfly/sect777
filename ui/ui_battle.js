@@ -1,6 +1,6 @@
 /**
- * V2.6.2 ui_battle.js
- * 職責：歷練介面渲染、主/被動分流、自動歷練、日誌過濾、地圖選擇修復、CD視覺修復
+ * V2.7.1 ui_battle.js
+ * 職責：歷練介面渲染、自動歷練、日誌過濾、地圖選擇修復、CD視覺修復、圖示同步
  * 位置：/ui/ui_battle.js
  */
 
@@ -13,7 +13,7 @@ export const UI_Battle = {
     autoInterval: null,
     isAuto: false,
     currentLogTab: 'all',
-    cdReqId: null, // 🟢 新增：用於控制 CD 迴圈，防止堆疊
+    cdReqId: null, // 用於控制 CD 迴圈，防止重疊與失效
 
     init() {
         console.log("【UI_Battle】啟動渲染...");
@@ -95,7 +95,8 @@ export const UI_Battle = {
             
             this.autoInterval = setInterval(() => {
                 if (!CombatEngine.isProcessing && CombatEngine.currentMonster) {
-                    if (Player.data.hp / Player.getBattleStats().maxHp < 0.2) {
+                    const stats = Player.getBattleStats();
+                    if (Player.data.hp / stats.maxHp < 0.2) {
                         Msg.log("❗ 血量過低，自動歷練停機！", "monster-atk");
                         this.toggleAutoBattle();
                         return;
@@ -204,8 +205,10 @@ export const UI_Battle = {
         if (Player.data && Player.data.skills) {
             Player.data.skills.forEach(skill => {
                 const skillDef = dataSrc.SKILLS[skill.name];
-                if (!skillDef) return;
-                if (skillDef.isPassive) return; 
+                if (!skillDef || skillDef.isPassive) return; 
+
+                // 🟢 修正：與 CombatEngine 同步圖示邏輯，不再寫死 ✨
+                const icon = skillDef.icon || (skillDef.type === 'heal' ? "✨" : "🔥");
 
                 const sBtn = document.createElement('button');
                 sBtn.className = 'btn-battle-action btn-atk-skill';
@@ -213,7 +216,7 @@ export const UI_Battle = {
                 sBtn.style.position = 'relative';
                 sBtn.style.overflow = 'hidden';
                 sBtn.innerHTML = `
-                    <span class="act-icon">✨</span>
+                    <span class="act-icon">${icon}</span>
                     <span class="act-name">${skill.name}</span>
                     <div id="cd-mask-${skill.name}" style="position:absolute; bottom:0; left:0; width:100%; height:0%; background:rgba(0,0,0,0.6); pointer-events:none; transition:height 0.1s linear;"></div>
                     <div id="cd-text-${skill.name}" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:#fff; font-weight:bold; font-size:16px; pointer-events:none;"></div>
@@ -222,11 +225,13 @@ export const UI_Battle = {
                 actionContainer.appendChild(sBtn);
             });
         }
+
+        // 啟動 CD 永動監控
         this.updateCooldownDisplay();
     },
 
     updateCooldownDisplay() {
-        // 🟢 修復重點：確保迴圈永遠運轉，並防止堆疊
+        // 🟢 永動符：確保迴圈不受分頁顯示影響，且防止重複呼叫
         if (this.cdReqId) cancelAnimationFrame(this.cdReqId);
         this.cdReqId = requestAnimationFrame(() => this.updateCooldownDisplay());
 
@@ -236,6 +241,7 @@ export const UI_Battle = {
         Player.data.skills.forEach(skill => {
             const skillDef = dataSrc.SKILLS[skill.name];
             if (!skillDef || skillDef.isPassive) return;
+            
             const btn = document.getElementById(`btn-skill-${skill.name}`);
             const mask = document.getElementById(`cd-mask-${skill.name}`);
             const text = document.getElementById(`cd-text-${skill.name}`);
