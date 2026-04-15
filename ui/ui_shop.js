@@ -1,6 +1,7 @@
 /**
- * V2.2.5 ui_shop.js (飛升完全體 - 語法除魔版 + 一鍵出售)
- * 職責：坊市交易介面渲染、購買/出售標籤切換、確認彈窗處理、批次出售
+ * V2.2.6 ui_shop.js (架構瘦身 - 絕對無損搬遷版)
+ * 職責：坊市交易介面渲染、購買/出售標籤切換、確認彈窗處理、批次出售、注入 HTML 結構
+ * 位置：/ui/ui_shop.js
  */
 
 import { Player } from '../entities/player.js';
@@ -15,6 +16,28 @@ export const UI_Shop = {
         { id: 's002_v1', name: '殘卷：回春術(卷一)', type: 'fragment', skillName: '回春術', volume: 1, price: 800, rarity: 2 },
         { id: 'i001', name: '低階靈石袋', type: 'special', price: 1000, rarity: 3 }
     ],
+
+    // 1. 初始化
+    init() {
+        console.log("【UI_Shop】坊市陣法初始化，注入交易場景...");
+        
+        // 🟢 注入原本在 index.html 的原始 HTML 片段
+        this.renderLayout();
+
+        this.renderShop();
+    },
+
+    // 🟢 瘦身核心：將道友 index.html 的 page-shop 內容完整搬遷至此
+    renderLayout() {
+        const container = document.getElementById('page-shop');
+        if (!container) return;
+
+        // 完全保留道友原本在 HTML 裡的標籤與 ID
+        container.innerHTML = `
+            <div class="page-title">坊市交易</div>
+            <div id="shop-content" class="shop-grid"></div>
+        `;
+    },
 
     renderShop() {
         const shopArea = document.getElementById('shop-content'); 
