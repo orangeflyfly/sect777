@@ -104,6 +104,16 @@
 
         <section id="page-stats" class="game-page" style="display:none;">
             <div class="page-title">修為與境界</div>
+
+            <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 20px;">
+                <button onclick="if(window.Player){ window.Player.save(); alert('💾 宗門紀載已更新，修為存檔成功！'); }" class="btn-eco-action" style="background: var(--exp-color); padding: 8px 15px; border-radius: 8px; border: none; color: white; cursor: pointer; font-weight: bold; flex: 1; max-width: 150px;">
+                    💾 手動存檔
+                </button>
+                <button onclick="window.DEBUG_RESET()" class="btn-eco-action" style="background: #ef4444; padding: 8px 15px; border-radius: 8px; border: none; color: white; cursor: pointer; font-weight: bold; flex: 1; max-width: 150px;">
+                    💀 重新開始
+                </button>
+            </div>
+
             <div class="equipped-section">
                 <div class="section-label">🧥 當前披掛</div>
                 <div id="equipped-list" class="equip-grid">
@@ -180,6 +190,7 @@
         window.UI_Shop = UI_Shop;
         window.UI_Stats = UI_Stats;
         window.UI_World = UI_World; 
+        window.UI_Sect = UI_Sect; // 🟢 修正：掛載宗門神識，確保彈窗按鈕生效
 
         // C. 點燃點火裝置
         window.onload = () => {
