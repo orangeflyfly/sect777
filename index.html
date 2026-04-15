@@ -40,8 +40,16 @@
                 <button onclick="UI_Battle.showMapSelect()" class="btn-travel">🗺️ 尋找歷練地</button>
             </div>
             
-            <div id="combat-area">
-                <div id="monster-display" class="monster-card">
+            <div id="combat-area" style="display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px;">
+                <div id="player-display" class="monster-card" style="flex:1; border-color: #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);">
+                    <div id="player-icon" class="monster-avatar">🧘‍♂️</div>
+                    <h3 style="color: #60a5fa;">修士 (你)</h3>
+                    <div id="player-buffs" style="min-height: 25px; display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; margin-top: 5px;"></div>
+                </div>
+
+                <div style="font-size: 20px; font-weight: bold; color: #ef4444; text-shadow: 0 0 5px rgba(239, 68, 68, 0.5);">VS</div>
+
+                <div id="monster-display" class="monster-card" style="flex:1;">
                     <div id="monster-icon" class="monster-avatar">❓</div>
                     <h3 id="monster-name">搜尋妖氣中...</h3>
                     <div class="bar-container monster-hp">
@@ -221,7 +229,7 @@
         import { UI_Stats } from './ui/ui_stats.js';
         import { UI_World } from './ui/ui_world.js';
         import { UI_Sect } from './ui/ui_sect.js';
-        import { TribulationSystem } from './systems/TribulationSystem.js'; // 🟢 新增：導入雷劫大腦
+        import { TribulationSystem } from './systems/TribulationSystem.js'; 
 
         // B. 建立全域橋樑 (為了 HTML 裡的 onclick 屬性能夠運作)
         window.Core = Core;
@@ -233,7 +241,7 @@
         window.UI_Stats = UI_Stats;
         window.UI_World = UI_World; 
         window.UI_Sect = UI_Sect; 
-        window.TribulationSystem = TribulationSystem; // 🟢 掛載雷劫系統
+        window.TribulationSystem = TribulationSystem; 
 
         // C. 點燃點火裝置
         window.onload = () => {
