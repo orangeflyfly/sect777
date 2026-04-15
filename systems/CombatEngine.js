@@ -1,6 +1,6 @@
 /**
- * V2.6.2 CombatEngine.js
- * 職責：處理主動/被動技能、冷卻計時、境界壓制、暴擊與閃避判定、NaN 防護
+ * V2.7 CombatEngine.js
+ * 職責：處理主動/被動技能、冷卻計時、境界壓制、暴擊與閃避判定、終極 NaN 防護、特效對接
  * 位置：/systems/CombatEngine.js
  */
 
@@ -86,6 +86,7 @@ export const CombatEngine = {
 
         this.isProcessing = true;
         
+        // 🟢 特效同步：根據技能設定抓取圖示，預設攻擊為 🔥
         const icon = skillDef.icon || (skillDef.type === 'heal' ? "✨" : "🔥"); 
         await FX.skillCutIn(skillName, icon); 
 
@@ -157,11 +158,24 @@ export const CombatEngine = {
                 if (skillUsed) {
                     const playerSkill = Player.data.skills.find(s => s.name === skillName);
                     const skillLv = playerSkill ? playerSkill.level : 1;
-                    const boost = 1 + ((skillLv - 1) * (dataSrc.CONFIG.SKILL_UPGRADE_BOOST || 0.2));
                     
-                    // 🟢 修復重點：防禦 NaN 的倍率回退機制
-                    const skillMult = skillUsed.multiplier || skillUsed.power || skillUsed.damage || 1.5;
+                    // 🟢 終極防 NaN 加固：確保 CONFIG 與倍率皆為有效數字
+                    const configBoost = (dataSrc.CONFIG && dataSrc.CONFIG.SKILL_UPGRADE_BOOST) ? Number(dataSrc.CONFIG.SKILL_UPGRADE_BOOST) : 0.2;
+                    const safeBoost = isNaN(configBoost) ? 0.2 : configBoost;
+                    const boost = 1 + ((skillLv - 1) * safeBoost);
+                    
+                    // 嘗試抓取各種可能的倍率名稱
+                    let rawMult = skillUsed.multiplier || skillUsed.power || skillUsed.damage || 1.5;
+                    let skillMult = Number(rawMult);
+                    if (isNaN(skillMult)) skillMult = 1.5;
+
                     finalDamage = Math.floor(finalDamage * skillMult * boost);
+
+                    // 🚨 萬一最後還是 NaN 的最終保險
+                    if (isNaN(finalDamage)) {
+                        console.error("❌ 戰鬥引擎：偵測到 NaN 傷害，啟動強制修正");
+                        finalDamage = Math.max(1, Math.floor(baseDamage));
+                    }
                 }
 
                 const critPrefix = isCrit ? "💥 暴擊！" : "";
@@ -186,9 +200,13 @@ export const CombatEngine = {
                     if (Math.random() < (mSkill.chance || 0.2)) {
                         Msg.log(`⚠️ ${this.currentMonster.name} 發動【${this.currentMonster.skill}】！`, "monster-atk");
                         if (mSkill.type === 'damage') {
-                            // 🟢 怪物的技能倍率也做同樣的防禦
-                            const mSkillMult = mSkill.multiplier || mSkill.power || mSkill.damage || 1.5;
-                            monsterFinalDmg = Math.floor(monsterFinalDmg * mSkillMult);
+                            const mRawMult = mSkill.multiplier || mSkill.power || mSkill.damage || 1.5;
+                            let mMult = Number(mRawMult);
+                            if (isNaN(mMult)) mMult = 1.5;
+                            
+                            monsterFinalDmg = Math.floor(monsterFinalDmg * mMult);
+                            if (isNaN(monsterFinalDmg)) monsterFinalDmg = Math.floor(baseDamage);
+                            
                             FX.shake('combat-area');
                         } else if (mSkill.type === 'debuff') {
                             this.applyDebuffToPlayer(mSkill);
