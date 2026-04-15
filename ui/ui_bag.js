@@ -1,6 +1,6 @@
 /**
- * V2.3 ui_bag.js (架構瘦身 - 絕對無損搬遷版)
- * 職責：儲物袋介面管理、注入 HTML 結構、物品分類篩選、裝備與消耗品使用對接
+ * V2.7 ui_bag.js
+ * 職責：儲物袋渲染、分類篩選、一鍵售出裝備、一鍵清空重複殘卷、道具使用
  * 位置：/ui/ui_bag.js
  */
 
@@ -21,13 +21,38 @@ const ATTR_MAP = {
 export const UI_Bag = {
     currentFilter: 'all',
 
-    // 1. 初始化
     init() {
-        console.log("【UI_Bag】儲物袋陣法初始化...");
-        
-        // 🟢 注入原本在 index.html 的原始 HTML 片段 (保證完全一致)
+        console.log("【UI_Bag】啟動儲物袋陣法...");
         this.renderLayout();
+        this.renderFilters();
+        this.renderBag();
+    },
 
+    renderLayout() {
+        const container = document.getElementById('page-bag');
+        if (!container) return;
+
+        // 🟢 新增：批量操作區域 (Button Group)
+        container.innerHTML = `
+            <div class="page-title">儲物袋</div>
+            
+            <div class="bag-actions-bar" style="display: flex; gap: 10px; margin-bottom: 15px; padding: 0 10px;">
+                <button class="btn-eco-action btn-sell-all" onclick="UI_Bag.sellAllEquipment()" 
+                        style="background: #7f1d1d; flex: 1; font-size: 12px; padding: 8px;">
+                    ♻️ 一鍵售出裝備
+                </button>
+                <button class="btn-eco-action btn-sell-all" onclick="UI_Bag.sellDuplicateFragments()" 
+                        style="background: #1e3a8a; flex: 1; font-size: 12px; padding: 8px;">
+                    📜 一鍵清重複殘卷
+                </button>
+            </div>
+
+            <div id="bag-filters" class="bag-filters"></div>
+            <div id="bag-content" class="bag-grid"></div>
+        `;
+    },
+
+    renderFilters() {
         const filterContainer = document.getElementById('bag-filters');
         if (!filterContainer) return;
 
@@ -48,31 +73,13 @@ export const UI_Bag = {
         `).join('');
     },
 
-    // 🟢 瘦身核心：將道友 index.html 的 page-bag 內容完整搬遷至此
-    renderLayout() {
-        const container = document.getElementById('page-bag');
-        if (!container) return;
-
-        // 完全保留道友原本在 HTML 裡的標籤與 ID
-        container.innerHTML = `
-            <div class="page-title">儲物袋</div>
-            <div id="bag-filters" class="bag-filters"></div>
-            <div id="bag-content" class="bag-grid"></div>
-        `;
-    },
-
     setFilter(type) {
         this.currentFilter = type;
-        this.init(); 
+        this.renderFilters(); 
         this.renderBag();
     },
 
     renderBag() {
-        const filterContainer = document.getElementById('bag-filters');
-        if (filterContainer && filterContainer.innerHTML.trim() === '') {
-            this.init(); 
-        }
-
         const bagGrid = document.getElementById('bag-content');
         if (!bagGrid) return;
 
@@ -100,11 +107,12 @@ export const UI_Bag = {
             }
             
             const rarity = item.rarity || 1;
+            const count = item.count || 1;
             
             let actionBtn = '';
             if (['weapon', 'armor', 'accessory'].includes(item.type)) {
                 actionBtn = `<button class="btn-eco-action btn-equip" onclick="UI_Bag.useItem('${item.uuid}', event)">裝備</button>`;
-            } else if (item.type === 'fragment' || item.type === 'special') {
+            } else if (item.type === 'fragment' || item.type === 'special' || item.type === 'consumable') {
                 actionBtn = `<button class="btn-eco-action btn-use" onclick="UI_Bag.useItem('${item.uuid}', event)">使用</button>`;
             }
 
@@ -112,7 +120,7 @@ export const UI_Bag = {
                 <div class="eco-list-card r-${rarity}">
                     <div class="eco-card-left">
                         <div class="eco-icon-box r-bg-${rarity}">${this.getItemIcon(item.type)}</div>
-                        ${item.count > 1 ? `<div class="eco-item-count">x${item.count}</div>` : ''}
+                        ${count > 1 ? `<div class="eco-item-count">x${count}</div>` : ''}
                     </div>
                     <div class="eco-card-mid">
                         <div class="eco-item-name r-txt-${rarity}">${item.name}</div>
@@ -129,44 +137,105 @@ export const UI_Bag = {
     getItemIcon(type) {
         const icons = { 
             weapon: '⚔️', armor: '👕', accessory: '💍', 
-            fragment: '📜', material: '💎', special: '🎁' 
+            fragment: '📜', material: '💎', special: '🎁', consumable: '🧪'
         };
         return icons[type] || '📦';
     },
 
     /**
-     * 使用物品邏輯
+     * 🟢 新增：一鍵售出所有裝備
      */
+    sellAllEquipment() {
+        if (!Player.data.inventory || Player.data.inventory.length === 0) return;
+        
+        const toSell = Player.data.inventory.filter(i => 
+            ['weapon', 'armor', 'accessory'].includes(i.type)
+        );
+
+        if (toSell.length === 0) return Msg.log("儲物袋內並無可售出的裝備。", "system");
+
+        if (!confirm(`是否將這 ${toSell.length} 件裝備售換為靈石？`)) return;
+
+        let totalGold = 0;
+        toSell.forEach(item => {
+            // 基礎價格根據稀有度與等級計算
+            const basePrice = item.price || (item.rarity * 20) + (item.level || 1) * 5;
+            totalGold += basePrice;
+        });
+
+        // 從背包移除
+        Player.data.inventory = Player.data.inventory.filter(i => 
+            !['weapon', 'armor', 'accessory'].includes(i.type)
+        );
+
+        Player.data.coin += totalGold;
+        Msg.log(`♻️ 一鍵熔煉完成，獲得 ${totalGold} 靈石。`, "gold");
+        
+        Player.save();
+        this.renderBag();
+        if (window.Core) window.Core.updateUI();
+    },
+
+    /**
+     * 🟢 新增：一鍵清理重複殘卷
+     * 邏輯：保留每種殘卷(同名同卷數)各1份，其餘售出
+     */
+    sellDuplicateFragments() {
+        if (!Player.data.inventory) return;
+
+        const fragments = Player.data.inventory.filter(i => i.type === 'fragment');
+        if (fragments.length === 0) return Msg.log("儲物袋內並無任何殘卷。", "system");
+
+        let totalGold = 0;
+        let sellCount = 0;
+
+        // 遍歷所有殘卷，處理 count > 1 的部分
+        fragments.forEach(item => {
+            const count = item.count || 1;
+            if (count > 1) {
+                const duplicates = count - 1;
+                const pricePerOne = item.price || 30; // 殘卷單價
+                totalGold += duplicates * pricePerOne;
+                sellCount += duplicates;
+                item.count = 1; // 修正數量為 1
+            }
+        });
+
+        if (sellCount === 0) return Msg.log("你所持有的殘卷皆為孤本，無需清理。", "system");
+
+        Player.data.coin += totalGold;
+        Msg.log(`📜 清理了 ${sellCount} 份重複殘卷，獲得 ${totalGold} 靈石。`, "gold");
+
+        Player.save();
+        this.renderBag();
+        if (window.Core) window.Core.updateUI();
+    },
+
     useItem(uuid, event) {
         const item = Player.data.inventory.find(i => i.uuid === uuid);
         if (!item) return;
 
         let success = false;
         
-        // 1. 執行使用或裝備邏輯
         if (['weapon', 'armor', 'accessory'].includes(item.type)) {
             success = Player.equipItem(uuid);
             if (success) Msg.log(`👕 你穿上了 【${item.name}】`, "reward");
         } else {
+            // 這裡會對接 player.js 裡的 consumeItem (含五合一與靈石袋邏輯)
             success = Player.consumeItem(uuid);
         }
 
-        // 2. 執行成功後的回饋
         if (success) {
-            // 對接飄字特效
-            if (window.UI_Stats && event) {
-                if (typeof window.UI_Stats.createFloatingText === 'function') {
-                    window.UI_Stats.createFloatingText(event.target.closest('.eco-card-right'), "完成");
-                }
+            if (window.FX && event) {
+                // 如果有 FX 模組則調用特效
+                window.FX.spawnPopText("完成", 'player', '#60a5fa');
             }
             
-            // 刷新儲物袋與全域數據
             this.renderBag();
             if (window.Core) {
                 window.Core.updateUI();
             }
         } else {
-            // 如果失敗，依然刷新介面
             this.renderBag();
         }
     }
