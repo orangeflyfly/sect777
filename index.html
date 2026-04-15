@@ -121,7 +121,7 @@
                 </div>
             </div>
             <div id="breakthrough-area" style="display:none; text-align:center; padding: 15px;">
-                <button id="btn-breakthrough" class="btn-special">✨ 突破境界</button>
+                <button id="btn-breakthrough" class="btn-special" onclick="if(window.TribulationSystem) window.TribulationSystem.init()">⚡ 應劫突破</button>
             </div>
             <h2 id="stat-realm-title" style="text-align:center; color:var(--accent); margin-bottom:20px;"></h2>
             <div id="stats-content" class="stats-grid"></div>
@@ -170,6 +170,47 @@
         </div>
     </div>
 
+    <div id="tribulation-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; flex-direction:column; justify-content:center; align-items:center; color:white;">
+        <div id="trib-fx-layer" style="position:absolute; width:100%; height:100%; pointer-events:none; overflow:hidden;"></div>
+        
+        <h2 id="trib-title" style="color:#fcd34d; text-shadow:0 0 20px #f59e0b; font-size:28px; margin-bottom:10px; z-index:1;">雷劫降臨</h2>
+        <div id="trib-subtitle" style="color:#94a3b8; font-size:16px; margin-bottom:40px; z-index:1;">準備突破至新境界</div>
+
+        <div style="width:80%; max-width:300px; margin-bottom:30px; z-index:1;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <span style="color:#ef4444; font-weight:bold;">天雷降下倒數</span>
+                <span id="trib-timer-text" style="color:#ef4444; font-weight:bold;">5.0s</span>
+            </div>
+            <div style="width:100%; height:10px; background:#333; border-radius:5px; overflow:hidden;">
+                <div id="trib-timer-bar" style="width:100%; height:100%; background:linear-gradient(90deg, #f87171, #ef4444); transition:width 0.1s linear;"></div>
+            </div>
+        </div>
+
+        <div style="width:80%; max-width:300px; margin-bottom:50px; z-index:1;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <span style="color:#60a5fa; font-weight:bold;">護體罡氣</span>
+                <span id="trib-shield-text" style="color:#60a5fa; font-weight:bold;">0%</span>
+            </div>
+            <div style="width:100%; height:20px; background:#333; border-radius:10px; overflow:hidden; border:2px solid #1e3a8a;">
+                <div id="trib-shield-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #3b82f6, #60a5fa); transition:width 0.1s ease-out; box-shadow:0 0 10px #60a5fa;"></div>
+            </div>
+        </div>
+
+        <button id="btn-trib-action" onclick="if(window.TribulationSystem) window.TribulationSystem.clickShield()" style="z-index:1; background:linear-gradient(135deg, #3b82f6, #1d4ed8); border:3px solid #60a5fa; color:white; font-size:24px; font-weight:bold; padding:20px 40px; border-radius:50px; cursor:pointer; box-shadow:0 0 30px rgba(59,130,246,0.5); display:none;">
+            凝聚罡氣！
+        </button>
+        
+        <button id="btn-trib-start" onclick="if(window.TribulationSystem) window.TribulationSystem.start()" style="z-index:1; background:linear-gradient(135deg, #f59e0b, #d97706); border:3px solid #fcd34d; color:white; font-size:20px; font-weight:bold; padding:15px 30px; border-radius:30px; cursor:pointer; box-shadow:0 0 20px rgba(245,158,11,0.5);">
+            引動天雷 (開始渡劫)
+        </button>
+
+        <div id="trib-result" style="display:none; z-index:1; text-align:center; background:rgba(0,0,0,0.8); padding:30px; border-radius:15px; border:1px solid #333;">
+            <h3 id="trib-result-title" style="font-size:24px; margin-bottom:15px;">結果</h3>
+            <p id="trib-result-desc" style="color:#cbd5e1; margin-bottom:20px;">描述</p>
+            <button onclick="if(window.TribulationSystem) window.TribulationSystem.close()" style="background:#4b5563; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;">返回修為</button>
+        </div>
+    </div>
+
     <script type="module">
         // A. 導入所有神識模組
         import { Core } from './core.js';
@@ -180,6 +221,7 @@
         import { UI_Stats } from './ui/ui_stats.js';
         import { UI_World } from './ui/ui_world.js';
         import { UI_Sect } from './ui/ui_sect.js';
+        import { TribulationSystem } from './systems/TribulationSystem.js'; // 🟢 新增：導入雷劫大腦
 
         // B. 建立全域橋樑 (為了 HTML 裡的 onclick 屬性能夠運作)
         window.Core = Core;
@@ -190,7 +232,8 @@
         window.UI_Shop = UI_Shop;
         window.UI_Stats = UI_Stats;
         window.UI_World = UI_World; 
-        window.UI_Sect = UI_Sect; // 🟢 修正：掛載宗門神識，確保彈窗按鈕生效
+        window.UI_Sect = UI_Sect; 
+        window.TribulationSystem = TribulationSystem; // 🟢 掛載雷劫系統
 
         // C. 點燃點火裝置
         window.onload = () => {
