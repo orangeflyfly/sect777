@@ -1,5 +1,5 @@
 /**
- * V2.1 core.js (飛升模組版 - 小世界對接與空間跳轉)
+ * V2.2.5 core.js (飛升模組版 - 平衡更新與手動存檔)
  * 職責：引擎啟動、分頁調度、數據同步、全局初始化
  */
 
@@ -32,7 +32,9 @@ export const Core = {
             TaskSystem.init();  // 🟢 啟動任務大腦，生成懸賞榜單
 
             this.startGlobalRefresh();
-            this.startAutoSave();
+            
+            // 🔴 封印心魔：拔除自動存檔，將命運交還給修士手動掌控
+            // this.startAutoSave(); 
 
             this.switchPage('battle');
 
@@ -138,12 +140,16 @@ export const Core = {
         }, 500);
     },
 
+    // 🔴 封印心魔：保留陣紋但不啟動
     startAutoSave() {
+        console.log("[Core] 自動存檔已關閉，請修士善用修為頁面的手動存檔。");
+        /*
         setInterval(() => {
             if (Player.save) {
                 Player.save();
             }
         }, 30000); 
+        */
     }
 };
 
