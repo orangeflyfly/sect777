@@ -8,6 +8,13 @@ import { Player } from '../entities/player.js';
 import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 
 export const UI_Sect = {
+    // 🟢 新增：宗門庫房專屬商品清單
+    vaultItems: [
+        { id: 'v_frag_1', name: '殘卷：奔雷訣(卷一)', type: 'fragment', skillName: '奔雷訣', volume: 1, cost: 200, rarity: 4, desc: '宗門不傳之秘，蘊含一絲天地雷劫之威。' },
+        { id: 'v_pill_1', name: '洗髓丹', type: 'special', cost: 500, rarity: 3, desc: '伐骨洗髓，服用後似乎能讓修煉之路更加順暢。(功能開發中)' },
+        { id: 'v_fruit_1', name: '造化果', type: 'special', cost: 1500, rarity: 5, desc: '奪天地造化之神物，據說能強行提升先天悟性。(功能開發中)' }
+    ],
+
     init() {
         // 確保玩家數據有宗門世界欄位
         if (Player.data && !Player.data.world) {
@@ -44,13 +51,13 @@ export const UI_Sect = {
                 contentHtml = this.renderRecruit();
                 break;
             case 'bounty':
-                // 🟢 解封：懸賞堂正式上線
                 title = "📜 懸賞堂";
                 contentHtml = this.renderBounty();
                 break;
             case 'vault':
+                // 🟢 解封：宗門庫房正式上線
                 title = "📦 宗門庫房";
-                contentHtml = `<div class="empty-msg" style="padding:40px 10px;">庫房大門深鎖，需宗門貢獻點方可開啟。<br><span style="font-size:12px; color:#64748b;">(預計後續實裝)</span></div>`;
+                contentHtml = this.renderVault();
                 break;
         }
 
@@ -163,7 +170,6 @@ export const UI_Sect = {
         `;
     },
 
-    // 🟢 新增：懸賞任務列表渲染
     renderBounty() {
         if (!Player.data.tasks || Player.data.tasks.length === 0) {
             return `<div class="empty-msg" style="padding:40px 10px;">長老正在整理任務卷宗，請稍後再來。</div>`;
@@ -182,12 +188,10 @@ export const UI_Sect = {
         `;
 
         Player.data.tasks.forEach(task => {
-            // 檢查玩家身上有幾個目標道具
             const itemIndex = Player.data.inventory.findIndex(i => i.id === task.targetId || i.name === task.targetName);
             const currentCount = itemIndex !== -1 ? (Player.data.inventory[itemIndex].count || 1) : 0;
             const isEnough = currentCount >= task.count;
             
-            // 動態顏色：足夠顯示綠色，不足顯示紅色
             const countColor = isEnough ? '#4ade80' : '#ef4444';
             const btnBg = isEnough ? 'var(--exp-color)' : 'rgba(255,255,255,0.1)';
             const btnCursor = isEnough ? 'pointer' : 'not-allowed';
@@ -205,6 +209,49 @@ export const UI_Sect = {
                         <button style="border:none; border-radius:6px; padding:8px 16px; font-weight:bold; color:white; background:${btnBg}; cursor:${btnCursor}; transition:0.2s;" 
                                 onclick="${btnAction}; event.stopPropagation()">
                             交付
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `</div>`;
+        return html;
+    },
+
+    // 🟢 新增：渲染宗門庫房
+    renderVault() {
+        const currentPoints = Player.data.sectPoints || 0;
+        
+        let html = `
+            <div style="text-align:center; margin-bottom: 15px;">
+                <p style="color:#cbd5e1; font-size:13px; margin-bottom:5px;">消耗貢獻點，兌換宗門底蘊寶物。</p>
+                <div style="color:#fcd34d; font-weight:bold; font-size:15px; padding: 5px; background:rgba(251,191,36,0.1); border-radius:5px; display:inline-block;">
+                    當前貢獻：🌟 ${currentPoints} 點
+                </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px; max-height: 400px; overflow-y: auto; padding-right: 5px;">
+        `;
+
+        this.vaultItems.forEach(item => {
+            const canAfford = currentPoints >= item.cost;
+            const btnBg = canAfford ? 'var(--hp-color)' : 'rgba(255,255,255,0.1)';
+            const btnCursor = canAfford ? 'pointer' : 'not-allowed';
+            const btnAction = canAfford ? `UI_Sect.buyVaultItem('${item.id}')` : '';
+
+            html += `
+                <div style="background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:12px; text-align:left;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                        <div>
+                            <div style="font-size:15px; font-weight:bold; color:white; margin-bottom:4px;">${item.name}</div>
+                            <div style="font-size:12px; color:#94a3b8; line-height:1.4;">${item.desc}</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; background:rgba(255,255,255,0.05); padding:8px; border-radius:5px;">
+                        <span style="color:#fcd34d; font-size:13px; font-weight:bold;">售價: 🌟 ${item.cost}</span>
+                        <button style="border:none; border-radius:6px; padding:6px 16px; font-weight:bold; color:white; background:${btnBg}; cursor:${btnCursor}; transition:0.2s;" 
+                                onclick="${btnAction}; event.stopPropagation()">
+                            兌換
                         </button>
                     </div>
                 </div>
@@ -254,6 +301,40 @@ export const UI_Sect = {
         
         this.openDept(type); // 刷新當前彈窗
         if(window.Core) window.Core.updateUI();
+    },
+
+    // 🟢 新增：兌換庫房寶物邏輯
+    buyVaultItem(itemId) {
+        const item = this.vaultItems.find(i => i.id === itemId);
+        if (!item) return;
+
+        if ((Player.data.sectPoints || 0) < item.cost) {
+            return Msg.log(`貢獻點不足，無法兌換【${item.name}】！`, "system");
+        }
+
+        // 複製物品資料，確保不污染原模板
+        const newItem = {
+            id: item.id,
+            uuid: `v_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            name: item.name,
+            type: item.type,
+            desc: item.desc,
+            rarity: item.rarity || 3
+        };
+        
+        // 若為殘卷，保留特定屬性
+        if (item.type === 'fragment') {
+            newItem.skillName = item.skillName;
+            newItem.volume = item.volume;
+        }
+
+        if (Player.addItem(newItem)) {
+            Player.data.sectPoints -= item.cost;
+            Player.save();
+            Msg.log(`🎁 消耗 ${item.cost} 點貢獻，成功兌換【${item.name}】！`, "gold");
+            this.openDept('vault'); // 刷新當前彈窗
+            if (window.Core) window.Core.updateUI();
+        }
     }
 };
 
