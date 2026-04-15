@@ -1,6 +1,6 @@
 /**
- * V2.3 CombatEngine.js (飛升模組版 - 妖獸開智與神通自動觸發)
- * 職責：處理戰鬥流程、怪物AI、狀態異常(Debuff)、神通倍率計算與獎勵結算
+ * V2.3.1 CombatEngine.js (飛升模組版 - 狀態可視化更新)
+ * 職責：處理戰鬥流程、怪物AI、狀態異常(Debuff)渲染、神通倍率計算與獎勵結算
  * 位置：/systems/CombatEngine.js
  */
 
@@ -31,6 +31,7 @@ export const CombatEngine = {
 
         setTimeout(() => {
             this.spawnMonster(targetMap);
+            this.renderBuffsUI(); // 初始化時渲染狀態
         }, 100); 
     },
 
@@ -67,7 +68,7 @@ export const CombatEngine = {
 
         this.isProcessing = true;
         
-        // 🟢 回合開始前，先結算身上的異常狀態 (如中毒)
+        // 回合開始前，先結算身上的異常狀態 (如中毒)
         this.processBuffs();
         
         if (Player.data.hp > 0) {
@@ -89,15 +90,13 @@ export const CombatEngine = {
         let finalDamage = baseDamage;
 
         if (isPlayerTurn) {
-            // 🟢 玩家回合：神通觸發邏輯
+            // 玩家回合：神通觸發邏輯
             if (Player.data.skills && Player.data.skills.length > 0) {
-                // 30% 機率隨機觸發一門已掌握的神通
                 if (Math.random() < 0.3) {
                     const randomSkill = Player.data.skills[Math.floor(Math.random() * Player.data.skills.length)];
                     const skillDef = dataSrc.SKILLS ? dataSrc.SKILLS[randomSkill.name] : null;
                     
                     if (skillDef) {
-                        // 計算等級加成：每級增加 DB.CONFIG 裡設定的倍率 (預設 0.2)
                         const boost = 1 + ((randomSkill.level - 1) * (dataSrc.CONFIG.SKILL_UPGRADE_BOOST || 0.2));
                         const mult = (skillDef.multiplier || 1.5) * boost;
                         finalDamage = Math.floor(baseDamage * mult);
@@ -113,10 +112,9 @@ export const CombatEngine = {
             FX.spawnPopText(finalDamage, 'monster');
 
         } else {
-            // 🟢 怪物回合：妖獸開智 (AI 技能)
+            // 怪物回合：妖獸開智 (AI 技能)
             let usedSkill = false;
             
-            // 如果怪物有配置技能，且判定發動
             if (this.currentMonster.skill && dataSrc.SKILLS && dataSrc.SKILLS[this.currentMonster.skill]) {
                 const skillDef = dataSrc.SKILLS[this.currentMonster.skill];
                 
@@ -140,7 +138,8 @@ export const CombatEngine = {
                 Msg.log(`遭受重擊！損失 ${finalDamage} 點氣血。`, "monster-atk");
             }
             
-            FX.shake('player-hp-fill');
+            // 🟢 修正：讓修士的立繪震動，而不再只是頂部血條
+            FX.shake('player-display'); 
             FX.spawnPopText(finalDamage, 'player');
             
             if (window.UI_Battle) {
@@ -162,7 +161,7 @@ export const CombatEngine = {
         }
     },
 
-    // 🟢 處理異常狀態 (中毒結算)
+    // 處理異常狀態 (中毒結算)
     processBuffs() {
         if (!Player.data || !Player.data.buffs || Player.data.buffs.length === 0) return;
 
@@ -173,6 +172,7 @@ export const CombatEngine = {
                 Player.data.hp -= dmg;
                 Msg.log(`🤢 妖毒發作！損失 ${dmg} 點氣血。`, 'monster-atk');
                 FX.spawnPopText(dmg, 'player', '#22c55e');
+                FX.shake('player-display');
             }
             
             b.duration--;
@@ -187,12 +187,14 @@ export const CombatEngine = {
             Player.data.buffs.splice(toRemove[i], 1);
         }
         
+        this.renderBuffsUI(); // 🟢 刷新 UI 顯示
+        
         if (window.UI_Battle) {
             window.UI_Battle.updatePlayerHP(Player.data.hp, Player.getBattleStats().maxHp);
         }
     },
 
-    // 🟢 賦予玩家減益狀態
+    // 賦予玩家減益狀態
     applyDebuffToPlayer(skillDef) {
         if (!Player.data.buffs) Player.data.buffs = [];
         
@@ -207,6 +209,28 @@ export const CombatEngine = {
             });
         }
         Msg.log(`⚠️ 你中了【${this.currentMonster.skill}】！`, "monster-atk");
+        this.renderBuffsUI(); // 🟢 立即渲染圖標
+    },
+
+    // 🟢 新增：渲染異常狀態 UI
+    renderBuffsUI() {
+        const buffContainer = document.getElementById('player-buffs');
+        if (!buffContainer) return;
+        
+        if (!Player.data || !Player.data.buffs || Player.data.buffs.length === 0) {
+            buffContainer.innerHTML = '';
+            return;
+        }
+
+        buffContainer.innerHTML = Player.data.buffs.map(b => {
+            if (b.effect === 'poison') {
+                return `<span style="background: #22c55e; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; box-shadow: 0 0 5px #22c55e;">🤢 毒 (${b.duration})</span>`;
+            }
+            if (b.effect === 'stun') {
+                return `<span style="background: #eab308; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; box-shadow: 0 0 5px #eab308;">💫 暈 (${b.duration})</span>`;
+            }
+            return `<span style="background: #64748b; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px;">${b.name}</span>`;
+        }).join('');
     },
 
     handleVictory() {
@@ -222,7 +246,6 @@ export const CombatEngine = {
             setTimeout(() => FX.spawnPopText(`+${m.gold} 靈石`, 'player', '#fbbf24'), 250);
         }
 
-        // 🟢 戰利品掉落判定 (已平衡機率)
         if (Math.random() < 0.1) {
             const item = ItemFactory.createEquipment();
             if (item) {
@@ -261,6 +284,10 @@ export const CombatEngine = {
             Msg.log(`📜 發現殘卷：【${fragment.name}】！`, "gold");
         }
 
+        // 清除戰鬥結束後的殘留異常狀態
+        if (Player.data.buffs) Player.data.buffs = [];
+        this.renderBuffsUI();
+
         if (window.Core) window.Core.updateUI();
         this.currentMonster = null;
 
@@ -276,6 +303,7 @@ export const CombatEngine = {
 
         // 戰敗清除所有狀態
         if (Player.data.buffs) Player.data.buffs = [];
+        this.renderBuffsUI();
 
         const pStats = Player.getBattleStats();
         Player.data.hp = pStats.maxHp; 
