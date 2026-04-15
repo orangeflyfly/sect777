@@ -1,6 +1,6 @@
 /**
- * V2.5 ui_battle.js
- * 職責：歷練介面渲染、主/被動分流、自動歷練、日誌過濾
+ * V2.6.1 ui_battle.js
+ * 職責：歷練介面渲染、主/被動分流、自動歷練、日誌過濾、地圖選擇修復
  * 位置：/ui/ui_battle.js
  */
 
@@ -159,7 +159,7 @@ export const UI_Battle = {
 
         const logEntry = document.createElement('div');
         logEntry.className = `log-item log-type-${type}`;
-        logEntry.setAttribute('data-type', type); // 🟢 為了過濾新增屬性
+        logEntry.setAttribute('data-type', type); 
         
         const colorMap = {
             'player-atk': "#60a5fa",
@@ -175,7 +175,6 @@ export const UI_Battle = {
         logEntry.style.fontSize = "13px";
         logEntry.innerHTML = `<span style="color:${colorMap['system']}; margin-right:5px;">❯</span>${msg}`;
 
-        // 🟢 根據目前選擇的標籤決定是否隱藏新訊息
         if (!this.checkTypeVisible(type)) {
             logEntry.style.display = 'none';
         }
@@ -273,7 +272,6 @@ export const UI_Battle = {
         `).join('');
     },
 
-    // 🟢 核心功能：切換日誌顯示
     switchLogTab(tabId, btn) {
         this.currentLogTab = tabId;
         document.querySelectorAll('.log-tab-btn').forEach(b => b.classList.remove('active'));
@@ -290,7 +288,6 @@ export const UI_Battle = {
         });
     },
 
-    // 🟢 輔助：判斷類型是否該顯示
     checkTypeVisible(type) {
         if (this.currentLogTab === 'all') return true;
         if (this.currentLogTab === 'battle') {
@@ -302,11 +299,26 @@ export const UI_Battle = {
         return false;
     },
 
+    /**
+     * 🟢 修復重點：地圖選擇系統 (骨架顯化版)
+     */
     showMapSelect() {
         const modal = document.getElementById('modal-map');
         if (modal) {
+            // 先動態注入原本在 index.html 裡的結構
+            modal.innerHTML = `
+                <div class="map-select-card" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>🗺️ 選擇歷練之地</h3>
+                        <button class="btn-modal-close" onclick="document.getElementById('modal-map').style.display='none'">✕</button>
+                    </div>
+                    <div id="region-list" class="region-tabs"></div>
+                    <div id="map-list" class="map-cards-grid"></div>
+                </div>
+            `;
+            
             modal.style.display = 'flex';
-            this.renderRegions();
+            this.renderRegions(); // 確保 DOM 結構生成後，再呼叫渲染函數
         }
     },
 
