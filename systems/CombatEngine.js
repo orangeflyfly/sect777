@@ -1,6 +1,6 @@
 /**
- * V2.4 CombatEngine.js (主被動分流與境界壓制 - 完整全功能版)
- * 職責：處理主動/被動技能、冷卻管理、境界壓制、完整掉落機制、色彩日誌
+ * V2.4 CombatEngine.js (主被動分流與視覺特寫整合版)
+ * 職責：處理主動/被動技能、冷卻管理、境界壓制、完整掉落機制、色彩日誌、招式特寫對接
  * 位置：/systems/CombatEngine.js
  */
 
@@ -63,9 +63,9 @@ export const CombatEngine = {
     },
 
     /**
-     * 🟢 執行主動技能 (由 UI 按鈕點擊呼叫)
+     * 🟢 執行主動技能 (對接 FX.skillCutIn 異步版)
      */
-    useSkill(skillName) {
+    async useSkill(skillName) {
         if (this.isProcessing || !this.currentMonster) return;
         
         // 冷卻檢查
@@ -80,10 +80,16 @@ export const CombatEngine = {
 
         this.isProcessing = true;
         
-        // 設置冷卻 (存入 skillCDs)
+        // --- 🟢 視覺特寫演出 ---
+        // 取得技能對應的圖示 (若無則預設 ✨)
+        const icon = skillDef.icon || "🔥"; 
+        await FX.skillCutIn(skillName, icon); 
+        // ----------------------
+
+        // 設置冷卻
         this.skillCDs[skillName] = skillDef.cd || 5;
 
-        // 觸發戰鬥回合
+        // 觸發戰鬥回合結算
         this.processBuffs(); 
         if (Player.data.hp > 0) {
             this.executeTurn(true, skillDef, skillName);
@@ -258,14 +264,10 @@ export const CombatEngine = {
         }).join('');
     },
 
-    /**
-     * 🟢 戰鬥勝利結算 (一字不漏恢復版)
-     */
     handleVictory() {
         const m = this.currentMonster;
         Msg.log(`${m.name} 已被擊敗！`, "system");
 
-        // 1. 基礎獎勵
         const exp = Player.gainExp(m.exp);
         Player.data.coin += (m.gold || 0);
         Msg.log(`獲得修為 ${exp}，靈石 ${m.gold || 0}`, "reward");
@@ -275,7 +277,6 @@ export const CombatEngine = {
             setTimeout(() => FX.spawnPopText(`+${m.gold} 靈石`, 'player', '#fbbf24'), 250);
         }
 
-        // 2. 戰利品：裝備 (10%)
         if (Math.random() < 0.1) {
             const item = ItemFactory.createEquipment();
             if (item) {
@@ -284,21 +285,19 @@ export const CombatEngine = {
             }
         }
 
-        // 3. 戰利品：素材 (60%)
         if (Math.random() < 0.6) {
             const matNames = ["妖獸骨骸", "殘破皮毛", "低階妖丹", "陣法殘片"];
             const randomMat = matNames[Math.floor(Math.random() * matNames.length)];
             const material = {
-                uuid: 'mat_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                uuid: 'it_mat_' + Date.now(),
                 name: randomMat, type: 'material', rarity: 1, count: 1,
-                desc: `從妖獸身上採集的素材，可用於換取靈石或修復法陣。`,
+                desc: `從妖獸身上採集的素材。`,
                 price: 15
             };
             Player.addItem(material);
             Msg.log(`📦 採集到素材：【${randomMat}】`, "reward");
         }
 
-        // 4. 戰利品：神通殘卷 (15%)
         if (Math.random() < 0.15) {
             const skillList = ["烈焰斬", "回春術", "青元劍訣", "破軍劍擊", "天雷正法"];
             const skillName = skillList[Math.floor(Math.random() * skillList.length)];
@@ -306,17 +305,16 @@ export const CombatEngine = {
             const volMap = {1:"一", 2:"二", 3:"三", 4:"四", 5:"五"};
 
             const fragment = {
-                uuid: 'frag_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                uuid: 'frag_' + Date.now(),
                 name: `殘卷：${skillName}(卷${volMap[volNum]})`,
                 type: 'fragment', skillName: skillName, volume: volNum, rarity: 3, count: 1,
-                desc: `記載著【${skillName}】部分心法的殘卷，集齊五卷方可領悟。`,
+                desc: `記載著部分心法的殘卷。`,
                 price: 50
             };
             Player.addItem(fragment);
             Msg.log(`📜 發現殘卷：【${fragment.name}】！`, "gold");
         }
 
-        // 清理狀態
         Player.data.buffs = [];
         this.renderBuffsUI();
         if (window.Core) window.Core.updateUI();
