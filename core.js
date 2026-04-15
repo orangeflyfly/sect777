@@ -1,9 +1,8 @@
 /**
- * V2.2.5 core.js (飛升模組版 - 平衡更新與手動存檔)
+ * V2.3 core.js
  * 職責：引擎啟動、分頁調度、數據同步、全局初始化
  */
 
-// 1. 召喚所有子模組的神識
 import { Player } from './entities/player.js';
 import { CombatEngine } from './systems/CombatEngine.js';
 import { DB } from './data/database.js'; 
@@ -11,14 +10,11 @@ import { UI_Battle } from './ui/ui_battle.js';
 import { UI_Stats } from './ui/ui_stats.js';
 import { UI_Bag } from './ui/ui_bag.js';
 import { UI_Shop } from './ui/ui_shop.js';
-import { UI_World } from './ui/ui_world.js';// 🟢 新增：導入小世界神識
-import { SectManager } from './systems/SectManager.js'; // 🟢 新增：導入宗門大腦
-import { TaskSystem } from './systems/TaskSystem.js'; // 🟢 新增：導入任務懸賞大腦
+import { UI_World } from './ui/ui_world.js';
+import { SectManager } from './systems/SectManager.js'; 
+import { TaskSystem } from './systems/TaskSystem.js'; 
 
 export const Core = {
-    /**
-     * 啟動大陣：點燃宗門火種
-     */
     init() {
         console.log("%c🕉️ 練功修練：V2.0 飛升大陣啟動...", "color: #fbbf24; font-weight: bold; font-size: 1.2em;");
 
@@ -28,12 +24,12 @@ export const Core = {
             CombatEngine.init(); 
             this.updateUI();
             
-            SectManager.init(); // 🟢 啟動宗門大腦，計算離線收益
-            TaskSystem.init();  // 🟢 啟動任務大腦，生成懸賞榜單
+            SectManager.init(); 
+            TaskSystem.init();  
 
             this.startGlobalRefresh();
             
-            // 🔴 封印心魔：拔除自動存檔，將命運交還給修士手動掌控
+            // 關閉自動存檔 (改為手動)
             // this.startAutoSave(); 
 
             this.switchPage('battle');
@@ -48,13 +44,9 @@ export const Core = {
         if (UI_Battle.init) UI_Battle.init();
         if (UI_Stats.init) UI_Stats.init();
         if (UI_Bag.init) UI_Bag.init();
-        // 🟢 初始化小世界 (結算離線收益)
         if (UI_World.init) UI_World.init(); 
     },
 
-    /**
-     * 分頁切換調度 (支援 Flex 佈局優化)
-     */
     switchPage(pageId) {
         try {
             document.querySelectorAll('.game-page').forEach(p => p.style.display = 'none');
@@ -69,7 +61,7 @@ export const Core = {
                         document.querySelector(`.nav-btn[onclick*="${pageId}"]`);
             if (btn) btn.classList.add('active');
 
-            // 🟢 觸發特定分頁的即時渲染 (加入 world)
+            // 觸發特定分頁渲染
             switch (pageId) {
                 case 'bag': UI_Bag.renderBag(); break;
                 case 'shop': UI_Shop.renderShop(); break;
@@ -77,7 +69,7 @@ export const Core = {
                 case 'world': UI_World.renderWorld(); break; 
             }
             
-            // 🟢 新增：處理浮空鈕切換 (界域跳轉邏輯)
+            // 浮空鈕切換邏輯
             const btnToSect = document.getElementById('btn-jump-sect');
             const btnToBattle = document.getElementById('btn-jump-battle');
 
@@ -140,7 +132,7 @@ export const Core = {
         }, 500);
     },
 
-    // 🔴 封印心魔：保留陣紋但不啟動
+    // 自動存檔邏輯 (已停用)
     startAutoSave() {
         console.log("[Core] 自動存檔已關閉，請修士善用修為頁面的手動存檔。");
         /*
@@ -155,7 +147,7 @@ export const Core = {
 
 window.Core = Core;
 
-// 🟢 新增：開發者測試指令 (供控制台或秘密按鈕調用)
+// 開發者測試指令
 window.DEBUG_RESET = () => {
     if (confirm("⚠️ 警告：這將會清除所有本地存檔並重新開始，確定要逆轉時空嗎？")) {
         localStorage.clear();
