@@ -1,5 +1,5 @@
 /**
- * V2.1 CombatEngine.js (飛升模組版 - 萬物掉落回歸)
+ * V2.2.5 CombatEngine.js (飛升模組版 - 平衡掉落率)
  * 職責：處理戰鬥流程、怪物生成、傷害判定、獎勵結算
  * 位置：/systems/CombatEngine.js
  */
@@ -164,7 +164,7 @@ export const CombatEngine = {
     },
 
     /**
-     * 戰鬥勝利結算 (🟢 新增萬物掉落機制)
+     * 戰鬥勝利結算 (🟢 調整萬物掉落機制 - 平衡版)
      */
     handleVictory() {
         const m = this.currentMonster;
@@ -181,10 +181,10 @@ export const CombatEngine = {
             setTimeout(() => FX.spawnPopText(`+${m.gold} 靈石`, 'player', '#fbbf24'), 250);
         }
 
-        // 3. 🟢 戰利品掉落判定
+        // 3. 戰利品掉落判定
 
-        // 3.1 裝備掉落 (原有機率保留 20%)
-        if (Math.random() < 0.2) {
+        // 3.1 裝備掉落 (🟢 下修：20% -> 10%)
+        if (Math.random() < 0.1) {
             const item = ItemFactory.createEquipment();
             if (item) {
                 Player.addItem(item);
@@ -192,8 +192,8 @@ export const CombatEngine = {
             }
         }
 
-        // 3.2 素材掉落 (機率 40%) - 為日後小世界修復聚靈陣做準備
-        if (Math.random() < 0.4) {
+        // 3.2 素材掉落 (🟢 上修：40% -> 60%，供應懸賞堂)
+        if (Math.random() < 0.6) {
             const matNames = ["妖獸骨骸", "殘破皮毛", "低階妖丹", "陣法殘片"];
             const randomMat = matNames[Math.floor(Math.random() * matNames.length)];
             const material = {
@@ -209,8 +209,8 @@ export const CombatEngine = {
             Msg.log(`📦 採集到素材：【${randomMat}】`, "reward");
         }
 
-        // 3.3 殘卷掉落 (機率 30%) - 卷一到卷五隨機掉落
-        if (Math.random() < 0.3) {
+        // 3.3 殘卷掉落 (🟢 下修：30% -> 15%)
+        if (Math.random() < 0.15) {
             const skillList = ["烈焰斬", "回春術", "青元劍訣"]; // 可掉落的神通池
             const skillName = skillList[Math.floor(Math.random() * skillList.length)];
             const volNum = Math.floor(Math.random() * 5) + 1; // 產生 1 到 5 的數字
@@ -220,8 +220,8 @@ export const CombatEngine = {
                 uuid: 'frag_' + Date.now() + Math.random().toString(36).substr(2, 5),
                 name: `殘卷：${skillName}(卷${volMap[volNum]})`,
                 type: 'fragment',
-                skillName: skillName, // 暗號：用於日後五卷合一判定
-                volume: volNum,       // 暗號：用於分辨是哪一卷
+                skillName: skillName, 
+                volume: volNum,       
                 rarity: 3,
                 count: 1,
                 desc: `記載著【${skillName}】部分心法的殘卷，集齊五卷方可領悟。`,
