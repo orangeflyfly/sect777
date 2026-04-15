@@ -1,6 +1,6 @@
 /**
- * V2.4 ui_stats.js (架構瘦身 - 絕對無損搬遷版)
- * 職責：管理修為介面、注入 HTML 結構、屬性加點、雷劫觸發、裝備卸載
+ * V2.7 ui_stats.js
+ * 職責：管理修為介面、注入 HTML 結構、屬性加點、雷劫觸發、裝備卸載、對接系統存檔/重置
  * 位置：/ui/ui_stats.js
  */
 
@@ -25,26 +25,25 @@ export const UI_Stats = {
     init() {
         console.log("【UI_Stats】修士明鏡初始化，注入修為場景...");
         
-        // 🟢 注入原本在 index.html 的原始 HTML 片段 (保證與道友原版 100% 一致)
+        // 🟢 注入原始 HTML 片段
         this.renderLayout();
-
         this.renderStats();
     },
 
-    // 🟢 瘦身核心：將道友 index.html 的 page-stats 內容完整搬遷至此
+    // 🟢 瘦身核心：整合系統功能按鈕
     renderLayout() {
         const container = document.getElementById('page-stats');
         if (!container) return;
 
-        // 完全保留道友原本在 HTML 裡的標籤、樣式、以及 onclick 事件
+        // 🟢 修復重點：將 onclick 事件對接到 UI_System
         container.innerHTML = `
             <div class="page-title">修為與境界</div>
 
             <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 20px;">
-                <button onclick="if(window.Player){ window.Player.save(); alert('💾 宗門紀載已更新，修為存檔成功！'); }" class="btn-eco-action" style="background: var(--exp-color); padding: 8px 15px; border-radius: 8px; border: none; color: white; cursor: pointer; font-weight: bold; flex: 1; max-width: 150px;">
+                <button onclick="UI_System.manualSave()" class="btn-eco-action" style="background: var(--exp-color); padding: 8px 15px; border-radius: 8px; border: none; color: white; cursor: pointer; font-weight: bold; flex: 1; max-width: 150px;">
                     💾 手動存檔
                 </button>
-                <button onclick="window.DEBUG_RESET()" class="btn-eco-action" style="background: #ef4444; padding: 8px 15px; border-radius: 8px; border: none; color: white; cursor: pointer; font-weight: bold; flex: 1; max-width: 150px;">
+                <button onclick="UI_System.restartGame()" class="btn-eco-action" style="background: #ef4444; padding: 8px 15px; border-radius: 8px; border: none; color: white; cursor: pointer; font-weight: bold; flex: 1; max-width: 150px;">
                     💀 重新開始
                 </button>
             </div>
@@ -91,8 +90,10 @@ export const UI_Stats = {
 
         // 戰鬥指標更新
         const bStats = Player.getBattleStats();
-        const critRate = Formula.calculateCritRate(d.stats.str, d.stats.dex);
-        const dodgeRate = Formula.calculateEvasionRate(d.stats.dex);
+        
+        // 🟢 檢查公式模組是否存在
+        const critRate = (Formula && Formula.calculateCritRate) ? Formula.calculateCritRate(d.stats.str, d.stats.dex) : 0;
+        const dodgeRate = (Formula && Formula.calculateEvasionRate) ? Formula.calculateEvasionRate(d.stats.dex) : 0;
 
         this.updateValue('stat-hp-preview', Math.ceil(bStats.maxHp));
         this.updateValue('stat-atk-preview', Math.ceil(bStats.atk));
@@ -193,9 +194,6 @@ export const UI_Stats = {
         }).join('');
     },
 
-    /**
-     * 卸下裝備邏輯
-     */
     unequipItem(slotId) {
         const success = Player.unequip(slotId);
         if (success) {
@@ -242,7 +240,6 @@ export const UI_Stats = {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     },
 
-    // 🟢 核心修正：雷劫與靜默升級的分流法則
     handleBreakthroughUI() {
         const area = document.getElementById('breakthrough-area');
         if (!area) return;
@@ -252,12 +249,11 @@ export const UI_Stats = {
             const btn = document.getElementById('btn-breakthrough');
             
             if (btn) {
-                // 判斷是否面臨大境界瓶頸 (例如 Lv.9, 19, 29... 準備突破到 10, 20, 30)
                 const isMajorBreakthrough = (Player.data.level % 10 === 9);
                 
                 if (isMajorBreakthrough) {
                     btn.innerText = "⚡ 應劫突破";
-                    btn.className = "btn-special tribulation-btn"; // 預留特殊特效 class
+                    btn.className = "btn-special tribulation-btn";
                     btn.onclick = () => {
                         if (window.TribulationSystem) {
                             window.TribulationSystem.init();
