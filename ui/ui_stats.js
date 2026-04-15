@@ -1,6 +1,6 @@
 /**
- * V2.1 ui_stats.js (第一波：修復優化版)
- * 修正點：中文化、裝備卸載邏輯、彈窗按鈕優化
+ * V2.3 ui_stats.js (第二波：雷劫分流版)
+ * 修正點：中文化、裝備卸載邏輯、彈窗按鈕優化、精準觸發雷劫
  */
 
 import { Player } from '../entities/player.js';
@@ -202,18 +202,40 @@ export const UI_Stats = {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     },
 
+    // 🟢 核心修正：雷劫與靜默升級的分流法則
     handleBreakthroughUI() {
         const area = document.getElementById('breakthrough-area');
         if (!area) return;
+        
         if (Player.data.exp >= Player.data.maxExp) {
             area.style.display = 'block';
             const btn = document.getElementById('btn-breakthrough');
-            if (btn) btn.onclick = () => {
-                if (Player.breakthrough()) {
-                    this.renderStats();
-                    if (window.Core) window.Core.updateUI();
+            
+            if (btn) {
+                // 判斷是否面臨大境界瓶頸 (例如 Lv.9, 19, 29... 準備突破到 10, 20, 30)
+                const isMajorBreakthrough = (Player.data.level % 10 === 9);
+                
+                if (isMajorBreakthrough) {
+                    btn.innerText = "⚡ 應劫突破";
+                    btn.className = "btn-special tribulation-btn"; // 預留特殊特效 class
+                    btn.onclick = () => {
+                        if (window.TribulationSystem) {
+                            window.TribulationSystem.init();
+                        } else {
+                            Msg.log("雷劫大陣未佈置，無法突破！", "system");
+                        }
+                    };
+                } else {
+                    btn.innerText = "✨ 提升修為";
+                    btn.className = "btn-special";
+                    btn.onclick = () => {
+                        if (Player.breakthrough()) {
+                            this.renderStats();
+                            if (window.Core) window.Core.updateUI();
+                        }
+                    };
                 }
-            };
+            }
         } else {
             area.style.display = 'none';
         }
