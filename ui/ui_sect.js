@@ -1,6 +1,6 @@
 /**
- * V2.2 ui_sect.js (飛升模組版 - 宗門大廳神識)
- * 職責：處理宗門九宮格部門的點擊、彈窗渲染與基礎升級調度
+ * V2.3 ui_sect.js (架構瘦身 - 絕對無損搬遷版)
+ * 職責：管理宗門介面、注入 HTML 結構、處理部門點擊、彈窗渲染與基礎升級調度
  * 位置：/ui/ui_sect.js
  */
 
@@ -8,14 +8,20 @@ import { Player } from '../entities/player.js';
 import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 
 export const UI_Sect = {
-    // 🟢 新增：宗門庫房專屬商品清單
+    // 🟢 宗門庫房專屬商品清單
     vaultItems: [
         { id: 'v_frag_1', name: '殘卷：奔雷訣(卷一)', type: 'fragment', skillName: '奔雷訣', volume: 1, cost: 200, rarity: 4, desc: '宗門不傳之秘，蘊含一絲天地雷劫之威。' },
         { id: 'v_pill_1', name: '洗髓丹', type: 'special', cost: 500, rarity: 3, desc: '伐骨洗髓，服用後似乎能讓修煉之路更加順暢。(功能開發中)' },
         { id: 'v_fruit_1', name: '造化果', type: 'special', cost: 1500, rarity: 5, desc: '奪天地造化之神物，據說能強行提升先天悟性。(功能開發中)' }
     ],
 
+    // 1. 初始化
     init() {
+        console.log("【UI_Sect】宗門大陣初始化，注入總部場景...");
+        
+        // 🟢 注入原本在 index.html 的原始 HTML 片段 (保證與道友原版 100% 一致)
+        this.renderLayout();
+
         // 確保玩家數據有宗門世界欄位
         if (Player.data && !Player.data.world) {
             Player.data.world = {
@@ -29,11 +35,56 @@ export const UI_Sect = {
         }
     },
 
+    // 🟢 瘦身核心：將道友 index.html 的 page-sect 內容完整搬遷至此
+    renderLayout() {
+        const container = document.getElementById('page-sect');
+        if (!container) return;
+
+        // 完全保留道友原本在 HTML 裡的標籤、樣式與九宮格佈局
+        container.innerHTML = `
+            <div class="sect-header">
+                <h2 class="sect-title">青雲宗門總部</h2>
+                <div class="sect-subtitle">人界 · 某不知名小世界</div>
+            </div>
+            
+            <div class="sect-hub-grid">
+                <div class="dept-card" onclick="UI_Sect.openDept('herb')">
+                    <div class="dept-icon">🌿</div>
+                    <div class="dept-name">草藥部</div>
+                </div>
+                <div class="dept-card" onclick="UI_Sect.openDept('iron')">
+                    <div class="dept-icon">⛏️</div>
+                    <div class="dept-name">鐵礦部</div>
+                </div>
+                <div class="dept-card" onclick="UI_Sect.openDept('recruit')">
+                    <div class="dept-icon">👥</div>
+                    <div class="dept-name">招募堂</div>
+                </div>
+                <div class="dept-card" onclick="UI_Sect.openDept('bounty')">
+                    <div class="dept-icon">📜</div>
+                    <div class="dept-name">懸賞堂</div>
+                </div>
+                <div class="dept-card" onclick="UI_Sect.openDept('vault')">
+                    <div class="dept-icon">📦</div>
+                    <div class="dept-name">宗門庫房</div>
+                </div>
+                <div class="dept-card" onclick="Core.switchPage('world')">
+                    <div class="dept-icon">☯️</div>
+                    <div class="dept-name">聚靈大陣</div>
+                </div>
+            </div>
+        `;
+    },
+
     /**
      * 開啟指定部門視窗
      */
     openDept(deptId) {
-        this.init();
+        // 在打開前確保數據初始化 (避免 init 未執行的情況)
+        if (Player.data && !Player.data.world) {
+            this.init();
+        }
+        
         let title = "";
         let contentHtml = "";
 
@@ -88,7 +139,7 @@ export const UI_Sect = {
     },
 
     // ==========================================
-    // 內部渲染邏輯
+    // 內部渲染邏輯 (絕對保留道友原始拼接方式)
     // ==========================================
     renderHerb() {
         const wData = Player.data.world;
@@ -219,7 +270,7 @@ export const UI_Sect = {
         return html;
     },
 
-    // 🟢 新增：渲染宗門庫房
+    // 🟢 渲染宗門庫房
     renderVault() {
         const currentPoints = Player.data.sectPoints || 0;
         
@@ -271,7 +322,7 @@ export const UI_Sect = {
         Player.data.world.workers++;
         Player.save();
         Msg.log("一名散修感念恩德，加入宗門！", "gold");
-        this.openDept('recruit'); // 刷新當前彈窗
+        this.openDept('recruit'); 
         if(window.Core) window.Core.updateUI();
     },
 
@@ -285,7 +336,7 @@ export const UI_Sect = {
 
         target.assigned += change;
         Player.save();
-        this.openDept(type); // 刷新當前彈窗
+        this.openDept(type); 
     },
 
     buildIndustry(type) {
@@ -299,11 +350,10 @@ export const UI_Sect = {
         Player.save();
         Msg.log(`轟隆！天地靈氣匯聚，成功開闢【${name}】！`, "gold");
         
-        this.openDept(type); // 刷新當前彈窗
+        this.openDept(type); 
         if(window.Core) window.Core.updateUI();
     },
 
-    // 🟢 新增：兌換庫房寶物邏輯
     buyVaultItem(itemId) {
         const item = this.vaultItems.find(i => i.id === itemId);
         if (!item) return;
@@ -312,7 +362,6 @@ export const UI_Sect = {
             return Msg.log(`貢獻點不足，無法兌換【${item.name}】！`, "system");
         }
 
-        // 複製物品資料，確保不污染原模板
         const newItem = {
             id: item.id,
             uuid: `v_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
@@ -322,7 +371,6 @@ export const UI_Sect = {
             rarity: item.rarity || 3
         };
         
-        // 若為殘卷，保留特定屬性
         if (item.type === 'fragment') {
             newItem.skillName = item.skillName;
             newItem.volume = item.volume;
@@ -332,11 +380,10 @@ export const UI_Sect = {
             Player.data.sectPoints -= item.cost;
             Player.save();
             Msg.log(`🎁 消耗 ${item.cost} 點貢獻，成功兌換【${item.name}】！`, "gold");
-            this.openDept('vault'); // 刷新當前彈窗
+            this.openDept('vault'); 
             if (window.Core) window.Core.updateUI();
         }
     }
 };
 
-// 全域對接
 window.UI_Sect = UI_Sect;
