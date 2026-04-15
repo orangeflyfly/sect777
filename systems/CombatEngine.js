@@ -1,286 +1,406 @@
 /**
- * V2.2.5 CombatEngine.js (飛升模組版 - 平衡掉落率)
- * 職責：處理戰鬥流程、怪物生成、傷害判定、獎勵結算
- * 位置：/systems/CombatEngine.js
+ * V2.3 player.js (飛升模組版 - 神通突破與狀態承載)
+ * 職責：修士狀態管理、境界突破邏輯、屬性點加持、裝備數值計算、道具與殘卷消耗
+ * 位置：/entities/player.js
  */
 
-// 導入所有依賴模組
-import { Player } from '../entities/player.js';
+// 1. 引入天地法則與通訊陣法
 import { Formula } from '../utils/Formula.js';
+import { SaveManager } from '../utils/SaveManager.js';
 import { MessageCenter as Msg } from '../utils/MessageCenter.js';
-import { FX } from '../utils/fx.js';
-import { ItemFactory } from '../utils/ItemFactory.js';
 
-export const CombatEngine = {
-    currentMonster: null,
-    isProcessing: false,
-    currentMapId: 101, // 預設地圖 ID
+export const Player = {
+    data: null,
 
     /**
-     * 初始化戰鬥引擎 (地圖記憶邏輯)
+     * 初始化修士數據
      */
-    init(mapId = null) {
-        // 優先從傳入參數或玩家存檔讀取地圖 ID
-        let targetMap = mapId;
-        if (!targetMap) {
-            targetMap = (Player.data && Player.data.currentMapId) ? Player.data.currentMapId : 101;
-        }
+    init() {
+        console.log("【修士】神識開始跨境對接...");
+        try {
+            // 從存檔管理模組載入數據
+            const savedData = (typeof SaveManager !== 'undefined') ? SaveManager.load() : null;
+            
+            // 載入數據，若無存檔則初始化新角色
+            this.data = savedData || this.getInitialData();
+            
+            // 🟢 數據補丁：確保舊存檔相容宗門大更新與戰鬥狀態
+            if (this.data.realm === undefined) this.data.realm = 1; 
+            if (this.data.sectPoints === undefined) this.data.sectPoints = 0;
+            if (this.data.buffs === undefined) this.data.buffs = []; // 🟢 新增：異常狀態容器
+            if (!this.data.world) {
+                this.data.world = {
+                    arrayLevel: 1, lastCollect: Date.now(),
+                    workers: 0, farm: { level: 0, assigned: 0 }, mine: { level: 0, assigned: 0 }
+                };
+            }
 
-        console.log(`%c【戰鬥引擎】啟動歷練，目標地圖 ID: ${targetMap}`, "color: #a78bfa; font-weight: bold;");
-        this.currentMapId = targetMap;
-
-        // 寫入存檔，確保刷新頁面不迷路
-        if (Player.data) {
-            Player.data.currentMapId = targetMap;
-            Player.save(); // 呼叫修士自身的存檔方法
+            Msg.log(savedData ? "神識歸位，修為恢復。" : "新進修士踏入凡塵，開啟練功修練之路。", "system");
+            
+            this.save();
+        } catch (e) {
+            console.error("【修士】初始化失敗:", e);
         }
-        
-        // 延遲執行，確保全域資料 (DATA) 與 UI 已經準備就緒
-        setTimeout(() => {
-            this.spawnMonster(targetMap);
-        }, 100); 
     },
 
     /**
-     * 生成怪物
+     * 持久化存檔
      */
-    spawnMonster(mapId) {
-        // 安全檢查：從全域獲取地圖數據 (DATA 暫維持全域)
-        const dataSrc = window.DATA || window.GAMEDATA;
-        if (!dataSrc || !dataSrc.REGIONS) {
-            console.error("❌ 戰鬥引擎錯誤：找不到地圖數據庫");
-            return;
+    save() { 
+        if (this.data && typeof SaveManager !== 'undefined') {
+            SaveManager.save(this.data); 
         }
+    },
 
-        const map = this.findMapData(mapId);
+    /**
+     * 獲得經驗值 (瓶頸期判定)
+     */
+    gainExp(amount) {
+        if (!this.data) return 0;
         
-        if (!map) {
-            console.error(`❌ 找不到地圖數據！ID: ${mapId}`);
-            Msg.log(`此地妖氣雜亂，尋不到妖獸蹤跡...`, "system");
-            return;
+        // 1. 檢查是否處於瓶頸期
+        if (this.data.exp >= this.data.maxExp) {
+            Msg.log("感應到修為瓶頸，請先嘗試突破境界！", "system");
+            return 0;
         }
 
-        if (!map.monsterIds || map.monsterIds.length === 0) {
-            console.error(`❌ 地圖「${map.name}」未配置怪物。`);
-            return;
-        }
-
-        // 隨機抽選怪物模板
-        const monsterId = map.monsterIds[Math.floor(Math.random() * map.monsterIds.length)];
-        const template = dataSrc.MONSTERS ? dataSrc.MONSTERS[monsterId] : null;
+        // 2. 獲取悟性加成
+        const intVal = this.data.stats.int || 10;
+        const bonus = Formula.calculateExpBonus(intVal);
         
-        if (!template) {
-            console.error(`❌ 找不到怪物模板！ID: ${monsterId}`);
-            Msg.log(`感覺到強大的氣息，但對方隱藏了真身...`, "system");
-            return;
+        const finalExp = Math.floor(amount * bonus);
+        this.data.exp += finalExp;
+        
+        // 3. 經驗值封頂
+        if (this.data.exp >= this.data.maxExp) {
+            this.data.exp = this.data.maxExp;
+            Msg.log("✨ 體內靈氣充盈，已達修為瓶頸，隨時可嘗試突破！", "gold");
+        }
+        
+        this.save();
+        return finalExp;
+    },
+
+    /**
+     * 境界突破邏輯
+     */
+    breakthrough() {
+        if (!this.data || this.data.exp < this.data.maxExp) return false;
+        
+        console.log("【核心】開始突破境界...");
+        this.levelUp(); // 執行升級程序
+        return true;
+    },
+
+    /**
+     * 等級與境界提升程序
+     */
+    levelUp() {
+        if (!this.data) return;
+        
+        // 消耗經驗並提升等級
+        this.data.exp = 0; 
+        this.data.level++;
+        
+        // 每 10 級提升一個大境界
+        if (this.data.level % 10 === 1 && this.data.level > 1) {
+            this.data.realm++;
+            Msg.log(`🎊 脫胎換骨！境界大突破，已晉升至新天地！`, "gold");
+        }
+        
+        // 重新計算下一級經驗需求
+        this.data.maxExp = Formula.calculateNextExp(this.data.maxExp, this.data.level);
+        
+        // 獲得自由屬性點
+        this.data.statPoints += 5;
+        
+        // 突破時狀態補滿
+        const pStats = this.getBattleStats();
+        this.data.hp = pStats.maxHp;
+        
+        Msg.log(`【突破】修為精進，當前修為：Lv.${this.data.level}！`, "gold");
+
+        this.save();
+
+        // 即時刷新 UI (若 UI 模組已掛載)
+        if (window.UI_Stats) window.UI_Stats.renderStats(); 
+    },
+
+    /**
+     * 屬性加點
+     */
+    addStat(type) {
+        if (this.data.statPoints <= 0) return false;
+
+        this.data.stats[type]++;
+        this.data.statPoints--;
+        
+        this.save();
+        return true;
+    },
+
+    /**
+     * 核心：獲取即時戰鬥數值 (基礎屬性 + 裝備加成)
+     */
+    getBattleStats() {
+        const s = this.data.stats || { str: 10, con: 10, dex: 10, int: 10 };
+        const equip = this.data.equipped || {};
+
+        let extraAtk = 0;
+        let extraHp = 0;
+        let extraStats = { str: 0, con: 0, dex: 0, int: 0 };
+
+        // 統計所有裝備屬性
+        for (let slot in equip) {
+            const item = equip[slot];
+            if (item && item.stats) {
+                if (item.stats.atk) extraAtk += item.stats.atk;
+                if (item.stats.hp) extraHp += item.stats.hp;
+                for (let attr in extraStats) {
+                    if (item.stats[attr]) extraStats[attr] += item.stats[attr];
+                }
+            }
         }
 
-        // 實例化怪物物件
-        this.currentMonster = { 
-            ...template, 
-            hp: template.hp, 
-            maxHp: template.hp 
+        // 對接天道公式模組
+        return {
+            maxHp: Formula.calculateMaxHp(s.con + extraStats.con) + extraHp,
+            atk: Formula.calculateAtk(s.str + extraStats.str) + extraAtk,
+            def: Formula.calculateDef(s.dex + extraStats.dex),
+            speed: Formula.calculateSpeed(s.dex + extraStats.dex)
         };
-        
-        // 更新 UI (目前 UI 模組仍掛載於 window)
-        if (window.UI_Battle && typeof window.UI_Battle.updateMonster === 'function') {
-            window.UI_Battle.updateMonster(this.currentMonster);
-        }
-        
-        Msg.log(`【歷練】遇到 ${template.name}！`, "system"); 
     },
 
     /**
-     * 玩家發起攻擊
+     * 裝備穿戴邏輯
      */
-    playerAttack() {
-        if (this.isProcessing || !this.currentMonster) return;
+    equipItem(uuid) {
+        if (!this.data || !this.data.inventory) return false;
         
-        // 檢查修士狀態
-        if (Player.data && Player.data.hp <= 0) {
-            Msg.log("你體力耗盡，無法發動攻擊！", "system");
-            return;
+        const index = this.data.inventory.findIndex(i => i.uuid === uuid);
+        if (index === -1) return false;
+
+        const item = this.data.inventory[index];
+        const slot = item.type;
+
+        if (!['weapon', 'armor', 'accessory'].includes(slot)) {
+            Msg.log("此物品無法穿戴！", "system");
+            return false;
         }
 
-        this.isProcessing = true;
-        this.executeTurn(true);
+        const oldMaxHp = this.getBattleStats().maxHp;
+
+        // 脫下舊裝備
+        if (this.data.equipped[slot]) {
+            this.data.inventory.push(this.data.equipped[slot]);
+        }
+
+        // 穿上新裝備
+        this.data.equipped[slot] = item;
+        this.data.inventory.splice(index, 1);
+
+        // 重新換算血量比例 (保持傷勢)
+        const newMaxHp = this.getBattleStats().maxHp;
+        const hpPercent = this.data.hp / oldMaxHp;
+        this.data.hp = Math.max(1, Math.floor(hpPercent * newMaxHp));
+
+        this.save();
+        return true;
     },
 
     /**
-     * 執行戰鬥回合
+     * 裝備卸下邏輯
      */
-    executeTurn(isPlayerTurn) {
-        if (!this.currentMonster || !Player.data) {
-            this.isProcessing = false;
-            return;
+    unequip(slotId) {
+        if (!this.data || !this.data.equipped || !this.data.equipped[slotId]) return false;
+
+        const dataSrc = window.DB || window.DATA || window.GAMEDATA;
+        const maxSlots = (dataSrc && dataSrc.CONFIG && dataSrc.CONFIG.MAX_BAG_SLOTS) || 50; 
+        if (this.data.inventory.length >= maxSlots) {
+            Msg.log("儲物袋已滿，無法卸下裝備！", "system");
+            return false;
         }
 
-        // 決定攻守方數值
-        const attackerAtk = isPlayerTurn ? Player.getBattleStats().atk : this.currentMonster.atk;
-        
-        // 使用 Formula 模組計算傷害
-        const damage = Formula.getDamageRange(attackerAtk);
+        const item = this.data.equipped[slotId];
+        const oldMaxHp = this.getBattleStats().maxHp;
 
-        if (isPlayerTurn) {
-            // 玩家回合：怪物受傷
-            this.currentMonster.hp -= damage;
-            Msg.log(`你攻擊造成 ${damage} 點傷害。`, "player-atk");
+        this.data.inventory.push(item);
+        this.data.equipped[slotId] = null;
+
+        const newMaxHp = this.getBattleStats().maxHp;
+        const hpPercent = this.data.hp / oldMaxHp;
+        this.data.hp = Math.max(1, Math.floor(hpPercent * newMaxHp));
+
+        this.save();
+        return true;
+    },
+
+    /**
+     * 🟢 道具消耗與神通參悟 (神通升級版)
+     */
+    consumeItem(uuid) {
+        if (!this.data || !this.data.inventory) return false;
+        
+        const index = this.data.inventory.findIndex(i => i.uuid === uuid);
+        if (index === -1) return false;
+
+        const item = this.data.inventory[index];
+        let consumedByFragmentLogic = false;
+
+        if (item.type === 'fragment') {
+            const skillName = item.skillName || item.name.replace('殘卷：', '');
+
+            // 1. 五合一與門檻判定 (不再阻擋已學會的神通)
+            if (item.volume) {
+                // 檢查是否集齊卷一至卷五
+                const vols = [1, 2, 3, 4, 5];
+                const missingVols = [];
+                for (let v of vols) {
+                    if (!this.data.inventory.some(i => i.type === 'fragment' && i.skillName === skillName && i.volume === v)) {
+                        missingVols.push(v);
+                    }
+                }
+
+                if (missingVols.length > 0) {
+                    // 翻譯卷數為中文顯示
+                    const volMap = {1:"一", 2:"二", 3:"三", 4:"四", 5:"五"};
+                    const missingText = missingVols.map(v => volMap[v]).join('、');
+                    Msg.log(`【${skillName}】尚缺卷 ${missingText}，須集齊五卷方可參悟或突破！`, "system");
+                    return false;
+                }
+
+                // 悟性門檻檢查
+                if (this.data.stats.int < 12) {
+                    Msg.log(`你的悟性不足(需達 12 點)，強行合一恐有走火入魔之虞！`, "system");
+                    return false;
+                }
+
+                // 扣除卷一到卷五各一張
+                for (let v of vols) {
+                    const idx = this.data.inventory.findIndex(i => i.type === 'fragment' && i.skillName === skillName && i.volume === v);
+                    if (idx !== -1) {
+                        if (this.data.inventory[idx].count && this.data.inventory[idx].count > 1) {
+                            this.data.inventory[idx].count--;
+                        } else {
+                            this.data.inventory.splice(idx, 1);
+                        }
+                    }
+                }
+                consumedByFragmentLogic = true;
+
+            } else {
+                // 兼容：坊市買的舊版殘卷 (無卷數)，直接當作完整秘籍
+                if (this.data.stats.int < 12) {
+                    Msg.log(`你的悟性不足(需達 12 點)，無法參悟此秘籍！`, "system");
+                    return false;
+                }
+            }
+
+            // 2. 🟢 領悟神通 或 升級神通
+            const existingSkill = this.data.skills.find(s => s.name === skillName);
             
-            // 觸發特效：怪物震動與傷害彈跳
-            FX.shake('monster-display');
-            FX.spawnPopText(damage, 'monster');
-            
+            if (existingSkill) {
+                // 升級邏輯
+                existingSkill.level = (existingSkill.level || 1) + 1;
+                Msg.log(`🔥 融會貫通！【${skillName}】境界突破至 Lv.${existingSkill.level}！威力大增！`, "gold");
+            } else {
+                // 初次領悟邏輯
+                this.data.skills.push({ 
+                    id: item.id || `sk_${Date.now()}`, 
+                    name: skillName, 
+                    level: 1,
+                    desc: `集齊五卷殘篇領悟而成的天地神通。`
+                });
+                Msg.log(`💡 金光大作！五卷合一，領悟神通：【${skillName}】！`, "gold");
+            }
+
+        } else if (item.type === 'special' && item.id === 'i001') {
+            this.data.coin += 500;
+            Msg.log(`💰 打開靈石袋，獲得 500 靈石！`, "gold");
         } else {
-            // 怪物回合：玩家受傷
-            Player.data.hp -= damage;
-            Msg.log(`${this.currentMonster.name} 反擊造成 ${damage} 點傷害。`, "monster-atk");
-            
-            // 觸發特效：修士血條震動與傷害彈跳
-            FX.shake('player-hp-fill');
-            FX.spawnPopText(damage, 'player');
-            
-            // 同步 UI 狀態
-            if (window.UI_Battle) {
-                const pStats = Player.getBattleStats();
-                window.UI_Battle.updatePlayerHP(Player.data.hp, pStats.maxHp);
+            Msg.log("此物品無法直接使用。", "system");
+            return false;
+        }
+
+        // 處理非五合一邏輯的一般道具消耗 (疊加道具數量扣除)
+        if (!consumedByFragmentLogic) {
+            const currentIndex = this.data.inventory.findIndex(i => i.uuid === uuid);
+            if (currentIndex !== -1) {
+                if (this.data.inventory[currentIndex].count && this.data.inventory[currentIndex].count > 1) {
+                    this.data.inventory[currentIndex].count--;
+                } else {
+                    this.data.inventory.splice(currentIndex, 1);
+                }
             }
         }
 
-        // 刷新怪物狀態 UI
-        if (window.UI_Battle) window.UI_Battle.updateMonster(this.currentMonster);
-
-        // 生死判定
-        if (this.currentMonster.hp <= 0) {
-            this.handleVictory();
-        } else if (!isPlayerTurn && Player.data.hp <= 0) {
-            this.handleDefeat();
-        } else if (isPlayerTurn) {
-            // 回合輪替，延遲 600ms
-            setTimeout(() => this.executeTurn(false), 600);
-        } else {
-            // 戰鬥解析結束，解鎖操作
-            this.isProcessing = false; 
-        }
+        this.save();
+        return true;
     },
 
     /**
-     * 戰鬥勝利結算 (🟢 調整萬物掉落機制 - 平衡版)
+     * 自散修為 (測試專用，遺忘神通)
      */
-    handleVictory() {
-        const m = this.currentMonster;
-        Msg.log(`${m.name} 已被擊敗。`, "system");
-        
-        // 1. 結算經驗值與靈石
-        const exp = Player.gainExp(m.exp);
-        Player.data.coin += (m.gold || 0);
-        Msg.log(`獲得經驗 ${exp}，靈石 ${m.gold || 0}`, "reward");
-
-        // 2. 獲取獎勵飄字
-        if (exp > 0) FX.spawnPopText(`+${exp} EXP`, 'player', '#2ecc71');
-        if (m.gold > 0) {
-            setTimeout(() => FX.spawnPopText(`+${m.gold} 靈石`, 'player', '#fbbf24'), 250);
-        }
-
-        // 3. 戰利品掉落判定
-
-        // 3.1 裝備掉落 (🟢 下修：20% -> 10%)
-        if (Math.random() < 0.1) {
-            const item = ItemFactory.createEquipment();
-            if (item) {
-                Player.addItem(item);
-                Msg.log(`🎊 獲得戰利品：【${item.name}】！`, "reward");
-            }
-        }
-
-        // 3.2 素材掉落 (🟢 上修：40% -> 60%，供應懸賞堂)
-        if (Math.random() < 0.6) {
-            const matNames = ["妖獸骨骸", "殘破皮毛", "低階妖丹", "陣法殘片"];
-            const randomMat = matNames[Math.floor(Math.random() * matNames.length)];
-            const material = {
-                uuid: 'mat_' + Date.now() + Math.random().toString(36).substr(2, 5),
-                name: randomMat,
-                type: 'material',
-                rarity: 1,
-                count: 1,
-                desc: `從妖獸身上採集的素材，似乎可以用來換取靈石或修復法陣。`,
-                price: 15
-            };
-            Player.addItem(material);
-            Msg.log(`📦 採集到素材：【${randomMat}】`, "reward");
-        }
-
-        // 3.3 殘卷掉落 (🟢 下修：30% -> 15%)
-        if (Math.random() < 0.15) {
-            const skillList = ["烈焰斬", "回春術", "青元劍訣"]; // 可掉落的神通池
-            const skillName = skillList[Math.floor(Math.random() * skillList.length)];
-            const volNum = Math.floor(Math.random() * 5) + 1; // 產生 1 到 5 的數字
-            const volMap = {1:"一", 2:"二", 3:"三", 4:"四", 5:"五"};
-            
-            const fragment = {
-                uuid: 'frag_' + Date.now() + Math.random().toString(36).substr(2, 5),
-                name: `殘卷：${skillName}(卷${volMap[volNum]})`,
-                type: 'fragment',
-                skillName: skillName, 
-                volume: volNum,       
-                rarity: 3,
-                count: 1,
-                desc: `記載著【${skillName}】部分心法的殘卷，集齊五卷方可領悟。`,
-                price: 50
-            };
-            Player.addItem(fragment);
-            Msg.log(`📜 發現殘卷：【${fragment.name}】！`, "gold");
-        }
-
-        // 4. 更新全域 UI 
-        if (window.Core) window.Core.updateUI();
-
-        this.currentMonster = null;
-        
-        // 延遲重生
-        setTimeout(() => { 
-            this.isProcessing = false; 
-            this.spawnMonster(this.currentMapId); 
-        }, 1500);
-    },
-
-    /**
-     * 戰鬥失敗處理
-     */
-    handleDefeat() {
-        Msg.log(`你被 ${this.currentMonster.name} 擊敗了... 重傷昏迷。`, "monster-atk");
-        this.currentMonster = null;
-
-        // 懲罰與恢復
-        const pStats = Player.getBattleStats();
-        Player.data.hp = pStats.maxHp; // 宗門救回
-        
-        setTimeout(() => {
-            Msg.log(`在宗門長老的救治下，你已甦醒。`, "system");
-            if (window.UI_Battle) {
-                window.UI_Battle.updatePlayerHP(Player.data.hp, pStats.maxHp);
-                window.UI_Battle.updateMonster(null);
-            }
+    unlearnSkill(skillName) {
+        if (!this.data) return false;
+        const idx = this.data.skills.findIndex(s => s.name === skillName);
+        if (idx !== -1) {
+            this.data.skills.splice(idx, 1);
+            this.save();
+            Msg.log(`⚠️ 你自散修為，強行遺忘了神通【${skillName}】！`, "system");
             if (window.Core) window.Core.updateUI();
-            
-            this.isProcessing = false;
-            this.spawnMonster(this.currentMapId);
-        }, 2000);
+            return true;
+        }
+        Msg.log(`你並未掌握【${skillName}】。`, "system");
+        return false;
     },
 
     /**
-     * 私有：搜尋地圖資料
+     * 獲得物品
      */
-    findMapData(id) {
-        const dataSrc = window.DATA || window.GAMEDATA;
-        if (!dataSrc || !dataSrc.REGIONS) return null;
+    addItem(item) {
+        if (!item || !this.data) return false;
 
-        for (let r in dataSrc.REGIONS) {
-            const map = dataSrc.REGIONS[r].maps.find(m => m.id == id);
-            if (map) return map;
+        const dataSrc = window.DATA || window.GAMEDATA;
+        const maxSlots = (dataSrc && dataSrc.CONFIG && dataSrc.CONFIG.MAX_BAG_SLOTS) || 50; 
+        
+        if (this.data.inventory.length >= maxSlots) {
+            Msg.log("儲物袋已滿！", "system");
+            return false;
         }
-        return null;
+
+        this.data.inventory.push(item);
+        this.save();
+        return true;
+    },
+
+    /**
+     * 初始數據
+     */
+    getInitialData() {
+        return {
+            realm: 1,      // 境界層級
+            level: 1,      // 小等級
+            exp: 0, 
+            maxExp: 100, 
+            coin: 500,
+            hp: 100,
+            sectPoints: 0, // 宗門貢獻點
+            world: {       // 宗門產業狀態
+                arrayLevel: 1, 
+                lastCollect: Date.now(),
+                workers: 0, 
+                farm: { level: 0, assigned: 0 }, 
+                mine: { level: 0, assigned: 0 }
+            },
+            buffs: [],     // 🟢 新增：異常狀態(中毒/眩暈)容器
+            stats: { str: 10, con: 10, dex: 10, int: 10 },
+            statPoints: 0, 
+            inventory: [], 
+            skills: [],
+            equipped: { weapon: null, armor: null, accessory: null }
+        };
     }
 };
 
-// 全域對接
-window.CombatEngine = CombatEngine;
+window.Player = Player;
