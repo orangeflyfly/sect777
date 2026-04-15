@@ -1,6 +1,6 @@
 /**
- * V2.6 CombatEngine.js
- * 職責：處理主動/被動技能、冷卻計時、境界壓制、暴擊與閃避判定、完整視覺特效對接
+ * V2.6.2 CombatEngine.js
+ * 職責：處理主動/被動技能、冷卻計時、境界壓制、暴擊與閃避判定、NaN 防護
  * 位置：/systems/CombatEngine.js
  */
 
@@ -14,8 +14,8 @@ export const CombatEngine = {
     currentMonster: null,
     isProcessing: false,
     currentMapId: 101, 
-    skillCDs: {},     // 存儲技能冷卻狀態 { '烈焰斬': 0 }
-    heartbeat: null,  // 獨立計時器，解決 CD 卡住問題
+    skillCDs: {},     
+    heartbeat: null,  
 
     init(mapId = null) {
         let targetMap = mapId;
@@ -30,7 +30,6 @@ export const CombatEngine = {
             Player.save(); 
         }
 
-        // 啟動天道心跳：每秒減少 CD
         this.startHeartbeat();
 
         setTimeout(() => {
@@ -76,7 +75,6 @@ export const CombatEngine = {
     async useSkill(skillName) {
         if (this.isProcessing || !this.currentMonster) return;
         
-        // 冷卻檢查
         if (this.skillCDs[skillName] > 0) {
             Msg.log(`神通【${skillName}】靈力運轉中，還需 ${this.skillCDs[skillName]} 秒。`, "system");
             return;
@@ -88,14 +86,11 @@ export const CombatEngine = {
 
         this.isProcessing = true;
         
-        // 視覺特寫演出 (確保等待動畫)
         const icon = skillDef.icon || (skillDef.type === 'heal' ? "✨" : "🔥"); 
         await FX.skillCutIn(skillName, icon); 
 
-        // 設置冷卻 (秒數)
         this.skillCDs[skillName] = skillDef.cd || 5;
 
-        // 觸發戰鬥回合結算
         this.processBuffs(); 
         if (Player.data.hp > 0) {
             this.executeTurn(true, skillDef, skillName);
@@ -127,7 +122,6 @@ export const CombatEngine = {
         const dataSrc = window.DB || window.DATA;
         const pStats = Player.getBattleStats();
         
-        // --- 🟢 境界壓制計算 (每高一階增傷 20%) ---
         const playerRealm = Player.data.realm || 1;
         const monsterLevel = this.currentMonster.level || 1;
         const monsterRealm = Math.floor((monsterLevel - 1) / 10) + 1;
@@ -138,8 +132,6 @@ export const CombatEngine = {
         let baseDamage = Formula.getDamageRange(attackerAtk);
         let finalDamage = Math.floor(baseDamage * realmBonus);
 
-        // --- 🟢 閃避判定 (Dodge) ---
-        // 預設修士閃避率 5%，怪物閃避率 5%
         const dodgeRate = isPlayerTurn ? (this.currentMonster.dodge || 0.05) : (pStats.dodgeRate || 0.05);
         const isDodge = Math.random() < dodgeRate;
 
@@ -152,24 +144,24 @@ export const CombatEngine = {
                 FX.spawnPopText("閃避", 'player', '#94a3b8');
             }
         } else {
-            // --- 🟢 暴擊判定 (Crit) ---
-            // 預設修士暴擊率 10%(1.5倍)，怪物暴擊率 5%(1.5倍)
             const critRate = isPlayerTurn ? (pStats.critRate || 0.1) : (this.currentMonster.critRate || 0.05);
             const critDmg = isPlayerTurn ? (pStats.critDmg || 1.5) : (this.currentMonster.critDmg || 1.5);
             const isCrit = Math.random() < critRate;
 
             if (isCrit) {
                 finalDamage = Math.floor(finalDamage * critDmg);
-                FX.shake('combat-area'); // 暴擊時震撼整個戰鬥區
+                FX.shake('combat-area'); 
             }
 
             if (isPlayerTurn) {
-                // 玩家攻擊結算
                 if (skillUsed) {
                     const playerSkill = Player.data.skills.find(s => s.name === skillName);
                     const skillLv = playerSkill ? playerSkill.level : 1;
                     const boost = 1 + ((skillLv - 1) * (dataSrc.CONFIG.SKILL_UPGRADE_BOOST || 0.2));
-                    finalDamage = Math.floor(finalDamage * skillUsed.multiplier * boost);
+                    
+                    // 🟢 修復重點：防禦 NaN 的倍率回退機制
+                    const skillMult = skillUsed.multiplier || skillUsed.power || skillUsed.damage || 1.5;
+                    finalDamage = Math.floor(finalDamage * skillMult * boost);
                 }
 
                 const critPrefix = isCrit ? "💥 暴擊！" : "";
@@ -181,23 +173,22 @@ export const CombatEngine = {
                     Msg.log(`${critPrefix}發動普通攻擊，造成 ${finalDamage} 點傷害。`, logType);
                 }
 
-                // 觸發攻擊被動
                 this.handlePassiveSkills('onAttack', { damage: finalDamage });
 
                 this.currentMonster.hp -= finalDamage;
                 FX.shake('monster-display');
-                // 暴擊時顯示金色數字，否則紅色
                 FX.spawnPopText(finalDamage, 'monster', isCrit ? '#fcd34d' : null);
 
             } else {
-                // 怪物回合 AI
                 let monsterFinalDmg = finalDamage;
                 if (this.currentMonster.skill && dataSrc.SKILLS[this.currentMonster.skill]) {
                     const mSkill = dataSrc.SKILLS[this.currentMonster.skill];
                     if (Math.random() < (mSkill.chance || 0.2)) {
                         Msg.log(`⚠️ ${this.currentMonster.name} 發動【${this.currentMonster.skill}】！`, "monster-atk");
                         if (mSkill.type === 'damage') {
-                            monsterFinalDmg = Math.floor(monsterFinalDmg * mSkill.multiplier);
+                            // 🟢 怪物的技能倍率也做同樣的防禦
+                            const mSkillMult = mSkill.multiplier || mSkill.power || mSkill.damage || 1.5;
+                            monsterFinalDmg = Math.floor(monsterFinalDmg * mSkillMult);
                             FX.shake('combat-area');
                         } else if (mSkill.type === 'debuff') {
                             this.applyDebuffToPlayer(mSkill);
@@ -210,7 +201,6 @@ export const CombatEngine = {
                 Msg.log(`${critPrefix}${this.currentMonster.name} 造成 ${monsterFinalDmg} 點傷害。`, "monster-atk");
                 
                 FX.shake('player-display');
-                // 暴擊時顯示金色數字
                 FX.spawnPopText(monsterFinalDmg, 'player', isCrit ? '#fcd34d' : null);
                 
                 if (window.UI_Battle) {
@@ -221,7 +211,6 @@ export const CombatEngine = {
 
         if (window.UI_Battle) window.UI_Battle.updateMonster(this.currentMonster);
 
-        // 生死判定
         if (this.currentMonster.hp <= 0) {
             this.handleVictory();
         } else if (!isPlayerTurn && Player.data.hp <= 0) {
@@ -229,7 +218,6 @@ export const CombatEngine = {
         } else if (isPlayerTurn) {
             setTimeout(() => this.executeTurn(false), 600);
         } else {
-            // 被動掃描 (每回合末)
             this.handlePassiveSkills('onTurnEnd');
             this.isProcessing = false; 
         }
