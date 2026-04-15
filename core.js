@@ -13,6 +13,7 @@ import { UI_Bag } from './ui/ui_bag.js';
 import { UI_Shop } from './ui/ui_shop.js';
 import { UI_World } from './ui/ui_world.js';// 🟢 新增：導入小世界神識
 import { SectManager } from './systems/SectManager.js'; // 🟢 新增：導入宗門大腦
+import { TaskSystem } from './systems/TaskSystem.js'; // 🟢 新增：導入任務懸賞大腦
 
 export const Core = {
     /**
@@ -28,6 +29,7 @@ export const Core = {
             this.updateUI();
             
             SectManager.init(); // 🟢 啟動宗門大腦，計算離線收益
+            TaskSystem.init();  // 🟢 啟動任務大腦，生成懸賞榜單
 
             this.startGlobalRefresh();
             this.startAutoSave();
