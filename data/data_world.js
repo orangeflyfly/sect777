@@ -1,5 +1,5 @@
 /**
- * V2.0 data_world.js
+ * V2.3 data_world.js (妖獸開智與地圖擴展版)
  * 職責：區域與地圖關卡配置
  * 狀態：已轉化為 ES Module，支持地圖導航系統
  */
@@ -23,6 +23,16 @@ export const REGIONS = {
             { id: 202, name: "沉船遺跡", minLv: 25, minRealm: 3, monsterIds: ["m008", "m009"] },
             { id: 203, name: "禁地深處", minLv: 40, minRealm: 4, monsterIds: ["m010"], isBossMap: true }
         ]
+    },
+    // 🟢 V2.3 新增區域：幽暗毒林 (專門展示毒素與重擊的高階區域)
+    "region_03": {
+        id: "region_03",
+        name: "幽暗毒林",
+        maps: [
+            { id: 301, name: "魔化獸徑", minLv: 30, minRealm: 3, monsterIds: ["m011", "m013"] }, // 野豬(重擊) + 蝙蝠
+            { id: 302, name: "瘴氣沼澤", minLv: 35, minRealm: 3, monsterIds: ["m012", "m014"] }, // 毒蛛(妖毒) + 巨猿(重擊)
+            { id: 303, name: "萬年枯木", minLv: 45, minRealm: 4, monsterIds: ["m015"], isBossMap: true } // 萬年樹妖(群毒大Boss)
+        ]
     }
 };
 
@@ -33,4 +43,4 @@ export const REGIONS = {
 window.GAMEDATA = window.GAMEDATA || {};
 window.GAMEDATA.REGIONS = REGIONS;
 
-console.log("%c【山河誌】ESM 陣法啟動，地圖記憶已載入。", "color: #3b82f6; font-weight: bold;");
+console.log("%c【山河誌】ESM 陣法啟動，地圖記憶與新天地已載入。", "color: #3b82f6; font-weight: bold;");
