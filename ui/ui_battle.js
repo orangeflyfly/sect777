@@ -1,30 +1,73 @@
 /**
- * V2.1 ui_battle.js (飛升模組版 - 神通顯化與冷卻陣法)
- * 職責：歷練介面管理、戰鬥日誌分頁、地圖選擇、技能按鈕與冷卻渲染
+ * V2.4 ui_battle.js (神通分流與自動歷練版)
+ * 職責：歷練介面渲染、主/被動技能顯示、自動歷練開關、彩色日誌
  * 位置：/ui/ui_battle.js
  */
 
-// 1. 導入核心邏輯與工具模組
 import { Player } from '../entities/player.js';
 import { CombatEngine } from '../systems/CombatEngine.js';
 import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 import { FX } from '../utils/fx.js';
 
 export const UI_Battle = {
-    // 🟢 新增：技能冷卻紀錄 (記錄每個技能的解鎖時間戳)
-    skillCooldowns: {},
+    autoInterval: null, // 自動歷練計時器
+    isAuto: false,      // 自動狀態標記
 
-    // 1. 初始化監聽器與基礎渲染
+    // 1. 初始化
     init() {
-        console.log("【UI_Battle】歷練法鏡啟動，對接戰場數據...");
+        console.log("【UI_Battle】歷練法鏡啟動，正在載入主被動分流陣法...");
+        this.injectAutoToggle(); // 注入自動開關
         this.renderSkillButtons();
-        this.renderLogTabs(); // 初始化日誌分頁標籤
+        this.renderLogTabs(); 
         
-        // 初始同步玩家數據
         if (Player.data) {
             const stats = Player.getBattleStats();
             this.updatePlayerHP(Player.data.hp || stats.maxHp, stats.maxHp);
             this.updateExp(Player.data.exp, Player.data.maxExp);
+        }
+    },
+
+    // 🟢 新增：在介面注入「自動歷練」按鈕
+    injectAutoToggle() {
+        const header = document.querySelector('.map-nav-header');
+        if (!header || document.getElementById('auto-battle-toggle')) return;
+
+        const toggleBtn = document.createElement('button');
+        toggleBtn.id = 'auto-battle-toggle';
+        toggleBtn.className = 'btn-travel'; // 沿用旅行按鈕樣式
+        toggleBtn.style.marginLeft = '10px';
+        toggleBtn.style.background = '#475569';
+        toggleBtn.innerText = '🤖 自動: 關';
+        toggleBtn.onclick = () => this.toggleAutoBattle();
+        header.appendChild(toggleBtn);
+    },
+
+    // 🟢 新增：自動歷練開關邏輯
+    toggleAutoBattle() {
+        this.isAuto = !this.isAuto;
+        const btn = document.getElementById('auto-battle-toggle');
+        
+        if (this.isAuto) {
+            btn.innerText = '⚡ 自動: 開';
+            btn.style.background = '#059669';
+            Msg.log("「自動歷練」陣法啟動，修士開始自主尋怪攻擊。", "system");
+            
+            this.autoInterval = setInterval(() => {
+                // 檢查是否正在處理、是否有怪、血量是否過低
+                if (!CombatEngine.isProcessing && CombatEngine.currentMonster) {
+                    if (Player.data.hp / Player.getBattleStats().maxHp < 0.2) {
+                        Msg.log("❗ 血量過低，自動歷練緊急停機！", "monster-atk");
+                        this.toggleAutoBattle();
+                        return;
+                    }
+                    CombatEngine.playerAttack();
+                }
+            }, 1600); // 略慢於戰鬥動畫，避免卡死
+        } else {
+            btn.innerText = '🤖 自動: 關';
+            btn.style.background = '#475569';
+            clearInterval(this.autoInterval);
+            Msg.log("「自動歷練」陣法已關閉。", "system");
         }
     },
 
@@ -42,20 +85,19 @@ export const UI_Battle = {
         }
     },
 
-    // 3. 更新經驗條與偵測突破 (對接修為介面)
+    // 3. 更新經驗條
     updateExp(current, next) {
         const fill = document.getElementById('exp-fill');
         if (fill) {
             const percent = Math.max(0, Math.min(100, (current / next) * 100));
             fill.style.width = `${percent}%`;
         }
-
         if (current >= next && window.UI_Stats) {
             window.UI_Stats.handleBreakthroughUI();
         }
     },
 
-    // 4. 更新怪物資訊 (觸發受擊 shake 特效)
+    // 4. 更新怪物資訊
     updateMonster(monster) {
         const nameEl = document.getElementById('monster-name');
         const hpFill = document.getElementById('monster-hp-fill');
@@ -65,22 +107,10 @@ export const UI_Battle = {
         if (monster) {
             if (nameEl) nameEl.innerText = monster.name;
             if (iconEl) iconEl.innerText = monster.icon || '👾';
-            
             const maxHp = monster.maxHp || monster.hp || 1;
             const percent = Math.max(0, (monster.hp / maxHp) * 100);
-            
             if (hpFill) hpFill.style.width = `${percent}%`;
             if (hpText) hpText.innerText = `${Math.ceil(monster.hp)} / ${maxHp}`;
-
-            const monsterCard = document.getElementById('monster-display');
-            if (monsterCard && monster.hp < maxHp) {
-                if (FX && FX.shake) {
-                    FX.shake('monster-display');
-                } else {
-                    monsterCard.classList.add('hit-shake');
-                    setTimeout(() => monsterCard.classList.remove('hit-shake'), 200);
-                }
-            }
         } else {
             if (nameEl) nameEl.innerText = "搜尋妖氣中...";
             if (iconEl) iconEl.innerText = "❓";
@@ -89,7 +119,7 @@ export const UI_Battle = {
         }
     },
 
-    // 5. 戰鬥日誌渲染 (分頁機制預留)
+    // 5. 彩色戰鬥日誌 (一字不漏修復版)
     log(msg, type = 'system') {
         const logContainer = document.getElementById('battle-log');
         if (!logContainer) return;
@@ -97,32 +127,120 @@ export const UI_Battle = {
         const logEntry = document.createElement('div');
         logEntry.className = `log-item log-type-${type}`;
         
+        // 🟢 定義全新的日誌色彩法則
         const colorMap = {
-            'player-atk': "#a78bfa",
-            'monster-atk': "#ef4444",
-            'reward': "#fbbf24",
-            'gold': "#fbbf24",
-            'system': "#94a3b8"
+            'player-atk': "#60a5fa",   // 玩家普通攻擊 (淺藍)
+            'gold': "#fcd34d",         // 🟢 神通觸發、被動運轉 (金色)
+            'monster-atk': "#ef4444",  // 怪物攻擊、中毒、重傷 (紅色)
+            'reward': "#a855f7",       // 🟢 獲得獎勵、戰利品 (紫色)
+            'system': "#94a3b8",       // 系統提示 (灰色)
+            'default': "#ffffff"
         };
 
-        logEntry.style.color = colorMap[type] || "var(--text-main)";
-        logEntry.innerHTML = `<span class="log-bullet">❯</span> <span class="log-text">${msg}</span>`;
+        logEntry.style.color = colorMap[type] || colorMap['default'];
+        logEntry.style.marginBottom = "4px";
+        logEntry.style.fontSize = "13px";
+        logEntry.innerHTML = `<span style="color:${colorMap['system']}; margin-right:5px;">❯</span>${msg}`;
 
         logContainer.appendChild(logEntry);
         logContainer.scrollTop = logContainer.scrollHeight;
 
-        const dataSrc = window.DATA || window.GAMEDATA;
-        const limit = (dataSrc && dataSrc.CONFIG && dataSrc.CONFIG.LOG_LIMIT) || 50;
+        // 限制日誌數量
+        const limit = 50;
         while (logContainer.children.length > limit) {
             logContainer.removeChild(logContainer.firstChild);
         }
+    },
 
-        if (type === 'player-atk' || type === 'monster-atk') {
-            const val = msg.match(/\d+/); 
-            if (val && FX && FX.spawnPopText) {
-                const target = (type === 'player-atk') ? 'monster' : 'player';
-                FX.spawnPopText(val[0], target);
+    // 6. 渲染神通區 (主被動分流)
+    renderSkillButtons() {
+        const actionContainer = document.getElementById('battle-actions');
+        const passiveContainer = document.getElementById('player-buffs'); // 借用 buffs 區顯示被動功法
+        if (!actionContainer) return;
+
+        actionContainer.innerHTML = '';
+        
+        const dataSrc = window.DB || window.DATA;
+
+        // 1. 固定按鈕：普通攻擊
+        const atkBtn = document.createElement('button');
+        atkBtn.className = 'btn-battle-action btn-atk-primary';
+        atkBtn.innerHTML = `<span class="act-icon">⚔️</span><span class="act-name">普通攻擊</span>`;
+        atkBtn.onclick = () => {
+            if (CombatEngine) CombatEngine.playerAttack();
+        };
+        actionContainer.appendChild(atkBtn);
+
+        // 2. 遍歷玩家習得的技能
+        if (Player.data && Player.data.skills) {
+            Player.data.skills.forEach(skill => {
+                const skillDef = dataSrc.SKILLS[skill.name];
+                if (!skillDef) return;
+
+                // 🟢 分流：如果是被動技能，不生成按鈕
+                if (skillDef.isPassive) {
+                    console.log(`【UI_Battle】偵測到被動功法：${skill.name}，已交由引擎後台運轉。`);
+                    return; 
+                }
+
+                // 🟢 分流：如果是主動技能，生成戰鬥按鈕
+                const sBtn = document.createElement('button');
+                sBtn.className = 'btn-battle-action btn-atk-skill';
+                sBtn.id = `btn-skill-${skill.name}`;
+                sBtn.style.position = 'relative';
+                sBtn.style.overflow = 'hidden';
+
+                sBtn.innerHTML = `
+                    <span class="act-icon">✨</span>
+                    <span class="act-name">${skill.name}</span>
+                    <div id="cd-mask-${skill.name}" style="position:absolute; bottom:0; left:0; width:100%; height:0%; background:rgba(0,0,0,0.6); pointer-events:none; transition:height 0.1s linear;"></div>
+                    <div id="cd-text-${skill.name}" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:#fff; font-weight:bold; font-size:16px; pointer-events:none;"></div>
+                `;
+
+                sBtn.onclick = () => {
+                    if (CombatEngine) CombatEngine.useSkill(skill.name);
+                };
+                actionContainer.appendChild(sBtn);
+            });
+        }
+        
+        // 啟動 CD UI 監視迴圈
+        this.updateCooldownDisplay();
+    },
+
+    // 🟢 新增：每幀更新冷卻視覺
+    updateCooldownDisplay() {
+        const dataSrc = window.DB || window.DATA;
+        if (!Player.data || !Player.data.skills) return;
+
+        Player.data.skills.forEach(skill => {
+            const skillDef = dataSrc.SKILLS[skill.name];
+            if (!skillDef || skillDef.isPassive) return;
+
+            const btn = document.getElementById(`btn-skill-${skill.name}`);
+            const mask = document.getElementById(`cd-mask-${skill.name}`);
+            const text = document.getElementById(`cd-text-${skill.name}`);
+            
+            if (!mask || !text) return;
+
+            const currentCD = CombatEngine.skillCDs[skill.name] || 0;
+            const totalCD = skillDef.cd || 5;
+
+            if (currentCD > 0) {
+                if (btn) btn.disabled = true;
+                const percent = (currentCD / totalCD) * 100;
+                mask.style.height = `${percent}%`;
+                text.innerText = `${currentCD}s`;
+            } else {
+                if (btn) btn.disabled = false;
+                mask.style.height = '0%';
+                text.innerText = '';
             }
+        });
+
+        // 為了節省資源，只有在歷練頁面才持續更新
+        if (document.getElementById('page-battle').style.display !== 'none') {
+            requestAnimationFrame(() => this.updateCooldownDisplay());
         }
     },
 
@@ -130,13 +248,11 @@ export const UI_Battle = {
     renderLogTabs() {
         const tabContainer = document.getElementById('log-tabs');
         if (!tabContainer) return;
-
         const tabs = [
             { id: 'all', name: '全部' },
             { id: 'battle', name: '戰鬥' },
             { id: 'loot', name: '掉落' }
         ];
-
         tabContainer.innerHTML = tabs.map(tab => `
             <button class="log-tab-btn ${tab.id === 'all' ? 'active' : ''}" 
                     onclick="UI_Battle.switchLogTab('${tab.id}', this)">
@@ -148,117 +264,7 @@ export const UI_Battle = {
     switchLogTab(tabId, btn) {
         document.querySelectorAll('.log-tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        Msg.log(`切換日誌頻道：${tabId}`, "system");
-    },
-
-    // 7. 🟢 渲染技能按鈕 (重構：加入冷卻遮罩與倒數)
-    renderSkillButtons() {
-        const actionContainer = document.getElementById('battle-actions');
-        if (!actionContainer) return;
-
-        actionContainer.innerHTML = '';
-
-        // 1. 普通攻擊 (無冷卻)
-        const atkBtn = document.createElement('button');
-        atkBtn.className = 'btn-battle-action btn-atk-primary';
-        atkBtn.innerHTML = `<span class="act-icon">⚔️</span><span class="act-name">普通攻擊</span>`;
-        atkBtn.onclick = () => {
-            if (CombatEngine) CombatEngine.playerAttack();
-        };
-        actionContainer.appendChild(atkBtn);
-
-        // 2. 動態渲染已習得神通 (包含冷卻陣法)
-        if (Player.data && Player.data.skills) {
-            Player.data.skills.forEach(skill => {
-                const sBtn = document.createElement('button');
-                sBtn.className = 'btn-battle-action btn-atk-skill';
-                sBtn.id = `btn-skill-${skill.id}`;
-                sBtn.style.position = 'relative'; // 確保遮罩定位正確
-                sBtn.style.overflow = 'hidden';
-
-                // 檢查是否仍在冷卻中
-                const cdEndTime = this.skillCooldowns[skill.id] || 0;
-                const now = Date.now();
-                const isCooldown = now < cdEndTime;
-
-                sBtn.innerHTML = `
-                    <span class="act-icon">✨</span>
-                    <span class="act-name">${skill.name}</span>
-                    <div id="cd-mask-${skill.id}" style="position:absolute; bottom:0; left:0; width:100%; height:0%; background:rgba(0,0,0,0.6); pointer-events:none; transition:height 0.1s linear;"></div>
-                    <div id="cd-text-${skill.id}" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:#fff; font-weight:bold; font-size:18px; text-shadow:0 0 5px #000; pointer-events:none;"></div>
-                `;
-
-                if (isCooldown) {
-                    sBtn.disabled = true;
-                    sBtn.style.filter = 'grayscale(0.8)';
-                }
-
-                sBtn.onclick = () => this.executeSkill(skill);
-                actionContainer.appendChild(sBtn);
-
-                // 如果按鈕生成時仍在冷卻，則繼續播放動畫
-                if (isCooldown) {
-                    this.startCooldownUI(skill.id, cdEndTime, 8000); // 預設 8 秒 CD
-                }
-            });
-        }
-    },
-
-    // 🟢 執行神通邏輯
-    executeSkill(skill) {
-        if (!CombatEngine || CombatEngine.isProcessing) return;
-        
-        const now = Date.now();
-        // 防呆：如果還在冷卻中，拒絕施放
-        if (this.skillCooldowns[skill.id] && now < this.skillCooldowns[skill.id]) {
-            Msg.log(`【${skill.name}】仍在冷卻中！`, "system");
-            return;
-        }
-
-        Msg.log(`施展神通：【${skill.name}】！`, 'player-atk');
-        
-        // 觸發攻擊 (下一波可在此替換為 CombatEngine.playerSkillAttack)
-        CombatEngine.playerAttack(); 
-
-        // 設定冷卻時間 (8000 毫秒 = 8 秒)
-        const cdDuration = 8000; 
-        this.skillCooldowns[skill.id] = now + cdDuration;
-        
-        // 刷新按鈕狀態並啟動轉圈動畫
-        this.renderSkillButtons();
-    },
-
-    // 🟢 啟動冷卻視覺特效
-    startCooldownUI(skillId, endTime, totalDuration) {
-        const btn = document.getElementById(`btn-skill-${skillId}`);
-        const mask = document.getElementById(`cd-mask-${skillId}`);
-        const text = document.getElementById(`cd-text-${skillId}`);
-        
-        if (!btn || !mask || !text) return;
-
-        const updateCD = () => {
-            const remaining = endTime - Date.now();
-            
-            // 冷卻結束
-            if (remaining <= 0) {
-                btn.disabled = false;
-                btn.style.filter = 'none';
-                mask.style.height = '0%';
-                text.innerText = '';
-                return;
-            }
-            
-            // 計算剩餘百分比並更新畫面
-            const percent = (remaining / totalDuration) * 100;
-            mask.style.height = `${percent}%`;
-            text.innerText = (remaining / 1000).toFixed(1) + 's';
-            
-            // 要求瀏覽器渲染下一幀
-            requestAnimationFrame(updateCD);
-        };
-        
-        // 啟動動畫迴圈
-        updateCD();
+        // 目前暫時顯示切換，未來可擴充過濾 logic
     },
 
     // 8. 地圖選擇系統
@@ -272,9 +278,8 @@ export const UI_Battle = {
 
     renderRegions() {
         const regionList = document.getElementById('region-list');
-        const dataSrc = window.DATA || window.GAMEDATA;
+        const dataSrc = window.DB || window.DATA;
         if (!regionList || !dataSrc || !dataSrc.REGIONS) return;
-
         regionList.innerHTML = '';
         Object.keys(dataSrc.REGIONS).forEach(key => {
             const region = dataSrc.REGIONS[key];
@@ -288,7 +293,6 @@ export const UI_Battle = {
             };
             regionList.appendChild(btn);
         });
-        
         const firstKey = Object.keys(dataSrc.REGIONS)[0];
         if (firstKey) {
             if(regionList.firstChild) regionList.firstChild.classList.add('active');
@@ -298,41 +302,31 @@ export const UI_Battle = {
 
     renderMapsInRegion(regionKey) {
         const mapList = document.getElementById('map-list');
-        const dataSrc = window.DATA || window.GAMEDATA;
+        const dataSrc = window.DB || window.DATA;
         if (!mapList || !dataSrc) return;
-        
         mapList.innerHTML = '';
         dataSrc.REGIONS[regionKey].maps.forEach(map => {
             const card = document.createElement('div');
             card.className = 'map-glass-card';
-            
             let monstersHtml = '<div class="map-monster-icons">';
             map.monsterIds.forEach(id => {
                 const m = dataSrc.MONSTERS[id];
                 monstersHtml += `<span class="m-icon" title="${m ? m.name : '未知'}">${m ? m.icon : '❓'}</span>`;
             });
             monstersHtml += '</div>';
-
             card.innerHTML = `
                 <div class="map-card-content">
                     <div class="map-title-row">
                         <strong class="map-name">${map.name}</strong>
                         <span class="map-lv-badge">Lv.${map.minLv}</span>
                     </div>
-                    <div class="map-desc-row">
-                        <span class="desc-label">出沒妖獸：</span>
-                        ${monstersHtml}
-                    </div>
+                    <div class="map-desc-row">${monstersHtml}</div>
                 </div>
-                <div class="map-action-row">
-                    <button class="btn-go-map">前往歷練 ❯</button>
-                </div>
+                <div class="map-action-row"><button class="btn-go-map">前往歷練 ❯</button></div>
             `;
-            
             card.onclick = () => {
                 this.selectMap(map);
-                const modal = document.getElementById('modal-map');
-                if (modal) modal.style.display = 'none';
+                document.getElementById('modal-map').style.display = 'none';
             };
             mapList.appendChild(card);
         });
@@ -346,7 +340,4 @@ export const UI_Battle = {
     }
 };
 
-// ==========================================
-// 🛡️ 全域對接鎖
-// ==========================================
 window.UI_Battle = UI_Battle;
