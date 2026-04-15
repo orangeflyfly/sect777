@@ -1,6 +1,6 @@
 /**
- * V2.2 ui_bag.js (飛升模組版 - 結構修正)
- * 職責：儲物袋介面管理、物品分類篩選、裝備與消耗品使用對接
+ * V2.3 ui_bag.js (架構瘦身 - 絕對無損搬遷版)
+ * 職責：儲物袋介面管理、注入 HTML 結構、物品分類篩選、裝備與消耗品使用對接
  * 位置：/ui/ui_bag.js
  */
 
@@ -21,7 +21,13 @@ const ATTR_MAP = {
 export const UI_Bag = {
     currentFilter: 'all',
 
+    // 1. 初始化
     init() {
+        console.log("【UI_Bag】儲物袋陣法初始化...");
+        
+        // 🟢 注入原本在 index.html 的原始 HTML 片段 (保證完全一致)
+        this.renderLayout();
+
         const filterContainer = document.getElementById('bag-filters');
         if (!filterContainer) return;
 
@@ -40,6 +46,19 @@ export const UI_Bag = {
                 ${f.name}
             </button>
         `).join('');
+    },
+
+    // 🟢 瘦身核心：將道友 index.html 的 page-bag 內容完整搬遷至此
+    renderLayout() {
+        const container = document.getElementById('page-bag');
+        if (!container) return;
+
+        // 完全保留道友原本在 HTML 裡的標籤與 ID
+        container.innerHTML = `
+            <div class="page-title">儲物袋</div>
+            <div id="bag-filters" class="bag-filters"></div>
+            <div id="bag-content" class="bag-grid"></div>
+        `;
     },
 
     setFilter(type) {
@@ -132,7 +151,7 @@ export const UI_Bag = {
             success = Player.consumeItem(uuid);
         }
 
-        // 2. 執行成功後的回饋 (此區塊已移入 useItem 函式內部)
+        // 2. 執行成功後的回饋
         if (success) {
             // 對接飄字特效
             if (window.UI_Stats && event) {
@@ -147,7 +166,7 @@ export const UI_Bag = {
                 window.Core.updateUI();
             }
         } else {
-            // 如果失敗，依然刷新介面（確保殘卷領悟失敗時，狀態也能同步）
+            // 如果失敗，依然刷新介面
             this.renderBag();
         }
     }
