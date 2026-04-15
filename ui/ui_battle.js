@@ -1,6 +1,6 @@
 /**
- * V2.6.1 ui_battle.js
- * 職責：歷練介面渲染、主/被動分流、自動歷練、日誌過濾、地圖選擇修復
+ * V2.6.2 ui_battle.js
+ * 職責：歷練介面渲染、主/被動分流、自動歷練、日誌過濾、地圖選擇修復、CD視覺修復
  * 位置：/ui/ui_battle.js
  */
 
@@ -13,6 +13,7 @@ export const UI_Battle = {
     autoInterval: null,
     isAuto: false,
     currentLogTab: 'all',
+    cdReqId: null, // 🟢 新增：用於控制 CD 迴圈，防止堆疊
 
     init() {
         console.log("【UI_Battle】啟動渲染...");
@@ -225,6 +226,10 @@ export const UI_Battle = {
     },
 
     updateCooldownDisplay() {
+        // 🟢 修復重點：確保迴圈永遠運轉，並防止堆疊
+        if (this.cdReqId) cancelAnimationFrame(this.cdReqId);
+        this.cdReqId = requestAnimationFrame(() => this.updateCooldownDisplay());
+
         const dataSrc = window.DB || window.DATA;
         if (!Player.data || !Player.data.skills) return;
 
@@ -250,10 +255,6 @@ export const UI_Battle = {
                 text.innerText = '';
             }
         });
-
-        if (document.getElementById('page-battle').style.display !== 'none') {
-            requestAnimationFrame(() => this.updateCooldownDisplay());
-        }
     },
 
     renderLogTabs() {
@@ -299,13 +300,9 @@ export const UI_Battle = {
         return false;
     },
 
-    /**
-     * 🟢 修復重點：地圖選擇系統 (骨架顯化版)
-     */
     showMapSelect() {
         const modal = document.getElementById('modal-map');
         if (modal) {
-            // 先動態注入原本在 index.html 裡的結構
             modal.innerHTML = `
                 <div class="map-select-card" onclick="event.stopPropagation()">
                     <div class="modal-header">
@@ -316,9 +313,8 @@ export const UI_Battle = {
                     <div id="map-list" class="map-cards-grid"></div>
                 </div>
             `;
-            
             modal.style.display = 'flex';
-            this.renderRegions(); // 確保 DOM 結構生成後，再呼叫渲染函數
+            this.renderRegions();
         }
     },
 
