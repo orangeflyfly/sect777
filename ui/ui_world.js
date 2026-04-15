@@ -1,6 +1,6 @@
 /**
- * V2.1 ui_world.js (飛升模組版 - 經營完全體)
- * 職責：小世界介面渲染、聚靈陣修復、靈田靈礦經營、散修招募、離線總結算
+ * V2.2 ui_world.js (架構瘦身 - 經營完全體自顯版)
+ * 職責：小世界介面渲染、注入 HTML 結構、聚靈陣修復、靈田靈礦經營、離線總結算
  * 位置：/ui/ui_world.js
  */
 
@@ -8,8 +8,12 @@ import { Player } from '../entities/player.js';
 import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 
 export const UI_World = {
+    // 1. 初始化
     init() {
         console.log("【小世界】洞府法陣初始化...");
+        
+        // 🟢 注入原本在 index.html 的原始 HTML 片段 (保證與道友原版 100% 一致)
+        this.renderLayout();
         
         // 確保玩家數據有小世界的欄位 (基礎陣法)
         if (Player.data && !Player.data.world) {
@@ -29,6 +33,21 @@ export const UI_World = {
         
         // 剛進入遊戲時，自動結算一次離線收益
         this.calculateOfflineGains(true);
+
+        // 初始化後進行第一次渲染
+        this.renderWorld();
+    },
+
+    // 🟢 瘦身核心：將道友 index.html 的 page-world 內容完整搬遷至此
+    renderLayout() {
+        const container = document.getElementById('page-world');
+        if (!container) return;
+
+        // 完全保留道友原本在 HTML 裡的標籤、ID 與滾動佈局
+        container.innerHTML = `
+            <div class="page-title">隨身洞府</div>
+            <div id="world-content" style="flex:1; overflow-y:auto; padding-bottom:20px;"></div>
+        `;
     },
 
     renderWorld() {
@@ -51,7 +70,7 @@ export const UI_World = {
         const mineYield = wData.mine.assigned * (wData.mine.level || 1) * 2; 
         const idleWorkers = wData.workers - wData.farm.assigned - wData.mine.assigned;
 
-        // --- 3. 渲染介面 ---
+        // --- 3. 渲染介面 (保留道友原創的 HTML 拼接邏輯) ---
         container.innerHTML = `
             <div class="world-array-card">
                 <div class="array-title">聚靈陣 (階級 ${wData.arrayLevel})</div>
