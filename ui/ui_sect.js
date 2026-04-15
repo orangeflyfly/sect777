@@ -44,8 +44,9 @@ export const UI_Sect = {
                 contentHtml = this.renderRecruit();
                 break;
             case 'bounty':
+                // 🟢 解封：懸賞堂正式上線
                 title = "📜 懸賞堂";
-                contentHtml = `<div class="empty-msg" style="padding:40px 10px;">陣法尚未連通，執事長老正在趕路中...<br><span style="font-size:12px; color:#64748b;">(預計下一步實裝)</span></div>`;
+                contentHtml = this.renderBounty();
                 break;
             case 'vault':
                 title = "📦 宗門庫房";
@@ -160,6 +161,58 @@ export const UI_Sect = {
                 </button>
             </div>
         `;
+    },
+
+    // 🟢 新增：懸賞任務列表渲染
+    renderBounty() {
+        if (!Player.data.tasks || Player.data.tasks.length === 0) {
+            return `<div class="empty-msg" style="padding:40px 10px;">長老正在整理任務卷宗，請稍後再來。</div>`;
+        }
+
+        const currentPoints = Player.data.sectPoints || 0;
+        
+        let html = `
+            <div style="text-align:center; margin-bottom: 15px;">
+                <p style="color:#cbd5e1; font-size:13px; margin-bottom:5px;">提交修仙界素材，換取宗門底蘊。</p>
+                <div style="color:#fcd34d; font-weight:bold; font-size:15px; padding: 5px; background:rgba(251,191,36,0.1); border-radius:5px; display:inline-block;">
+                    當前貢獻：🌟 ${currentPoints} 點
+                </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px; max-height: 400px; overflow-y: auto; padding-right: 5px;">
+        `;
+
+        Player.data.tasks.forEach(task => {
+            // 檢查玩家身上有幾個目標道具
+            const itemIndex = Player.data.inventory.findIndex(i => i.id === task.targetId || i.name === task.targetName);
+            const currentCount = itemIndex !== -1 ? (Player.data.inventory[itemIndex].count || 1) : 0;
+            const isEnough = currentCount >= task.count;
+            
+            // 動態顏色：足夠顯示綠色，不足顯示紅色
+            const countColor = isEnough ? '#4ade80' : '#ef4444';
+            const btnBg = isEnough ? 'var(--exp-color)' : 'rgba(255,255,255,0.1)';
+            const btnCursor = isEnough ? 'pointer' : 'not-allowed';
+            const btnAction = isEnough ? `TaskSystem.submitTask('${task.uuid}')` : '';
+
+            html += `
+                <div style="background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:12px; text-align:left;">
+                    <div style="font-size:12px; color:#94a3b8; margin-bottom:8px; line-height:1.4;">${task.desc}</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; background:rgba(255,255,255,0.05); padding:6px; border-radius:5px;">
+                        <span style="font-size:14px; font-weight:bold; color:white;">📦 ${task.targetName}</span>
+                        <span style="font-size:13px; font-weight:bold; color:${countColor};">${currentCount} / ${task.count}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="color:#fcd34d; font-size:13px; font-weight:bold;">獎勵: 🌟 ${task.reward}</span>
+                        <button style="border:none; border-radius:6px; padding:8px 16px; font-weight:bold; color:white; background:${btnBg}; cursor:${btnCursor}; transition:0.2s;" 
+                                onclick="${btnAction}; event.stopPropagation()">
+                            交付
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `</div>`;
+        return html;
     },
 
     // ==========================================
