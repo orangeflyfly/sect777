@@ -1,6 +1,6 @@
 /**
- * V2.4 ui_battle.js (神通分流與自動歷練版)
- * 職責：歷練介面渲染、主/被動技能顯示、自動歷練開關、彩色日誌
+ * V2.4.2 ui_battle.js (架構瘦身 - 絕對無損搬遷版)
+ * 職責：歷練介面渲染、主/被動分流、自動歷練開關、彩色日誌
  * 位置：/ui/ui_battle.js
  */
 
@@ -16,6 +16,10 @@ export const UI_Battle = {
     // 1. 初始化
     init() {
         console.log("【UI_Battle】歷練法鏡啟動，正在載入主被動分流陣法...");
+        
+        // 🟢 注入原本在 index.html 的原始 HTML 片段 (保證完全一致)
+        this.renderLayout(); 
+
         this.injectAutoToggle(); // 注入自動開關
         this.renderSkillButtons();
         this.renderLogTabs(); 
@@ -25,6 +29,49 @@ export const UI_Battle = {
             this.updatePlayerHP(Player.data.hp || stats.maxHp, stats.maxHp);
             this.updateExp(Player.data.exp, Player.data.maxExp);
         }
+    },
+
+    // 🟢 瘦身核心：將道友 index.html 的 page-battle 內容完整搬遷至此
+    renderLayout() {
+        const container = document.getElementById('page-battle');
+        if (!container) return;
+
+        // 這裡的 HTML 代碼與道友原來的 index.html 一字不差
+        container.innerHTML = `
+            <div class="map-nav-header">
+                <span id="current-map-name">探尋天機中...</span>
+                <button onclick="UI_Battle.showMapSelect()" class="btn-travel">🗺️ 尋找歷練地</button>
+            </div>
+            
+            <div id="combat-area" style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 20px;">
+                <div id="player-display" class="monster-card" style="flex:1; border-color: #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); transition: transform 0.1s;">
+                    <div id="player-icon" class="monster-avatar">🧘‍♂️</div>
+                    <h3 style="color: #60a5fa; font-size: 16px;">修士 (你)</h3>
+                    <div id="player-buffs" style="min-height: 25px; display: flex; justify-content: center; flex-wrap: wrap; gap: 4px; margin-top: 5px;"></div>
+                </div>
+
+                <div style="font-size: 18px; font-weight: bold; color: #ef4444; text-shadow: 0 0 5px rgba(239, 68, 68, 0.5);">VS</div>
+
+                <div id="monster-display" class="monster-card" style="flex:1; transition: transform 0.1s;">
+                    <div id="monster-icon" class="monster-avatar">❓</div>
+                    <h3 id="monster-name" style="font-size: 16px;">搜尋妖氣中...</h3>
+                    <div class="bar-container monster-hp">
+                        <div id="monster-hp-fill" class="fill fill-hp" style="width: 100%;"></div>
+                        <div class="bar-text" id="monster-hp-val">0 / 0</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="battle-actions" class="actions-container"></div>
+
+            <div class="log-panel">
+                <div class="log-header">
+                    <span>📜 戰鬥日誌</span>
+                    <div id="log-tabs"></div>
+                </div>
+                <div id="battle-log" class="log-content"></div>
+            </div>
+        `;
     },
 
     // 🟢 新增：在介面注入「自動歷練」按鈕
@@ -304,26 +351,35 @@ export const UI_Battle = {
         const mapList = document.getElementById('map-list');
         const dataSrc = window.DB || window.DATA;
         if (!mapList || !dataSrc) return;
+        
         mapList.innerHTML = '';
         dataSrc.REGIONS[regionKey].maps.forEach(map => {
             const card = document.createElement('div');
             card.className = 'map-glass-card';
+            
+            // 🟢 回歸道友原本的 monstersHtml 拼接邏輯
             let monstersHtml = '<div class="map-monster-icons">';
             map.monsterIds.forEach(id => {
                 const m = dataSrc.MONSTERS[id];
                 monstersHtml += `<span class="m-icon" title="${m ? m.name : '未知'}">${m ? m.icon : '❓'}</span>`;
             });
             monstersHtml += '</div>';
+
             card.innerHTML = `
                 <div class="map-card-content">
                     <div class="map-title-row">
                         <strong class="map-name">${map.name}</strong>
                         <span class="map-lv-badge">Lv.${map.minLv}</span>
                     </div>
-                    <div class="map-desc-row">${monstersHtml}</div>
+                    <div class="map-desc-row">
+                        ${monstersHtml}
+                    </div>
                 </div>
-                <div class="map-action-row"><button class="btn-go-map">前往歷練 ❯</button></div>
+                <div class="map-action-row">
+                    <button class="btn-go-map">前往歷練 ❯</button>
+                </div>
             `;
+            
             card.onclick = () => {
                 this.selectMap(map);
                 document.getElementById('modal-map').style.display = 'none';
