@@ -1,6 +1,6 @@
 /**
  * V3.0 SectSystem.js (加固擴充版)
- * 職責：處理弟子招募、機率計算、保底機制、工作指派與遣散
+ * 職責：處理弟子招募、機率計算、保底機制、工作指派、遣散，以及【境界修為與升級系統】
  * 位置：/systems/SectSystem.js
  */
 
@@ -33,6 +33,11 @@ export const SectSystem = {
         let summary = { total: list.length, idle: 0, farm: 0, mine: 0 };
         
         list.forEach(d => {
+            // 🟢 防呆補丁：為舊存檔弟子自動開通境界系統
+            if (d.level === undefined) d.level = 1;
+            if (d.exp === undefined) d.exp = 0;
+            if (d.maxExp === undefined) d.maxExp = d.level * 100;
+
             if (summary[d.status] !== undefined) {
                 summary[d.status]++;
             } else {
@@ -128,7 +133,7 @@ export const SectSystem = {
         // 4. 骰性格詞條 (30%機率獲得2個，70%機率1個)
         let traits = this.rollTraits();
 
-        // 5. 組裝弟子檔案
+        // 5. 組裝弟子檔案 (V3.0 境界系統初始化)
         return {
             id: 'D_' + Date.now() + '_' + Math.floor(Math.random() * 10000), // 唯一靈魂印記
             name: name,
@@ -136,8 +141,9 @@ export const SectSystem = {
             stats: stats,
             traits: traits,
             status: 'idle', // 狀態: idle(閒置), farm(仙草園), mine(靈礦脈)
-            level: 1,
-            exp: 0
+            level: 1,       // 預設煉氣期 Lv.1
+            exp: 0,         // 初始修為
+            maxExp: 100     // 升級門檻預設值 (Lv * 100)
         };
     },
 
@@ -236,8 +242,54 @@ export const SectSystem = {
             return true;
         }
         return false;
+    },
+
+    /**
+     * 🟢 核心機制：弟子獲得修為與升級判定 (V3.0 境界顯化)
+     * @param {string} discipleId - 弟子ID
+     * @param {number} amount - 獲得的修為值
+     */
+    gainExp(discipleId, amount) {
+        if (!Player.data.sect) return false;
+        let d = Player.data.sect.disciples.find(x => x.id === discipleId);
+        if (!d) return false;
+
+        // 二次防呆校驗
+        if (d.level === undefined) d.level = 1;
+        if (d.exp === undefined) d.exp = 0;
+        if (d.maxExp === undefined) d.maxExp = d.level * 100;
+
+        d.exp += amount;
+        let leveledUp = false;
+
+        // 升級邏輯 (支援連續升級)
+        while (d.exp >= d.maxExp) {
+            d.exp -= d.maxExp;
+            d.level++;
+            d.maxExp = d.level * 100; // 升級曲線：所需經驗 = Lv * 100
+            
+            // 升級反哺：根據悟性微幅提升基礎戰力與修為數值
+            let statBonus = Math.max(1, Math.floor(d.stats['悟性'] * 0.1));
+            d.stats['戰力'] += (statBonus + 2);
+            d.stats['修為'] += 10;
+            
+            leveledUp = true;
+        }
+
+        if (leveledUp) {
+            // 播報炫酷的升級 Msg
+            Msg.log(`✨ 突破！【${d.name}】修為大增，境界提升至 Lv.${d.level}！戰力攀升！`, "system");
+            
+            // 若招募堂詳細面板正好開著，我們重新渲染它來更新進度條
+            if (window.UI_Recruit && document.getElementById('disciple-detail-modal')) {
+                // 這裡我們不強制關閉整個 Modal，如果有寫局部刷新最好，或者直接讓玩家下次點開再看
+            }
+        }
+
+        if (Player.save) Player.save();
+        return { leveledUp: leveledUp, currentLevel: d.level, expGained: amount };
     }
 };
 
-// 🟢 修正 3：掛載至 window 確保全域可用
+// 🟢 掛載至 window 確保全域可用
 window.SectSystem = SectSystem;
