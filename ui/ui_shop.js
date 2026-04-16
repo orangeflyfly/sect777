@@ -1,5 +1,5 @@
 /**
- * V2.2.6 ui_shop.js (架構瘦身 - 絕對無損搬遷版)
+ * V3.0 ui_shop.js (坊市擴充版 - 尋回失落的殘卷法陣)
  * 職責：坊市交易介面渲染、購買/出售標籤切換、確認彈窗處理、批次出售、注入 HTML 結構
  * 位置：/ui/ui_shop.js
  */
@@ -79,13 +79,18 @@ export const UI_Shop = {
         const inv = (Player.data && Player.data.inventory) ? Player.data.inventory : [];
         if (inv.length === 0) return `<div class="empty-msg">儲物袋空空如也，無物可換靈石...</div>`;
 
-        // 🟢 新增：一鍵出售按鈕面板
+        // 🟢 升級：雙重一鍵出售按鈕面板 (凡品 + 殘卷)
         let html = `
             <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:10px 15px; border-radius:8px; margin-bottom:15px; border:1px solid rgba(255,255,255,0.1);">
                 <div style="font-size:13px; color:#cbd5e1;">清理儲物袋：</div>
-                <button onclick="UI_Shop.quickSellAll()" style="background:var(--hp-color); color:white; border:none; padding:8px 15px; border-radius:5px; font-weight:bold; cursor:pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">
-                    一鍵出售 (凡品/材料)
-                </button>
+                <div style="display:flex; gap:5px;">
+                    <button onclick="UI_Shop.quickSellFragments()" style="background:#a855f7; color:white; border:none; padding:8px 10px; border-radius:5px; font-weight:bold; cursor:pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size:12px;">
+                        📜 賣殘卷
+                    </button>
+                    <button onclick="UI_Shop.quickSellAll()" style="background:var(--hp-color); color:white; border:none; padding:8px 10px; border-radius:5px; font-weight:bold; cursor:pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size:12px;">
+                        🗑️ 賣凡品
+                    </button>
+                </div>
             </div>
             <div class="eco-list-wrapper">
         `;
@@ -182,7 +187,7 @@ export const UI_Shop = {
         }
     },
 
-    // 🟢 新增：一鍵出售邏輯
+    // 🟢 保留並優化：一鍵出售凡品/材料
     quickSellAll() {
         if (!Player.data || !Player.data.inventory || Player.data.inventory.length === 0) return;
 
@@ -192,7 +197,7 @@ export const UI_Shop = {
         // 掃描儲物袋，找出 凡品(rarity===1) 或 材料(type==='material')
         Player.data.inventory.forEach((item, index) => {
             const isTrash = (item.rarity === 1) || (item.type === 'material');
-            // 排除任務所需的特定道具 (可根據需求調整)
+            // 排除任務所需的特定道具
             const isTaskItem = item.id === 'mat_herb' && Player.data.tasks && Player.data.tasks.some(t => t.targetId === 'mat_herb');
 
             if (isTrash && !isTaskItem) {
@@ -208,15 +213,62 @@ export const UI_Shop = {
         }
 
         if (confirm(`確定要將所有凡品裝備與非任務材料出售嗎？\n預計獲得：${totalEarned} 靈石`)) {
-            // 從後面倒著刪除，避免陣列 index 錯亂
             for (let i = itemsToRemove.length - 1; i >= 0; i--) {
                 Player.data.inventory.splice(itemsToRemove[i], 1);
             }
             
-            Player.data.coin += totalEarned;
+            // 防呆補丁：兼容 coin 與 coins 命名
+            if (Player.data.coin !== undefined) {
+                Player.data.coin += totalEarned;
+            } else {
+                Player.data.coins += totalEarned;
+            }
+
             Player.save();
             
             Msg.log(`💰 一鍵清倉完成！獲得 ${totalEarned} 靈石。`, "gold");
+            this.renderShop();
+            if (window.Core) window.Core.updateUI();
+        }
+    },
+
+    // 🟢 新增：專屬的「一鍵出售殘卷」邏輯
+    quickSellFragments() {
+        if (!Player.data || !Player.data.inventory || Player.data.inventory.length === 0) return;
+
+        let totalEarned = 0;
+        let itemsToRemove = [];
+
+        // 掃描儲物袋，找出 殘卷(type==='fragment')
+        Player.data.inventory.forEach((item, index) => {
+            if (item.type === 'fragment') {
+                const unitPrice = item.price || Math.floor((item.value || 20) * 0.5) || 10;
+                const count = item.count || 1;
+                totalEarned += (unitPrice * count);
+                itemsToRemove.push(index);
+            }
+        });
+
+        if (itemsToRemove.length === 0) {
+            return Msg.log("儲物袋中沒有任何殘卷。", "system");
+        }
+
+        if (confirm(`確定要將所有「殘卷」打包出售給坊市嗎？\n預計獲得：${totalEarned} 靈石`)) {
+            // 從後面倒著刪除
+            for (let i = itemsToRemove.length - 1; i >= 0; i--) {
+                Player.data.inventory.splice(itemsToRemove[i], 1);
+            }
+            
+            // 防呆補丁：兼容 coin 與 coins 命名
+            if (Player.data.coin !== undefined) {
+                Player.data.coin += totalEarned;
+            } else {
+                Player.data.coins += totalEarned;
+            }
+
+            Player.save();
+            
+            Msg.log(`📜 殘卷出售完成！獲得 ${totalEarned} 靈石。`, "gold");
             this.renderShop();
             if (window.Core) window.Core.updateUI();
         }
