@@ -1,315 +1,175 @@
-/**
- * V3.3.8 core.js (萬象天道演化 - 核心共鳴版)
- * 職責：引擎核心導航、分頁精準調度、數據完整性防護、戰鬥準備管線、經濟隨機事件驅動
- * 位置：/core.js
- */
-
-import { Player } from './entities/player.js';
-import { CombatEngine } from './systems/CombatEngine.js';
-import { DB } from './data/database.js'; 
-import { UI_Battle } from './ui/ui_battle.js';
-import { UI_Stats } from './ui/ui_stats.js';
-import { UI_Bag } from './ui/ui_bag.js';
-import { UI_Shop } from './ui/ui_shop.js';
-import { UI_World } from './ui/ui_world.js';
-import { SectManager } from './systems/SectManager.js'; 
-import { TaskSystem } from './systems/TaskSystem.js'; 
-
-export const Core = {
-    // 陣法狀態鎖定
-    isReady: false,
-    version: "V3.3.8",
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>練功修練 - V3.3.9 「萬象森羅：天道循環與五行戰鬥」</title>
     
-    // 🌟 新增：戰鬥階段控制器 (對接戰鬥準備邏輯)
-    battleState: "idle", // idle, preparing, fighting
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/page_battle.css">
+    <link rel="stylesheet" href="css/page_economy.css">
+    <link rel="stylesheet" href="css/page_stats.css">
+    <link rel="stylesheet" href="css/fx.css">
+    <link rel="stylesheet" href="css/page_world.css">
+    <link rel="stylesheet" href="css/page_sect.css"> 
+    
+    <style>
+        .exp-full-glow {
+            background: #fbbf24 !important;
+            box-shadow: 0 0 15px #fbbf24, 0 0 30px rgba(251,191,36,0.5);
+            animation: exp-pulse 1.5s infinite;
+        }
+        @keyframes exp-pulse {
+            0% { filter: brightness(1); }
+            50% { filter: brightness(1.4); }
+            100% { filter: brightness(1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="skill-cut-in-layer" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; display:flex; align-items:center; justify-content:center; overflow:hidden;"></div>
 
-    /**
-     * 陣法點火：啟動全宗門邏輯
-     */
-    init() {
-        console.log(`%c🕉️ 練功修練：${this.version} 萬象森羅大陣啟動...`, "color: #fbbf24; font-weight: bold; font-size: 1.5em; text-shadow: 0 0 12px rgba(251,191,36,0.6);");
+    <header class="header-info">
+        <div class="player-main-stats">
+            <div id="player-realm" class="realm-title">感應天地中...</div>
+            <div class="bars-stack">
+                <div class="bar-container hp">
+                    <div id="player-hp-fill" class="fill fill-hp" style="width: 100%;"></div>
+                    <div class="bar-text">
+                        <span id="player-hp-val">0</span> / <span id="player-hp-max">0</span>
+                    </div>
+                </div>
+                <div class="bar-container exp">
+                    <div id="exp-fill" class="fill fill-exp" style="width: 0%;"></div>
+                    <div class="bar-text">EXP</div>
+                </div>
+            </div>
+        </div>
+        <div class="currency-display">靈石: <span id="player-coin">0</span></div>
+    </header>
 
-        try {
-            // 1. 喚醒基礎數據
-            Player.init();
-            this.ensureDataIntegrity(); 
+    <main id="game-container">
+        <section id="page-battle" class="game-page active"></section>
+        <section id="page-sect" class="game-page" style="display:none;"></section>
+        <section id="page-world" class="game-page" style="display:none; flex-direction:column;"></section>
+        <section id="page-stats" class="game-page" style="display:none;"></section>
+        <section id="page-bag" class="game-page" style="display:none;"></section>
+        <section id="page-shop" class="game-page" style="display:none;"></section>
+    </main>
 
-            // 2. 啟動所有 UI 渲染單元
-            this.initAllUI();
+    <nav class="bottom-nav">
+        <button class="nav-btn active" onclick="Core.switchPage('battle')">⚔️ 歷練</button>
+        <button class="nav-btn" onclick="Core.switchPage('stats')">🧘‍♂️ 修為</button>
+        <button class="nav-btn" onclick="Core.switchPage('bag')">🎒 儲物</button>
+        <button class="nav-btn" onclick="Core.switchPage('shop')">🏪 坊市</button>
+    </nav>
+
+    <div id="float-nav-wrap">
+        <button id="btn-jump-sect" class="fab-btn" onclick="Core.switchPage('sect')">
+            <span class="fab-icon">⛩️</span><span class="fab-text">回宗門</span>
+        </button>
+        <button id="btn-jump-battle" class="fab-btn" style="display:none;" onclick="Core.switchPage('battle')">
+            <span class="fab-icon">⚔️</span><span class="fab-text">去歷練</span>
+        </button>
+    </div>
+
+    <div id="modal-map" class="modal-overlay" style="display:none;"></div>
+    <div id="tribulation-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; flex-direction:column; justify-content:center; align-items:center; color:white;"></div>
+
+    <script type="module">
+        // ==========================================
+        // 1. 引入 工具類 (Utils) - 必須最先載入
+        // ==========================================
+        import { MessageCenter } from './utils/MessageCenter.js';
+        import { FX } from './utils/fx.js';
+        import { Formula } from './utils/Formula.js';
+
+        // ==========================================
+        // 2. 引入 系統類 (Systems) - 邏輯核心
+        // ==========================================
+        import { CombatEngine } from './systems/CombatEngine.js';
+        import { SectSystem } from './systems/SectSystem.js';
+        import { FarmSystem } from './systems/FarmSystem.js';
+        import { MineSystem } from './systems/MineSystem.js';
+        import { TribulationSystem } from './systems/TribulationSystem.js';
+        import { TaskSystem } from './systems/TaskSystem.js';
+        import { SectManager } from './systems/SectManager.js';
+
+        // ==========================================
+        // 3. 引入 介面類 (UI) - 渲染單元
+        // ==========================================
+        import { UI_Battle } from './ui/ui_battle.js';
+        import { UI_Bag } from './ui/ui_bag.js';
+        import { UI_Shop } from './ui/ui_shop.js';
+        import { UI_Stats } from './ui/ui_stats.js';
+        import { UI_World } from './ui/ui_world.js';
+        import { UI_Sect } from './ui/ui_sect.js';
+        import { UI_System } from './ui/ui_system.js';
+        import { UI_Recruit } from './ui/ui_recruit.js';
+        import { UI_Farm } from './ui/ui_farm.js';
+        import { UI_Mine } from './ui/ui_mine.js';
+
+        // ==========================================
+        // 4. 引入 核心與數據 (Core & Data)
+        // ==========================================
+        import { Core } from './core.js';
+        import { DB } from './data/database.js';
+
+        // ==========================================
+        // 🌟 關鍵：將所有模組手動掛載至 window 🌟
+        // 確保 core.js 與 HTML onclick 能夠精準抓取
+        // ==========================================
+        window.MessageCenter = MessageCenter;
+        window.FX = FX;
+        window.Formula = Formula;
+        
+        window.CombatEngine = CombatEngine;
+        window.SectSystem = SectSystem;
+        window.FarmSystem = FarmSystem;
+        window.MineSystem = MineSystem;
+        window.TribulationSystem = TribulationSystem;
+        window.TaskSystem = TaskSystem;
+        window.SectManager = SectManager;
+
+        window.UI_Battle = UI_Battle;
+        window.UI_Bag = UI_Bag;
+        window.UI_Shop = UI_Shop;
+        window.UI_Stats = UI_Stats;
+        window.UI_World = UI_World;
+        window.UI_Sect = UI_Sect;
+        window.UI_System = UI_System;
+        window.UI_Recruit = UI_Recruit;
+        window.UI_Farm = UI_Farm;
+        window.UI_Mine = UI_Mine;
+
+        window.Core = Core;
+        window.DB = DB;            
+        window.DATA = DB; // 相容性別名
+
+        // ==========================================
+        // 5. 大陣啟動邏輯
+        // ==========================================
+        window.onload = () => {
+            // 系統啟動日誌
+            console.log("%c【系統】V3.3.9 萬象森羅：全模組共鳴啟動！", "color: #fbbf24; font-weight: bold; font-size: 14px;");
             
-            // 3. 啟動戰鬥引擎 (預設停留在準備階段)
-            CombatEngine.init(); 
+            // 延遲初始化，確保所有 DOM 節點與全局對象已就緒
+            setTimeout(() => {
+                Core.init();
+            }, 100);
+        };
 
-            // 4. 喚醒各路子系統大腦
-            this.initSystems();
-
-            // 5. 啟動兩大核心循環：高頻 UI 刷新 與 低頻 天道經濟
-            this.startGlobalRefresh(); 
-            this.startEconomyTick();   
-
-            // 6. 預設顯示畫面
-            this.switchPage('battle');
-
-            this.isReady = true;
-            console.log("%c✅ 宗門天道運轉穩定，諸天靈脈連接完成。", "color: #10b981; font-weight: bold;");
-        } catch (error) {
-            console.error("❌ 飛升大陣點火發生致命錯誤，請排查靈脈路徑：", error);
-        }
-    },
-
-    /**
-     * 數據完整性守衛：自動補齊遺失的靈脈屬性
-     */
-    ensureDataIntegrity() {
-        if (!Player.data) return;
-        const d = Player.data;
-        
-        // 🌟 強化：若無世界屬性則初始化 (含仙草園與靈礦等級)
-        if (!d.world) {
-            d.world = { 
-                arrayLevel: 1, 
-                lastCollect: Date.now(), 
-                durability: 100, 
-                farm: { level: 1, assigned: 0 }, 
-                mine: { level: 1, assigned: 0 } 
-            };
-        }
-        
-        // 🌟 強化：對接材料庫與宗門弟子庫
-        if (!d.materials) d.materials = { herb: 0, ore: 0 };
-        if (!d.sect) d.sect = { disciples: [] };
-        if (!d.skills) d.skills = [];
-        
-        // 🌟 修正：產業等級強制脫離「零」的領域
-        if (d.world.farm && d.world.farm.level < 1) d.world.farm.level = 1;
-        if (d.world.mine && d.world.mine.level < 1) d.world.mine.level = 1;
-        
-        Player.save();
-    },
-
-    /**
-     * 初始化全域介面：逐一嘗試喚醒，具備容錯機制
-     */
-    initAllUI() {
-        const uis = [
-            { name: 'UI_Battle', ref: UI_Battle },
-            { name: 'UI_Stats', ref: UI_Stats },
-            { name: 'UI_Bag', ref: UI_Bag },
-            { name: 'UI_Shop', ref: UI_Shop },
-            { name: 'UI_World', ref: UI_World }
-        ];
-
-        uis.forEach(ui => {
-            try {
-                if (ui.ref && ui.ref.init) ui.ref.init();
-            } catch (e) {
-                console.error(`${ui.name} 陣紋毀損，無法啟動:`, e);
+        // 開發者調試：逆轉時空
+        window.DEBUG_RESET = () => {
+            if (window.UI_System && window.UI_System.restartGame) {
+                window.UI_System.restartGame();
+            } else {
+                if (confirm("⚠️ 確定要清除所有存檔重新開始嗎？")) {
+                    localStorage.clear();
+                    location.reload();
+                }
             }
-        });
-
-        // 特別掛載全域宗門與招募系統
-        try { 
-            if (window.UI_Sect && window.UI_Sect.init) window.UI_Sect.init(); 
-            if (window.UI_Recruit && window.UI_Recruit.init) window.UI_Recruit.init();
-        } catch(e) { 
-            console.warn("高級宗門介面模組尚未歸位。"); 
-        }
-    },
-
-    /**
-     * 初始化背景系統：建立產能大腦
-     */
-    initSystems() {
-        const sys = [
-            { name: 'SectManager', ref: SectManager },
-            { name: 'TaskSystem', ref: TaskSystem },
-            { name: 'FarmSystem', ref: window.FarmSystem },
-            { name: 'MineSystem', ref: window.MineSystem }
-        ];
-
-        sys.forEach(s => {
-            try {
-                if (s.ref && s.ref.init) s.ref.init();
-            } catch (e) {
-                console.warn(`${s.name} 系統暫時無法共鳴，可能需要前置條件。`);
-            }
-        });
-    },
-
-    /**
-     * 分頁切換大陣：掌管所有頁面的顯示與隱藏
-     */
-    switchPage(pageId) {
-        if (!this.isReady && pageId !== 'battle') return;
-
-        try {
-            const pages = document.querySelectorAll('.game-page');
-            pages.forEach(p => p.style.display = 'none');
-            
-            const target = document.getElementById(`page-${pageId}`);
-            if (target) {
-                target.style.display = 'flex'; 
-            }
-
-            // 同步導航按鈕樣式
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            const btn = document.querySelector(`.nav-btn[onclick*="'${pageId}'"]`) || 
-                        document.querySelector(`.nav-btn[onclick*="${pageId}"]`);
-            if (btn) btn.classList.add('active');
-
-            // 🌟 觸發特定頁面的即時渲染管線
-            this.triggerPageUpdate(pageId);
-            
-            // 更新浮空跳轉鈕
-            this.refreshFloatingControls(pageId);
-
-            console.log(`%c[Core] 天道視界切換至：${pageId}`, "color: #60a5fa; font-style: italic;");
-        } catch (e) {
-            console.error(`[Core] 視界切換異常，無法降臨於 ${pageId}:`, e);
-        }
-    },
-
-    /**
-     * 頁面更新分流器
-     */
-    triggerPageUpdate(pageId) {
-        switch (pageId) {
-            case 'bag': UI_Bag.renderBag?.(); break;
-            case 'shop': UI_Shop.renderShop?.(); break;
-            case 'stats': UI_Stats.renderStats?.(); break;
-            case 'world': UI_World.renderWorld?.(); break; 
-            case 'sect': window.UI_Sect?.renderSect?.(); break;
-            case 'battle': 
-                // 🌟 新增：切換回歷練時，檢查是否需要進入準備階段
-                if (this.battleState === 'idle') this.prepareBattleStage();
-                break;
-        }
-    },
-
-    /**
-     * 🌟 新增：戰鬥準備階段處理
-     * 職責：對接 UI_Battle 顯示怪物資訊，但暫停自動攻擊，等待玩家確認
-     */
-    prepareBattleStage() {
-        this.battleState = "preparing";
-        console.log("%c[歷練] 進入戰鬥準備階段...", "color: #fb7185;");
-        // 此處可擴充：顯示怪物弱點、建議丹藥等 UI
-    },
-
-    refreshFloatingControls(pageId) {
-        const btnSect = document.getElementById('btn-jump-sect');
-        const btnBattle = document.getElementById('btn-jump-battle');
-        const hideSect = (pageId === 'sect' || pageId === 'world');
-
-        if (btnSect) btnSect.style.display = hideSect ? 'none' : 'flex';
-        if (btnBattle) btnBattle.style.display = hideSect ? 'flex' : 'none';
-    },
-
-    /**
-     * 🌟 V3.3.8 核心：天道經濟循環 (加強型)
-     * 職責：精算產出、觸發環境隨機事件、對接數據持久化
-     */
-    startEconomyTick() {
-        const CYCLE = 60000; // 每分鐘一次天道結算
-        console.log("%c[天道] 經濟齒輪開始咬合，每 60 秒觀照一次全宗門產出。", "color: #4ade80; font-weight: bold;");
-        
-        setInterval(() => {
-            if (!this.isReady) return;
-
-            let tickReport = [];
-            
-            // --- 隨機環境干擾 ---
-            let globalMult = 1.0;
-            if (Math.random() < 0.15) { // 15% 機率觸發特殊天象
-                const worldEvents = [
-                    { msg: "🌈 紫氣東來！仙草產能提升 80%！", target: 'farm', mult: 1.8, color: 'gold' },
-                    { msg: "⚡ 地脈雷動！玄鐵產量提升 50%！", target: 'mine', mult: 1.5, color: '#fbbf24' },
-                    { msg: "🌑 靈氣枯竭... 全產能暫時下降 20%", target: 'all', mult: 0.8, color: '#94a3b8' }
-                ];
-                const evt = worldEvents[Math.floor(Math.random() * worldEvents.length)];
-                globalMult = evt.mult;
-                window.MessageCenter.log(evt.msg, evt.color);
-            }
-
-            // --- 結算仙草 ---
-            if (window.FarmSystem?.processTick) {
-                const herb = window.FarmSystem.processTick();
-                if (herb > 0) tickReport.push(`🌿 仙草 +${Math.floor(herb * globalMult)}`);
-            }
-
-            // --- 結算玄鐵 ---
-            if (window.MineSystem?.processTick) {
-                const ore = window.MineSystem.processTick();
-                if (ore > 0) tickReport.push(`⛏️ 玄鐵 +${Math.floor(ore * globalMult)}`);
-            }
-
-            // --- 介面即時同步與存檔 ---
-            if (tickReport.length > 0) {
-                console.log(`%c[天道結算] ${tickReport.join(' | ')}`, "color: #4ade80;");
-                if (this.isPageActive('world')) UI_World.renderWorld();
-            }
-
-            Player.save();
-
-        }, CYCLE);
-    },
-
-    isPageActive(pageId) {
-        const el = document.getElementById(`page-${pageId}`);
-        return el && el.style.display !== 'none';
-    },
-
-    /**
-     * 高頻介面刷新 (500ms)：處理血條、靈石、經驗值
-     */
-    updateUI() {
-        if (!Player.data) return;
-        
-        const d = Player.data;
-        const bStats = Player.getBattleStats();
-
-        // 1. 境界稱號顯示
-        const realmEl = document.getElementById('player-realm');
-        if (realmEl) {
-            const realmName = DB.CONFIG?.REALM_NAMES?.[d.realm || 1] || "凡人";
-            realmEl.innerText = `${realmName} (Lv.${d.level})`;
-        }
-
-        // 2. 靈石格式化 (1,000 樣式)
-        const coinEl = document.getElementById('player-coin');
-        if (coinEl) {
-            coinEl.innerText = Math.floor(d.coin || 0).toLocaleString();
-        }
-
-        // 3. 經驗值進度條與發光效果
-        const expFill = document.getElementById('exp-fill');
-        if (expFill) {
-            const per = Math.min(100, (d.exp / d.maxExp) * 100);
-            expFill.style.width = per + "%";
-            // 當經驗滿時增加呼吸燈效果
-            expFill.className = per >= 100 ? "fill fill-exp exp-full-glow" : "fill fill-exp";
-        }
-
-        // 4. 戰鬥 HP 同步
-        if (window.UI_Battle) {
-            const hp = d.hp !== undefined ? Math.max(0, d.hp) : bStats.maxHp;
-            window.UI_Battle.updatePlayerHP(hp, bStats.maxHp);
-        }
-    },
-
-    startGlobalRefresh() {
-        setInterval(() => this.updateUI(), 500);
-    }
-};
-
-window.Core = Core;
-
-/**
- * 終極時空倒流：清除存檔
- */
-window.DEBUG_RESET = () => {
-    if (confirm("⚠️ 警告：這將會清除所有本地存檔並重新開始，確定要逆轉時空嗎？")) {
-        localStorage.clear();
-        location.reload();
-    }
-};
+        };
+    </script>
+</body>
+</html>
