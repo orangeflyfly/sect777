@@ -1,5 +1,5 @@
 /**
- * V3.0 SectSystem.js
+ * V3.0 SectSystem.js (加固擴充版)
  * 職責：處理弟子招募、機率計算、保底機制、工作指派與遣散
  * 位置：/systems/SectSystem.js
  */
@@ -15,7 +15,7 @@ export const SectSystem = {
     MAX_DISCIPLES: 50, // 預設宗門人數上限
 
     init() {
-        console.log("【SectSystem】宗門人事大陣啟動...");
+        console.log("【SectSystem】宗門人事大腦啟動...");
         // 確保玩家玉簡 (存檔) 中有宗門資料區塊
         if (!Player.data.sect) {
             Player.data.sect = {
@@ -26,6 +26,23 @@ export const SectSystem = {
     },
 
     /**
+     * 取得宗門人事統計 (UI 顯示專用)
+     */
+    getSummary() {
+        let list = Player.data.sect ? Player.data.sect.disciples : [];
+        let summary = { total: list.length, idle: 0, farm: 0, mine: 0 };
+        
+        list.forEach(d => {
+            if (summary[d.status] !== undefined) {
+                summary[d.status]++;
+            } else {
+                summary.idle++; // 防呆：如果狀態異常，歸類為閒置
+            }
+        });
+        return summary;
+    },
+
+    /**
      * 啟動招募法陣
      * @param {boolean} isTen - 是否為十連招募
      * @returns {Array|null} - 回傳抽到的弟子陣列，若靈石不足則回傳 null
@@ -33,8 +50,11 @@ export const SectSystem = {
     recruit(isTen = false) {
         const cost = isTen ? this.COST_TEN : this.COST_SINGLE;
         
+        // 🟢 修正 1：兼容 player.data.coin 或 player.data.coins 的防呆設計
+        let currentCoins = Player.data.coin !== undefined ? Player.data.coin : (Player.data.coins || 0);
+
         // 1. 檢查靈石餘額
-        if (Player.data.coins < cost) {
+        if (currentCoins < cost) {
             Msg.log("❌ 靈石不足，無法啟動招募法陣！", "monster-atk");
             return null;
         }
@@ -47,8 +67,12 @@ export const SectSystem = {
             return null;
         }
 
-        // 3. 扣除靈石
-        Player.data.coins -= cost;
+        // 3. 扣除靈石 (兼容處理)
+        if (Player.data.coin !== undefined) {
+            Player.data.coin -= cost;
+        } else {
+            Player.data.coins -= cost;
+        }
         
         // 4. 開始抽卡
         let results = [];
@@ -71,7 +95,12 @@ export const SectSystem = {
             Player.data.sect.disciples.push(newDisciple);
         }
 
-        // 5. 存入玉簡
+        // 5. 更新介面上方的靈石顯示 (若有 Core 則連動 UI)
+        if (window.Core && typeof window.Core.updateUI === 'function') {
+            window.Core.updateUI();
+        }
+
+        // 6. 存入玉簡
         if (Player.save) Player.save();
 
         return results; // 將結果回傳給 UI 層去播動畫
@@ -170,13 +199,18 @@ export const SectSystem = {
      * 遣散弟子 (刪除)
      */
     dismissDisciple(discipleId) {
+        if (!Player.data.sect) return false;
+        
         let list = Player.data.sect.disciples;
         let index = list.findIndex(d => d.id === discipleId);
         
         if (index !== -1) {
             let name = list[index].name;
-            list.splice(index, 1);
+            list.splice(index, 1); // 將弟子從名冊抹除
             Msg.log(`已發放遣散費，【${name}】離開了宗門。`, "system");
+            
+            // 更新 UI 與存檔
+            if (window.Core && window.Core.updateUI) window.Core.updateUI();
             if (Player.save) Player.save();
             return true;
         }
@@ -187,13 +221,23 @@ export const SectSystem = {
      * 指派工作
      */
     assignJob(discipleId, newStatus) {
+        if (!Player.data.sect) return false;
+
         let d = Player.data.sect.disciples.find(d => d.id === discipleId);
         if (d) {
+            // 判斷中文名稱，用於顯示日誌
+            let statusName = newStatus === 'farm' ? '仙草園' : (newStatus === 'mine' ? '靈礦脈' : '散修居(閒置)');
+            
             d.status = newStatus;
-            Msg.log(`已指派【${d.name}】前往執行任務。`, "system");
+            Msg.log(`已指派【${d.name}】前往 ${statusName} 執行任務。`, "system");
+            
+            // 存檔
             if (Player.save) Player.save();
             return true;
         }
         return false;
     }
 };
+
+// 🟢 修正 3：掛載至 window 確保全域可用
+window.SectSystem = SectSystem;
