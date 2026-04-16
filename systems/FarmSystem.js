@@ -1,6 +1,6 @@
 /**
- * V3.3 FarmSystem.js (萬象森羅 - 終極產能大腦)
- * 職責：管理仙草園門檻、精算【洞府等級+個人屬性+團隊光環+全詞條】產出、修為反哺
+ * V3.4 FarmSystem.js (萬象森羅 - 終極產能大腦)
+ * 職責：管理仙草園門檻、精算【洞府等級+個人屬性+團隊光環+外部天象】產出
  * 位置：/systems/FarmSystem.js
  */
 
@@ -13,7 +13,7 @@ export const FarmSystem = {
     ALLOWED_ROOTS: ['水', '木', '天', '仙'],
 
     init() {
-        console.log("%c【FarmSystem】仙草園大陣全面甦醒，對接萬象詞條庫...", "color: #4ade80; font-weight: bold;");
+        console.log("%c【FarmSystem】仙草園大陣啟動，對接全模組共鳴...", "color: #4ade80; font-weight: bold;");
         window.FarmSystem = this;
 
         if (!Player.data.materials) {
@@ -25,13 +25,13 @@ export const FarmSystem = {
      * 判定弟子是否具備進入仙草園的資格
      */
     canWork(disciple) {
-        // 1. 靈根檢測：只有水/木/天/仙系靈根能感應草木
+        // 1. 靈根檢測
         if (!this.ALLOWED_ROOTS.includes(disciple.root)) return false;
         
         // 2. 詞條攔截：天生反骨或拒絕勞動的人
         let hasRefuseTrait = disciple.traits.some(tKey => {
             let effect = DATA_SECT.TRAITS[tKey]?.effect;
-            return effect && (effect.refuse_work || effect.reverse_work || effect.reverse_work);
+            return effect && (effect.refuse_work || effect.reverse_work);
         });
 
         if (hasRefuseTrait) return false;
@@ -40,24 +40,21 @@ export const FarmSystem = {
 
     /**
      * 精算單一弟子在仙草園的「單次產能」
-     * 影響因子：體質(基礎)、匠心(加成)、機緣(暴擊)、洞府等級(倍率)、詞條(修正)
      */
     getDiscipleYield(disciple, teamContext = { workerCount: 1, buffOthersMult: 1.0, annoyOthersMult: 1.0 }) {
-        // --- [1] 基礎產能計算 ---
+        // --- [1] 基礎產能計算 (體質與匠心影響) ---
         const con = disciple.stats['體質'] || 10;
         const craft = disciple.stats['匠心'] || 10;
         const luck = disciple.stats['機緣'] || 10;
         
-        // 基礎 = (體質/2 + 匠心/2) 的 20% 加上固定底值
         let baseYield = 5 + (con * 0.5 + craft * 0.5) * 0.2; 
         
         // --- [2] 洞府等級聯動 ---
-        // 讀取 UI_World 裡升級的等級，每級提升 20% 產能
         const farmLevel = (Player.data.world && Player.data.world.farm) ? Player.data.world.farm.level : 1;
         let levelMult = 1 + (Math.max(0, farmLevel - 1) * 0.2);
 
         let multiplier = 1.0 * levelMult;
-        let expGain = 2; // 基礎修為
+        let expGain = 2; 
 
         // --- [3] 靈根天賦加成 ---
         if (disciple.root === '天') multiplier *= 1.3;
@@ -68,27 +65,22 @@ export const FarmSystem = {
         let explode = false;
         let isBuffer = false;
         let isAnnoying = false;
-        let critChance = 0.05 + (luck / 1000); // 機緣越高，越容易採到極品
+        let critChance = 0.05 + (luck / 1000); 
 
         disciple.traits.forEach(tKey => {
             let trait = DATA_SECT.TRAITS[tKey];
             if (!trait || !trait.effect) return;
             let effect = trait.effect;
 
-            // 團隊屬性標記
             if (effect.buff_others) isBuffer = true;
             if (effect.annoy_others) isAnnoying = true;
-
-            // 各種產能倍率疊加
             if (effect.farm_mult) multiplier *= effect.farm_mult;
             if (effect.prod_mult !== undefined) multiplier *= effect.prod_mult; 
             if (effect.exp_mult) expGain *= effect.exp_mult;
 
-            // 社控/群聚機制
             if (effect.loner_buff && teamContext.workerCount === 1) multiplier *= effect.loner_buff;
             if (effect.crowd_debuff && teamContext.workerCount > 1) multiplier *= effect.crowd_debuff;
 
-            // 異常狀態判定
             if (effect.lazy_chance && Math.random() < effect.lazy_chance) isLazy = true;
             if (effect.explode_chance && Math.random() < effect.explode_chance) explode = true;
         });
@@ -104,16 +96,13 @@ export const FarmSystem = {
             return { 
                 yield: 0, 
                 exp: Math.floor(expGain * 0.5), 
-                log: `💥 慘劇！【${disciple.name}】採集時靈力失控，把仙草園炸掉一角！` 
+                log: `💥 慘劇！【${disciple.name}】採集時靈力失控，把仙草煉炸了！` 
             };
         }
 
-        // 機緣爆發判定 (雙倍產出)
         let finalYield = baseYield * multiplier;
         let isCrit = Math.random() < critChance;
-        if (isCrit) {
-            finalYield *= 2;
-        }
+        if (isCrit) finalYield *= 2;
 
         return {
             yield: Math.floor(finalYield),
@@ -123,9 +112,10 @@ export const FarmSystem = {
     },
 
     /**
-     * 結算整個仙草園的總產出 (由 Core 齒輪驅動)
+     * 🌟 V3.4 重點：結算整個仙草園產出
+     * @param {number} externalMult - 由 Core 傳入的環境事件倍率 (預設 1.0)
      */
-    processTick() {
+    processTick(externalMult = 1.0) {
         if (!Player.data || !Player.data.sect || !Player.data.sect.disciples) return 0;
 
         let totalHerb = 0;
@@ -134,7 +124,7 @@ export const FarmSystem = {
 
         if (workerCount === 0) return 0;
 
-        // 🌟 團隊環境解析
+        // --- 團隊環境掃描 ---
         let teamBuffMult = 1.0;
         let teamAnnoyMult = 1.0;
         let bufferNames = [];
@@ -153,17 +143,20 @@ export const FarmSystem = {
         });
 
         if (bufferNames.length > 0 && Math.random() < 0.2) {
-            Msg.log(`🗣️ 【${bufferNames.join('、')}】正在仙草園畫大餅，眾弟子幹勁十足！`, "system");
+            Msg.log(`🗣️ 【${bufferNames.join('、')}】正在仙草園畫大餅，眾弟子效率提升！`, "system");
         }
 
         let teamContext = { workerCount, buffOthersMult: teamBuffMult, annoyOthersMult: teamAnnoyMult };
 
-        // 🌟 正式計算每個人的收益
+        // --- 計算個人產出並套用外部倍率 ---
         farmWorkers.forEach(d => {
             let result = this.getDiscipleYield(d, teamContext);
-            totalHerb += result.yield;
             
-            // 修為反哺給弟子
+            // 🌟 核心修正：在此乘上由天道(Core)傳入的外部倍率
+            let actualYield = Math.floor(result.yield * externalMult);
+            totalHerb += actualYield;
+            
+            // 修為反哺
             if (result.exp > 0 && window.SectSystem) {
                 window.SectSystem.gainExp(d.id, result.exp);
             }
@@ -171,16 +164,16 @@ export const FarmSystem = {
             if (result.log) Msg.log(result.log, "system");
         });
 
-        // 🌟 資源入庫與自動保存
+        // --- 資源入庫與自動保存 ---
         if (totalHerb > 0) {
             if (!Player.data.materials) Player.data.materials = { herb: 0, ore: 0 };
             Player.data.materials.herb = (Player.data.materials.herb || 0) + totalHerb;
             
-            // 嘗試各種可能的保存路徑
             if (Player.save) Player.save();
             else if (window.Player && window.Player.save) window.Player.save();
         }
 
+        // 回傳真實入庫的總數，讓 Core 播報時數字一致
         return totalHerb; 
     }
 };
