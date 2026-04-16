@@ -8,6 +8,7 @@ import { Player } from '../entities/player.js';
 import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 import { SectSystem } from '../systems/SectSystem.js';
 import { UI_Recruit } from './ui_recruit.js'; // 🟢 引入招募專屬 UI
+import { UI_Farm } from './ui_farm.js';       // 🟢 引入仙草園專屬 UI
 
 export const UI_Sect = {
     // 宗門庫房專屬商品清單
@@ -99,15 +100,23 @@ export const UI_Sect = {
             }
             return;
         }
+
+        // 🟢 徹底放權：如果是仙草園，呼叫外部模組並中斷
+        if (deptId === 'herb') {
+            if (UI_Farm) {
+                UI_Farm.openModal();
+            } else if (window.UI_Farm) {
+                window.UI_Farm.openModal();
+            } else {
+                Msg.log("❌ 仙草園大陣尚未準備完畢，請稍後再試！", "system");
+            }
+            return;
+        }
         
         let title = "";
         let contentHtml = "";
 
         switch(deptId) {
-            case 'herb':
-                title = "🌿 草藥部 (仙草園)";
-                contentHtml = this.renderHerb();
-                break;
             case 'iron':
                 title = "⛏️ 鐵礦部 (靈礦脈)";
                 contentHtml = this.renderIron();
@@ -148,34 +157,7 @@ export const UI_Sect = {
     // ==========================================
     // 未分家的舊部門 (等未來 V4.0 再分)
     // ==========================================
-    renderHerb() {
-        const wData = Player.data.world;
-        const summary = SectSystem.getSummary();
-        const farmYield = summary.farm * (wData.farm.level || 1) * 2; 
-
-        return `
-            <div style="text-align:center;">
-                <p style="color:#cbd5e1; margin-bottom:10px; font-size:14px;">種植靈草，由指派的弟子提供產能。</p>
-                <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; margin-bottom:15px;">
-                    <p style="margin:5px 0;">當前等級：<b>Lv.${wData.farm.level}</b></p>
-                    <p style="margin:5px 0;">預期產出：<b style="color:#4ade80;">${farmYield} 素材</b> / 10分鐘</p>
-                </div>
-                ${wData.farm.level > 0 ? `
-                    <div style="margin-bottom:15px;">
-                        <span style="font-size:16px; font-weight:bold; color:white;">目前派遣弟子: <span style="color:#4ade80;">${summary.farm}</span> 名</span>
-                    </div>
-                    <button class="btn-eco-action" style="width:100%; padding:12px; font-weight:bold;" onclick="document.getElementById('sect-modal-overlay').remove(); UI_Sect.openDept('recruit');">
-                        前往【招募堂】指派工作
-                    </button>
-                ` : `
-                    <button class="btn-eco-action btn-buy" style="width:100%; padding:12px;" onclick="UI_Sect.buildIndustry('farm'); event.stopPropagation()">
-                        花費 1000 靈石 開闢仙草園
-                    </button>
-                `}
-            </div>
-        `;
-    },
-
+    
     renderIron() {
         const wData = Player.data.world;
         const summary = SectSystem.getSummary();
