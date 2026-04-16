@@ -1,13 +1,12 @@
 /**
- * V3.1 ui_shop.js (萬物樓升級版 - 隨機進貨與盲盒機制)
- * 職責：坊市交易介面渲染、動態商品池、刷新機制、批次出售、注入 HTML 結構
+ * V3.2 ui_shop.js (坊市擴充版 - BUG完美修復版)
+ * 職責：坊市交易介面渲染、購買/出售標籤切換、防呆交易邏輯、智能出售重複殘卷
  * 位置：/ui/ui_shop.js
  */
 
 import { Player } from '../entities/player.js';
 import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 import { UI_Bag } from './ui_bag.js'; 
-import { ShopLogic } from '../systems/shop.js'; 
 
 export const UI_Shop = {
     currentTab: 'buy', 
@@ -24,16 +23,13 @@ export const UI_Shop = {
         { id: 'box_002', name: '神秘煉丹爐', type: 'special', price: 2500, rarity: 4 }
     ],
 
-    // 1. 初始化
     init() {
-        console.log("【UI_Shop】萬物樓陣法初始化，注入動態交易場景...");
+        console.log("【UI_Shop】萬物樓陣法啟動，修復交易心魔...");
         
-        // 確保玩家玉簡中有坊市資料
         if (!Player.data.shop) {
             Player.data.shop = { dailyItems: [] };
         }
 
-        // 如果架上空的，自動免費進貨一次
         if (!Player.data.shop.dailyItems || Player.data.shop.dailyItems.length === 0) {
             this.rollDailyItems(false);
         }
@@ -42,32 +38,27 @@ export const UI_Shop = {
         this.renderShop();
     },
 
-    // 🟢 隨機進貨機制
     rollDailyItems(isManual = false) {
-        // 如果是玩家點擊手動刷新，需扣除靈石
         if (isManual) {
             let currentCoins = Player.data.coin !== undefined ? Player.data.coin : (Player.data.coins || 0);
             if (currentCoins < 100) {
                 return Msg.log("❌ 靈石不足，坊市管事拒絕為你調貨！(需 100 靈石)", "system");
             }
 
-            if (Player.data.coin !== undefined) {
-                Player.data.coin -= 100;
-            } else {
-                Player.data.coins -= 100;
-            }
+            if (Player.data.coin !== undefined) Player.data.coin -= 100;
+            else Player.data.coins -= 100;
         }
 
         let pool = [...this.MASTER_GOODS];
         let newItems = [];
-        let count = Math.min(6, pool.length); // 每次最多刷 6 件商品
+        let count = Math.min(6, pool.length); 
 
         for (let i = 0; i < count; i++) {
             let r = Math.floor(Math.random() * pool.length);
-            let item = Object.assign({}, pool[r]); // 深拷貝
-            item.uid = 'shop_' + Date.now() + '_' + i; // 給予架上商品唯一標籤
+            let item = Object.assign({}, pool[r]); 
+            item.uid = 'shop_' + Date.now() + '_' + i; 
             newItems.push(item);
-            pool.splice(r, 1); // 避免同一次進貨出現重複物品
+            pool.splice(r, 1); 
         }
 
         Player.data.shop.dailyItems = newItems;
@@ -146,8 +137,8 @@ export const UI_Shop = {
             <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:10px 15px; border-radius:8px; margin-bottom:15px; border:1px solid rgba(255,255,255,0.1);">
                 <div style="font-size:13px; color:#cbd5e1;">清理儲物袋：</div>
                 <div style="display:flex; gap:5px;">
-                    <button onclick="UI_Shop.quickSellFragments()" style="background:#a855f7; color:white; border:none; padding:8px 10px; border-radius:5px; font-weight:bold; cursor:pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size:12px;">
-                        📜 賣殘卷
+                    <button onclick="UI_Shop.quickSellDuplicateFragments()" style="background:#a855f7; color:white; border:none; padding:8px 10px; border-radius:5px; font-weight:bold; cursor:pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size:12px;">
+                        📜 賣重複殘卷
                     </button>
                     <button onclick="UI_Shop.quickSellAll()" style="background:var(--hp-color); color:white; border:none; padding:8px 10px; border-radius:5px; font-weight:bold; cursor:pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size:12px;">
                         🗑️ 賣凡品
@@ -157,7 +148,8 @@ export const UI_Shop = {
             <div class="eco-list-wrapper">
         `;
 
-        html += inv.map(item => {
+        // 🟢 修正 BUG 1：改用 index 傳遞，徹底解決 uuid 找不到物品導致按鈕失效的問題
+        html += inv.map((item, index) => {
             const price = item.price || Math.floor((item.value || 20) * 0.5) || 10;
             const countDisplay = item.count && item.count > 1 ? `<span style="color:#fcd34d; font-size:12px; margin-left:5px;">x${item.count}</span>` : '';
             const totalPrice = price * (item.count || 1);
@@ -172,7 +164,7 @@ export const UI_Shop = {
                     <div class="eco-item-desc">回收總價: 💰 ${totalPrice}</div>
                 </div>
                 <div class="eco-card-right">
-                    <button class="btn-eco-action btn-sell" onclick="UI_Shop.showTradeModal('sell', '${item.uuid}')">出售</button>
+                    <button class="btn-eco-action btn-sell" onclick="UI_Shop.showTradeModal('sell', '${index}')">出售</button>
                 </div>
             </div>
             `;
@@ -182,19 +174,21 @@ export const UI_Shop = {
         return html;
     },
 
-    showTradeModal(actionType, id) {
+    showTradeModal(actionType, idOrIndex) {
         let item, title, desc, btnText, btnColor, actionCall;
         
         if (actionType === 'buy') {
-            item = Player.data.shop.dailyItems.find(i => i.uid === id);
+            item = Player.data.shop.dailyItems.find(i => i.uid === idOrIndex);
             if(!item) return;
             title = "購買確認";
             desc = `花費 <b style="color:var(--coin-color)">${item.price} 靈石</b> 購買【${item.name}】？`;
             btnText = "確認購買";
             btnColor = "var(--exp-color)";
-            actionCall = `UI_Shop.executeBuy('${id}', event)`;
+            actionCall = `UI_Shop.executeBuy('${idOrIndex}', event)`;
         } else {
-            item = Player.data.inventory.find(i => i.uuid === id);
+            // 🟢 直接透過 index 鎖定物品，絕對不會出錯
+            let idx = parseInt(idOrIndex);
+            item = Player.data.inventory[idx];
             if(!item) return;
             const price = item.price || Math.floor((item.value || 20) * 0.5) || 10;
             const totalPrice = price * (item.count || 1);
@@ -202,7 +196,7 @@ export const UI_Shop = {
             desc = `將【${item.name}】換取 <b style="color:var(--coin-color)">${totalPrice} 靈石</b>？`;
             btnText = "忍痛出售";
             btnColor = "var(--hp-color)";
-            actionCall = `UI_Shop.executeSell('${id}', event)`;
+            actionCall = `UI_Shop.executeSell(${idx}, event)`;
         }
 
         const modalHtml = `
@@ -227,33 +221,64 @@ export const UI_Shop = {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     },
 
+    // 🟢 內建購買邏輯 (不依賴 ShopLogic)
     executeBuy(itemUid, event) {
         const itemIndex = Player.data.shop.dailyItems.findIndex(i => i.uid === itemUid);
         if (itemIndex === -1) return;
         const item = Player.data.shop.dailyItems[itemIndex];
 
-        if (ShopLogic && ShopLogic.buy(item)) {
-            if (window.UI_Stats && event && typeof window.UI_Stats.createFloatingText === 'function') {
-                window.UI_Stats.createFloatingText(event.target.closest('.detail-glass-card'), `-${item.price}`);
-            }
-            
-            // 🟢 買完後直接從架上移除
-            Player.data.shop.dailyItems.splice(itemIndex, 1);
-            Player.save();
-
-            this.renderShop(); 
-            if (window.Core) window.Core.updateUI(); 
+        let currentCoins = Player.data.coin !== undefined ? Player.data.coin : (Player.data.coins || 0);
+        if (currentCoins < item.price) {
+            return Msg.log("❌ 靈石不足！", "system");
         }
+
+        // 扣除靈石
+        if (Player.data.coin !== undefined) Player.data.coin -= item.price;
+        else Player.data.coins -= item.price;
+
+        // 加入背包
+        let newItem = Object.assign({}, item);
+        delete newItem.uid;
+        newItem.uuid = 'item_' + Date.now() + Math.floor(Math.random()*1000); // 賦予新ID
+        if (!Player.data.inventory) Player.data.inventory = [];
+        Player.data.inventory.push(newItem);
+
+        // 買完下架
+        Player.data.shop.dailyItems.splice(itemIndex, 1);
+        Player.save();
+
+        if (window.UI_Stats && event && typeof window.UI_Stats.createFloatingText === 'function') {
+            window.UI_Stats.createFloatingText(event.target.closest('.detail-glass-card'), `-${item.price}`);
+        }
+        
+        Msg.log(`🛒 購買成功：獲得【${item.name}】`, "gold");
+        this.renderShop(); 
+        if (window.Core) window.Core.updateUI(); 
     },
 
-    executeSell(itemUuid, event) {
-        if (ShopLogic && ShopLogic.sell(itemUuid)) {
-            if (window.UI_Stats && event && typeof window.UI_Stats.createFloatingText === 'function') {
-                window.UI_Stats.createFloatingText(event.target.closest('.detail-glass-card'), `+靈石`);
-            }
-            this.renderShop();
-            if (window.Core) window.Core.updateUI();
+    // 🟢 內建出售邏輯 (不依賴 ShopLogic，絕對有錢拿)
+    executeSell(index, event) {
+        let item = Player.data.inventory[index];
+        if (!item) return;
+
+        const price = item.price || Math.floor((item.value || 20) * 0.5) || 10;
+        const totalPrice = price * (item.count || 1);
+
+        // 扣除物品並增加靈石
+        Player.data.inventory.splice(index, 1);
+        
+        if (Player.data.coin !== undefined) Player.data.coin += totalPrice;
+        else Player.data.coins += totalPrice;
+        
+        Player.save();
+
+        if (window.UI_Stats && event && typeof window.UI_Stats.createFloatingText === 'function') {
+            window.UI_Stats.createFloatingText(event.target.closest('.detail-glass-card'), `+${totalPrice}`);
         }
+        
+        Msg.log(`💰 出售成功：獲得 ${totalPrice} 靈石`, "gold");
+        this.renderShop();
+        if (window.Core) window.Core.updateUI();
     },
 
     quickSellAll() {
@@ -294,26 +319,42 @@ export const UI_Shop = {
         }
     },
 
-    quickSellFragments() {
+    // 🟢 智能修復 BUG 2：只出售「重複」的殘卷，每種保留 1 份！
+    quickSellDuplicateFragments() {
         if (!Player.data || !Player.data.inventory || Player.data.inventory.length === 0) return;
 
         let totalEarned = 0;
         let itemsToRemove = [];
+        let seenFragments = {}; // 用來記錄哪些殘卷已經保留了 1 份
 
         Player.data.inventory.forEach((item, index) => {
             if (item.type === 'fragment') {
+                const key = item.name; // 依賴名稱來辨識同種殘卷
                 const unitPrice = item.price || Math.floor((item.value || 20) * 0.5) || 10;
-                const count = item.count || 1;
-                totalEarned += (unitPrice * count);
-                itemsToRemove.push(index);
+
+                if (seenFragments[key]) {
+                    // 已經保留過了，這個可以直接全部賣掉
+                    const count = item.count || 1;
+                    totalEarned += (unitPrice * count);
+                    itemsToRemove.push(index);
+                } else {
+                    // 第一次看到這種殘卷，保留 1 份，賣掉多餘的 (如果有堆疊)
+                    if (item.count > 1) {
+                        const sellAmount = item.count - 1;
+                        totalEarned += (unitPrice * sellAmount);
+                        item.count = 1; // 削掉堆疊數量
+                    }
+                    seenFragments[key] = true; // 標記已保留
+                }
             }
         });
 
-        if (itemsToRemove.length === 0) {
-            return Msg.log("儲物袋中沒有任何殘卷。", "system");
+        if (totalEarned === 0) {
+            return Msg.log("儲物袋中目前沒有【重複多餘】的殘卷。", "system");
         }
 
-        if (confirm(`確定要將所有「殘卷」打包出售給坊市嗎？\n預計獲得：${totalEarned} 靈石`)) {
+        if (confirm(`確定要將所有「重複多餘」的殘卷打包出售給坊市嗎？(每種將自動保留1份)\n預計獲得：${totalEarned} 靈石`)) {
+            // 從後面倒著刪除
             for (let i = itemsToRemove.length - 1; i >= 0; i--) {
                 Player.data.inventory.splice(itemsToRemove[i], 1);
             }
@@ -323,7 +364,7 @@ export const UI_Shop = {
 
             Player.save();
             
-            Msg.log(`📜 殘卷出售完成！獲得 ${totalEarned} 靈石。`, "gold");
+            Msg.log(`📜 多餘殘卷出售完成！獲得 ${totalEarned} 靈石。`, "gold");
             this.renderShop();
             if (window.Core) window.Core.updateUI();
         }
