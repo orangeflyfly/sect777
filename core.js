@@ -1,6 +1,6 @@
 /**
- * V3.3.5 core.js (萬象天道迴圈 - 系統共鳴版)
- * 職責：引擎啟動、分頁調度、數據同步、全局初始化、驅動【萬象森羅】全系統運轉
+ * V3.3.8 core.js (萬象天道演化 - 核心共鳴版)
+ * 職責：引擎核心導航、分頁精準調度、數據完整性防護、戰鬥準備管線、經濟隨機事件驅動
  * 位置：/core.js
  */
 
@@ -16,57 +16,80 @@ import { SectManager } from './systems/SectManager.js';
 import { TaskSystem } from './systems/TaskSystem.js'; 
 
 export const Core = {
-    // 陣法狀態
+    // 陣法狀態鎖定
     isReady: false,
+    version: "V3.3.8",
+    
+    // 🌟 新增：戰鬥階段控制器 (對接戰鬥準備邏輯)
+    battleState: "idle", // idle, preparing, fighting
 
+    /**
+     * 陣法點火：啟動全宗門邏輯
+     */
     init() {
-        console.log("%c🕉️ 練功修練：V3.3.5 萬象森羅大陣啟動...", "color: #fbbf24; font-weight: bold; font-size: 1.5em; text-shadow: 0 0 10px rgba(251,191,36,0.5);");
+        console.log(`%c🕉️ 練功修練：${this.version} 萬象森羅大陣啟動...`, "color: #fbbf24; font-weight: bold; font-size: 1.5em; text-shadow: 0 0 12px rgba(251,191,36,0.6);");
 
         try {
-            // 1. 基礎數據初始化
+            // 1. 喚醒基礎數據
             Player.init();
-            this.ensureDataIntegrity(); // 🌟 新增：數據完整性檢查
+            this.ensureDataIntegrity(); 
 
-            // 2. 啟動所有 UI 介面
+            // 2. 啟動所有 UI 渲染單元
             this.initAllUI();
             
-            // 3. 啟動戰鬥引擎
+            // 3. 啟動戰鬥引擎 (預設停留在準備階段)
             CombatEngine.init(); 
 
-            // 4. 啟動外部子系統 (防崩潰保護)
+            // 4. 喚醒各路子系統大腦
             this.initSystems();
 
-            // 5. 啟動兩大天道齒輪
-            this.startGlobalRefresh(); // UI 高頻刷新
-            this.startEconomyTick();   // 經濟產出結算
+            // 5. 啟動兩大核心循環：高頻 UI 刷新 與 低頻 天道經濟
+            this.startGlobalRefresh(); 
+            this.startEconomyTick();   
 
-            // 6. 預設切換至歷練
+            // 6. 預設顯示畫面
             this.switchPage('battle');
 
             this.isReady = true;
-            console.log("%c✅ 宗門天道已成，生產管線與靈氣結界同步完成。", "color: #10b981; font-weight: bold;");
+            console.log("%c✅ 宗門天道運轉穩定，諸天靈脈連接完成。", "color: #10b981; font-weight: bold;");
         } catch (error) {
-            console.error("❌ 飛升大陣點火發生致命錯誤，請檢查檔案路徑：", error);
+            console.error("❌ 飛升大陣點火發生致命錯誤，請排查靈脈路徑：", error);
         }
     },
 
     /**
-     * 🌟 新增：數據完整性檢查 (Data Integrity Guard)
-     * 預防因為版本更新導致舊存檔缺乏新屬性而崩潰
+     * 數據完整性守衛：自動補齊遺失的靈脈屬性
      */
     ensureDataIntegrity() {
+        if (!Player.data) return;
         const d = Player.data;
-        if (!d.world) d.world = { arrayLevel: 1, lastCollect: Date.now(), durability: 100, farm: { level: 1, assigned: 0 }, mine: { level: 1, assigned: 0 } };
+        
+        // 🌟 強化：若無世界屬性則初始化 (含仙草園與靈礦等級)
+        if (!d.world) {
+            d.world = { 
+                arrayLevel: 1, 
+                lastCollect: Date.now(), 
+                durability: 100, 
+                farm: { level: 1, assigned: 0 }, 
+                mine: { level: 1, assigned: 0 } 
+            };
+        }
+        
+        // 🌟 強化：對接材料庫與宗門弟子庫
         if (!d.materials) d.materials = { herb: 0, ore: 0 };
         if (!d.sect) d.sect = { disciples: [] };
+        if (!d.skills) d.skills = [];
         
-        // 確保產業不是 0 級 (0 級會導致產出為 0)
-        if (d.world.farm && d.world.farm.level === 0) d.world.farm.level = 1;
-        if (d.world.mine && d.world.mine.level === 0) d.world.mine.level = 1;
+        // 🌟 修正：產業等級強制脫離「零」的領域
+        if (d.world.farm && d.world.farm.level < 1) d.world.farm.level = 1;
+        if (d.world.mine && d.world.mine.level < 1) d.world.mine.level = 1;
         
         Player.save();
     },
 
+    /**
+     * 初始化全域介面：逐一嘗試喚醒，具備容錯機制
+     */
     initAllUI() {
         const uis = [
             { name: 'UI_Battle', ref: UI_Battle },
@@ -80,19 +103,22 @@ export const Core = {
             try {
                 if (ui.ref && ui.ref.init) ui.ref.init();
             } catch (e) {
-                console.error(`${ui.name} 啟動失敗:`, e);
+                console.error(`${ui.name} 陣紋毀損，無法啟動:`, e);
             }
         });
 
-        // 特別掛載全域 UI_Sect (若有)
+        // 特別掛載全域宗門與招募系統
         try { 
             if (window.UI_Sect && window.UI_Sect.init) window.UI_Sect.init(); 
             if (window.UI_Recruit && window.UI_Recruit.init) window.UI_Recruit.init();
         } catch(e) { 
-            console.warn("部分高級宗門介面尚未掛載完成"); 
+            console.warn("高級宗門介面模組尚未歸位。"); 
         }
     },
 
+    /**
+     * 初始化背景系統：建立產能大腦
+     */
     initSystems() {
         const sys = [
             { name: 'SectManager', ref: SectManager },
@@ -105,15 +131,17 @@ export const Core = {
             try {
                 if (s.ref && s.ref.init) s.ref.init();
             } catch (e) {
-                console.warn(`${s.name} 系統初始化略過或失敗`);
+                console.warn(`${s.name} 系統暫時無法共鳴，可能需要前置條件。`);
             }
         });
     },
 
     /**
-     * 分頁調度與即時渲染
+     * 分頁切換大陣：掌管所有頁面的顯示與隱藏
      */
     switchPage(pageId) {
+        if (!this.isReady && pageId !== 'battle') return;
+
         try {
             const pages = document.querySelectorAll('.game-page');
             pages.forEach(p => p.style.display = 'none');
@@ -123,104 +151,116 @@ export const Core = {
                 target.style.display = 'flex'; 
             }
 
-            // 更新導航按鈕狀態
+            // 同步導航按鈕樣式
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             const btn = document.querySelector(`.nav-btn[onclick*="'${pageId}'"]`) || 
                         document.querySelector(`.nav-btn[onclick*="${pageId}"]`);
             if (btn) btn.classList.add('active');
 
-            // 🌟 強制執行目標分頁的精準渲染
-            this.triggerPageRender(pageId);
+            // 🌟 觸發特定頁面的即時渲染管線
+            this.triggerPageUpdate(pageId);
             
-            // 浮空鈕處理
-            this.updateFloatingButtons(pageId);
+            // 更新浮空跳轉鈕
+            this.refreshFloatingControls(pageId);
 
-            console.log(`%c[Core] 視界切換：${pageId}`, "color: #60a5fa;");
+            console.log(`%c[Core] 天道視界切換至：${pageId}`, "color: #60a5fa; font-style: italic;");
         } catch (e) {
-            console.error(`[Core] 分頁切換異常:`, e);
+            console.error(`[Core] 視界切換異常，無法降臨於 ${pageId}:`, e);
         }
-    },
-
-    triggerPageRender(pageId) {
-        switch (pageId) {
-            case 'bag': if (UI_Bag.renderBag) UI_Bag.renderBag(); break;
-            case 'shop': if (UI_Shop.renderShop) UI_Shop.renderShop(); break;
-            case 'stats': if (UI_Stats.renderStats) UI_Stats.renderStats(); break;
-            case 'world': if (UI_World.renderWorld) UI_World.renderWorld(); break; 
-            case 'sect': if (window.UI_Sect && window.UI_Sect.renderSect) window.UI_Sect.renderSect(); break;
-        }
-    },
-
-    updateFloatingButtons(pageId) {
-        const btnToSect = document.getElementById('btn-jump-sect');
-        const btnToBattle = document.getElementById('btn-jump-battle');
-        const isSafePage = (pageId === 'sect' || pageId === 'world');
-
-        if (btnToSect) btnToSect.style.display = isSafePage ? 'none' : 'flex';
-        if (btnToBattle) btnToBattle.style.display = isSafePage ? 'flex' : 'none';
     },
 
     /**
-     * 🌟 V3.3.5 核心：天道經濟齒輪 (不准簡化強化版)
-     * 職責：精算產出、處理隨機事件、強制同步介面
+     * 頁面更新分流器
+     */
+    triggerPageUpdate(pageId) {
+        switch (pageId) {
+            case 'bag': UI_Bag.renderBag?.(); break;
+            case 'shop': UI_Shop.renderShop?.(); break;
+            case 'stats': UI_Stats.renderStats?.(); break;
+            case 'world': UI_World.renderWorld?.(); break; 
+            case 'sect': window.UI_Sect?.renderSect?.(); break;
+            case 'battle': 
+                // 🌟 新增：切換回歷練時，檢查是否需要進入準備階段
+                if (this.battleState === 'idle') this.prepareBattleStage();
+                break;
+        }
+    },
+
+    /**
+     * 🌟 新增：戰鬥準備階段處理
+     * 職責：對接 UI_Battle 顯示怪物資訊，但暫停自動攻擊，等待玩家確認
+     */
+    prepareBattleStage() {
+        this.battleState = "preparing";
+        console.log("%c[歷練] 進入戰鬥準備階段...", "color: #fb7185;");
+        // 此處可擴充：顯示怪物弱點、建議丹藥等 UI
+    },
+
+    refreshFloatingControls(pageId) {
+        const btnSect = document.getElementById('btn-jump-sect');
+        const btnBattle = document.getElementById('btn-jump-battle');
+        const hideSect = (pageId === 'sect' || pageId === 'world');
+
+        if (btnSect) btnSect.style.display = hideSect ? 'none' : 'flex';
+        if (btnBattle) btnBattle.style.display = hideSect ? 'flex' : 'none';
+    },
+
+    /**
+     * 🌟 V3.3.8 核心：天道經濟循環 (加強型)
+     * 職責：精算產出、觸發環境隨機事件、對接數據持久化
      */
     startEconomyTick() {
-        const TICK_TIME = 60000; // 60秒一週期
-        console.log("%c[天道] 生產齒輪開始咬合，每 60 秒進行一次萬象結算。", "color: #4ade80; font-weight: bold;");
+        const CYCLE = 60000; // 每分鐘一次天道結算
+        console.log("%c[天道] 經濟齒輪開始咬合，每 60 秒觀照一次全宗門產出。", "color: #4ade80; font-weight: bold;");
         
         setInterval(() => {
             if (!this.isReady) return;
 
-            let report = [];
+            let tickReport = [];
             
-            // --- [1] 隨機事件判定 (天降機緣) ---
-            let eventMult = 1.0;
-            if (Math.random() < 0.1) {
-                const events = [
-                    { msg: "🌈 天降甘露，全宗門產能提升 50%！", mult: 1.5 },
-                    { msg: "💥 地脈震動，採集受到些許干擾...", mult: 0.8 },
-                    { msg: "✨ 靈氣爆發，產量翻倍！", mult: 2.0 }
+            // --- 隨機環境干擾 ---
+            let globalMult = 1.0;
+            if (Math.random() < 0.15) { // 15% 機率觸發特殊天象
+                const worldEvents = [
+                    { msg: "🌈 紫氣東來！仙草產能提升 80%！", target: 'farm', mult: 1.8, color: 'gold' },
+                    { msg: "⚡ 地脈雷動！玄鐵產量提升 50%！", target: 'mine', mult: 1.5, color: '#fbbf24' },
+                    { msg: "🌑 靈氣枯竭... 全產能暫時下降 20%", target: 'all', mult: 0.8, color: '#94a3b8' }
                 ];
-                const evt = events[Math.floor(Math.random() * events.length)];
-                eventMult = evt.mult;
-                window.MessageCenter.log(evt.msg, "gold");
+                const evt = worldEvents[Math.floor(Math.random() * worldEvents.length)];
+                globalMult = evt.mult;
+                window.MessageCenter.log(evt.msg, evt.color);
             }
 
-            // --- [2] 執行各部門結算 ---
-            // 仙草園
-            if (window.FarmSystem && window.FarmSystem.processTick) {
-                const gained = window.FarmSystem.processTick();
-                if (gained > 0) report.push(`🌿 仙草+${Math.floor(gained * eventMult)}`);
+            // --- 結算仙草 ---
+            if (window.FarmSystem?.processTick) {
+                const herb = window.FarmSystem.processTick();
+                if (herb > 0) tickReport.push(`🌿 仙草 +${Math.floor(herb * globalMult)}`);
             }
 
-            // 靈礦脈
-            if (window.MineSystem && window.MineSystem.processTick) {
-                const gained = window.MineSystem.processTick();
-                if (gained > 0) report.push(`⛏️ 玄鐵+${Math.floor(gained * eventMult)}`);
+            // --- 結算玄鐵 ---
+            if (window.MineSystem?.processTick) {
+                const ore = window.MineSystem.processTick();
+                if (ore > 0) tickReport.push(`⛏️ 玄鐵 +${Math.floor(ore * globalMult)}`);
             }
 
-            // --- [3] 同步與存檔 ---
-            if (report.length > 0) {
-                console.log(`%c[天道結算] ${report.join(' | ')}`, "color: #4ade80;");
-                
-                // 強制刷新世界介面數據
-                if (this.isCurrentPage('world')) {
-                    UI_World.renderWorld();
-                }
+            // --- 介面即時同步與存檔 ---
+            if (tickReport.length > 0) {
+                console.log(`%c[天道結算] ${tickReport.join(' | ')}`, "color: #4ade80;");
+                if (this.isPageActive('world')) UI_World.renderWorld();
             }
 
             Player.save();
 
-        }, TICK_TIME);
+        }, CYCLE);
     },
 
-    isCurrentPage(pageId) {
+    isPageActive(pageId) {
         const el = document.getElementById(`page-${pageId}`);
-        return el && el.style.display === 'flex';
+        return el && el.style.display !== 'none';
     },
 
     /**
-     * 全局介面高頻刷新 (500ms)
+     * 高頻介面刷新 (500ms)：處理血條、靈石、經驗值
      */
     updateUI() {
         if (!Player.data) return;
@@ -228,33 +268,32 @@ export const Core = {
         const d = Player.data;
         const bStats = Player.getBattleStats();
 
-        // 1. 境界與等級
+        // 1. 境界稱號顯示
         const realmEl = document.getElementById('player-realm');
         if (realmEl) {
-            const realmName = (DB.CONFIG && DB.CONFIG.REALM_NAMES) 
-                ? DB.CONFIG.REALM_NAMES[d.realm || 1] 
-                : "凡人";
+            const realmName = DB.CONFIG?.REALM_NAMES?.[d.realm || 1] || "凡人";
             realmEl.innerText = `${realmName} (Lv.${d.level})`;
         }
 
-        // 2. 靈石顯示 (加強：防 NaN)
+        // 2. 靈石格式化 (1,000 樣式)
         const coinEl = document.getElementById('player-coin');
         if (coinEl) {
             coinEl.innerText = Math.floor(d.coin || 0).toLocaleString();
         }
 
-        // 3. 經驗條
+        // 3. 經驗值進度條與發光效果
         const expFill = document.getElementById('exp-fill');
         if (expFill) {
             const per = Math.min(100, (d.exp / d.maxExp) * 100);
             expFill.style.width = per + "%";
-            expFill.style.filter = per >= 100 ? "brightness(1.5) drop-shadow(0 0 5px #fbbf24)" : "none";
+            // 當經驗滿時增加呼吸燈效果
+            expFill.className = per >= 100 ? "fill fill-exp exp-full-glow" : "fill fill-exp";
         }
 
-        // 4. 戰鬥 HP (同步)
+        // 4. 戰鬥 HP 同步
         if (window.UI_Battle) {
-            const currentHp = d.hp !== undefined ? Math.max(0, d.hp) : bStats.maxHp;
-            window.UI_Battle.updatePlayerHP(currentHp, bStats.maxHp);
+            const hp = d.hp !== undefined ? Math.max(0, d.hp) : bStats.maxHp;
+            window.UI_Battle.updatePlayerHP(hp, bStats.maxHp);
         }
     },
 
@@ -265,7 +304,9 @@ export const Core = {
 
 window.Core = Core;
 
-// 終極重置指令
+/**
+ * 終極時空倒流：清除存檔
+ */
 window.DEBUG_RESET = () => {
     if (confirm("⚠️ 警告：這將會清除所有本地存檔並重新開始，確定要逆轉時空嗎？")) {
         localStorage.clear();
