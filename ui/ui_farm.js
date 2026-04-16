@@ -1,5 +1,5 @@
 /**
- * V2.9 ui_farm.js (仙草園專屬 UI)
+ * V2.9 ui_farm.js (仙草園專屬 UI - 極致加固版)
  * 職責：掌管仙草園種植槽、過濾並指派弟子、顯示產能與修為進度
  * 位置：/ui/ui_farm.js
  */
@@ -56,6 +56,10 @@ export const UI_Farm = {
      * 渲染仙草園首頁 (坑位與總覽)
      */
     renderFarm() {
+        // 🟢 防呆：確保 world 與 farm 結構存在
+        if (!Player.data.world) Player.data.world = { farm: { level: 0, assigned: 0 } };
+        if (!Player.data.world.farm) Player.data.world.farm = { level: 0, assigned: 0 };
+        
         const wData = Player.data.world;
         const level = wData.farm.level || 0;
         
@@ -73,12 +77,16 @@ export const UI_Farm = {
 
         // 坑位數量：基礎 2 個，每升一級多 1 個
         const maxSlots = 2 + level; 
-        const farmWorkers = Player.data.sect.disciples.filter(d => d.status === 'farm');
+        // 🟢 防呆：確保 sect 與 disciples 存在
+        const disciples = (Player.data.sect && Player.data.sect.disciples) ? Player.data.sect.disciples : [];
+        const farmWorkers = disciples.filter(d => d.status === 'farm');
         
         // 預估總產出
         let totalYield = 0;
         farmWorkers.forEach(d => {
-            totalYield += FarmSystem.getDiscipleYield(d).yield;
+            if (FarmSystem && typeof FarmSystem.getDiscipleYield === 'function') {
+                totalYield += FarmSystem.getDiscipleYield(d).yield;
+            }
         });
 
         let html = `
@@ -89,11 +97,15 @@ export const UI_Farm = {
                         <div style="font-size:18px; font-weight:bold; color:white;">Lv.${level}</div>
                     </div>
                     <div>
+                        <div style="font-size:12px; color:#94a3b8;">坑位狀態</div>
+                        <div style="font-size:18px; font-weight:bold; color:white;">${farmWorkers.length} / ${maxSlots}</div>
+                    </div>
+                    <div>
                         <div style="font-size:12px; color:#94a3b8;">總產出預估</div>
                         <div style="font-size:18px; font-weight:bold; color:#4ade80;">${totalYield} / 週期</div>
                     </div>
                     <div>
-                        <button style="padding:5px 10px; border:1px solid #fbbf24; background:transparent; color:#fbbf24; border-radius:5px; cursor:pointer;"
+                        <button style="padding:5px 10px; border:1px solid #fbbf24; background:transparent; color:#fbbf24; border-radius:5px; cursor:pointer; font-weight:bold;"
                                 onclick="UI_Farm.upgradeFarm()">升級</button>
                     </div>
                 </div>
@@ -109,10 +121,15 @@ export const UI_Farm = {
             
             if (d) {
                 // 有弟子駐守
-                const rootData = DATA_SECT.ROOT_LEVELS[d.root];
+                // 🟢 防呆：避免讀取到未定義的靈根資料
+                const rootData = DATA_SECT.ROOT_LEVELS[d.root] || { color: '#94a3b8', label: '未知靈根' };
                 const yieldData = FarmSystem.getDiscipleYield(d);
-                const nextExp = d.level * 100;
-                const expPercent = Math.min(100, Math.floor((d.exp / nextExp) * 100));
+                
+                // 🟢 防呆：確保 exp 和 level 數值正常
+                const currentExp = d.exp || 0;
+                const currentLevel = d.level || 1;
+                const nextExp = currentLevel * 100;
+                const expPercent = Math.min(100, Math.floor((currentExp / nextExp) * 100));
 
                 html += `
                     <div style="background:rgba(0,0,0,0.4); border:1px solid #334155; border-left:4px solid ${rootData.color}; border-radius:6px; padding:10px; display:flex; justify-content:space-between; align-items:center;">
@@ -121,7 +138,7 @@ export const UI_Farm = {
                                 <span style="font-weight:bold; color:white;">${d.name} <span style="font-size:11px; color:${rootData.color};">(${d.root})</span></span>
                                 <span style="font-size:12px; color:#4ade80; font-weight:bold;">產能: ${yieldData.yield}</span>
                             </div>
-                            <div style="font-size:11px; color:#94a3b8; margin-bottom:4px;">境界: Lv.${d.level}</div>
+                            <div style="font-size:11px; color:#94a3b8; margin-bottom:4px;">境界: Lv.${currentLevel}</div>
                             <div style="width:100%; background:#1e293b; height:6px; border-radius:3px; overflow:hidden;">
                                 <div style="width:${expPercent}%; background:#3b82f6; height:100%;"></div>
                             </div>
@@ -133,8 +150,8 @@ export const UI_Farm = {
             } else {
                 // 空坑位
                 html += `
-                    <div style="background:rgba(255,255,255,0.05); border:1px dashed #475569; border-radius:6px; padding:15px; text-align:center; cursor:pointer;"
-                         onclick="UI_Farm.showAssignList()">
+                    <div style="background:rgba(255,255,255,0.05); border:1px dashed #475569; border-radius:6px; padding:15px; text-align:center; cursor:pointer; transition: 0.2s;"
+                         onclick="UI_Farm.showAssignList()" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
                         <span style="color:#cbd5e1; font-weight:bold;">➕ 指派弟子</span>
                     </div>
                 `;
@@ -149,38 +166,46 @@ export const UI_Farm = {
      * 顯示符合資格的弟子名單 (過濾與替換介面)
      */
     showAssignList() {
-        const list = Player.data.sect.disciples.filter(d => d.status === 'idle' && FarmSystem.canWork(d));
+        const disciples = (Player.data.sect && Player.data.sect.disciples) ? Player.data.sect.disciples : [];
+        const list = disciples.filter(d => d.status === 'idle' && FarmSystem.canWork(d));
 
         let html = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <button style="padding:5px 10px; background:#334155; color:white; border:none; border-radius:4px; cursor:pointer;" onclick="UI_Farm.refresh()">⬅ 返回</button>
-                <div style="color:#cbd5e1; font-size:14px;">選擇弟子</div>
+                <button style="padding:5px 10px; background:#334155; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;" onclick="UI_Farm.refresh()">⬅ 返回園區</button>
+                <div style="color:#cbd5e1; font-size:14px; font-weight:bold;">選擇指派弟子</div>
             </div>
             <div style="display:grid; grid-template-columns:1fr; gap:8px; max-height:400px; overflow-y:auto; padding-right:5px;">
         `;
 
         if (list.length === 0) {
-            html += `<div style="text-align:center; padding:20px; color:#ef4444;">無符合資格的閒置弟子。<br><span style="font-size:12px; color:#94a3b8;">(需具備 水、木、天、仙 靈根，且無拒絕工作詞條)</span></div>`;
+            html += `<div style="text-align:center; padding:20px; color:#ef4444; background:rgba(0,0,0,0.3); border-radius:6px;">
+                        無符合資格的閒置弟子。<br><br>
+                        <span style="font-size:12px; color:#94a3b8;">(需具備 <b>水、木、天、仙</b> 靈根，且無拒絕工作之詞條)</span>
+                     </div>`;
         } else {
             // 排序：先看產能高低
             list.sort((a, b) => FarmSystem.getDiscipleYield(b).yield - FarmSystem.getDiscipleYield(a).yield);
 
             list.forEach(d => {
-                const rootData = DATA_SECT.ROOT_LEVELS[d.root];
+                const rootData = DATA_SECT.ROOT_LEVELS[d.root] || { color: '#94a3b8', label: '未知' };
                 const yieldData = FarmSystem.getDiscipleYield(d);
                 
-                // 標示有加成的詞條
-                let traitsHtml = d.traits.map(tKey => `<span style="font-size:11px; background:rgba(255,255,255,0.1); padding:2px 4px; border-radius:3px; margin-right:4px;">${tKey}</span>`).join('');
+                // 🟢 防呆：確保 traits 是一個陣列 (避免舊存檔報錯)
+                const traits = d.traits || [];
+                let traitsHtml = traits.map(tKey => `<span style="font-size:11px; background:rgba(255,255,255,0.1); padding:2px 4px; border-radius:3px; margin-right:4px;">${tKey}</span>`).join('');
+
+                // 防呆：確保體質數值存在
+                const conStat = (d.stats && d.stats['體質']) ? d.stats['體質'] : 10;
 
                 html += `
-                    <div style="background:rgba(0,0,0,0.5); border-left:3px solid ${rootData.color}; border-radius:5px; padding:10px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;"
-                         onclick="UI_Farm.assignWorker('${d.id}')">
+                    <div style="background:rgba(0,0,0,0.5); border-left:3px solid ${rootData.color}; border-radius:5px; padding:10px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; transition:0.2s;"
+                         onclick="UI_Farm.assignWorker('${d.id}')" onmouseover="this.style.background='rgba(0,0,0,0.8)'" onmouseout="this.style.background='rgba(0,0,0,0.5)'">
                         <div>
                             <div style="font-size:14px; font-weight:bold; color:white; margin-bottom:4px;">${d.name} <span style="font-size:12px; color:${rootData.color};">(${d.root})</span></div>
                             <div style="margin-bottom:4px;">${traitsHtml}</div>
-                            <div style="font-size:12px; color:#94a3b8;">體質: ${d.stats['體質']} | 預期產能: <b style="color:#4ade80;">${yieldData.yield}</b></div>
+                            <div style="font-size:12px; color:#94a3b8;">體質: ${conStat} | 預期產能: <b style="color:#4ade80;">${yieldData.yield}</b></div>
                         </div>
-                        <div style="color:#4ade80; font-size:20px;">➔</div>
+                        <div style="color:#4ade80; font-size:20px; font-weight:bold;">➔</div>
                     </div>
                 `;
             });
@@ -198,25 +223,30 @@ export const UI_Farm = {
 
     buildFarm() {
         const cost = 1000;
-        let currentCoins = Player.data.coin !== undefined ? Player.data.coin : Player.data.coins;
+        let currentCoins = Player.data.coin !== undefined ? Player.data.coin : (Player.data.coins || 0);
         
         if (currentCoins < cost) return Msg.log("靈石不足，無法開闢仙草園！", "system");
 
         if (Player.data.coin !== undefined) Player.data.coin -= cost;
         else Player.data.coins -= cost;
 
+        if (!Player.data.world) Player.data.world = {};
+        if (!Player.data.world.farm) Player.data.world.farm = {};
+        
         Player.data.world.farm.level = 1;
-        Player.save();
+        if (Player.save) Player.save();
         Msg.log("🌿 靈氣匯聚，仙草園開闢成功！", "gold");
         
-        if (window.Core) window.Core.updateUI();
+        if (window.Core && typeof window.Core.updateUI === 'function') window.Core.updateUI();
         this.refresh();
     },
 
     upgradeFarm() {
+        if (!Player.data.world || !Player.data.world.farm) return;
+        
         const level = Player.data.world.farm.level;
         const cost = level * 2000; // 升級費用遞增
-        let currentCoins = Player.data.coin !== undefined ? Player.data.coin : Player.data.coins;
+        let currentCoins = Player.data.coin !== undefined ? Player.data.coin : (Player.data.coins || 0);
 
         if (currentCoins < cost) return Msg.log(`升級需要 ${cost} 靈石！`, "system");
 
@@ -225,37 +255,43 @@ export const UI_Farm = {
             else Player.data.coins -= cost;
 
             Player.data.world.farm.level++;
-            Player.save();
+            if (Player.save) Player.save();
             Msg.log(`🌿 仙草園升級成功！目前等級 Lv.${level + 1}`, "gold");
             
-            if (window.Core) window.Core.updateUI();
+            if (window.Core && typeof window.Core.updateUI === 'function') window.Core.updateUI();
             this.refresh();
         }
     },
 
     assignWorker(discipleId) {
+        if (!Player.data.sect || !Player.data.sect.disciples) return;
+
         let d = Player.data.sect.disciples.find(x => x.id === discipleId);
         if (d) {
             d.status = 'farm';
             
-            // 同步舊系統人數
+            // 同步舊系統人數 (防呆確保存在)
+            if (!Player.data.world.farm) Player.data.world.farm = {};
             Player.data.world.farm.assigned = Player.data.sect.disciples.filter(x => x.status === 'farm').length;
             
-            Player.save();
+            if (Player.save) Player.save();
             Msg.log(`已指派【${d.name}】進入仙草園培育靈草。`, "system");
             this.refresh();
         }
     },
 
     unassignWorker(discipleId) {
+        if (!Player.data.sect || !Player.data.sect.disciples) return;
+
         let d = Player.data.sect.disciples.find(x => x.id === discipleId);
         if (d) {
             d.status = 'idle';
             
-            // 同步舊系統人數
+            // 同步舊系統人數 (防呆確保存在)
+            if (!Player.data.world.farm) Player.data.world.farm = {};
             Player.data.world.farm.assigned = Player.data.sect.disciples.filter(x => x.status === 'farm').length;
             
-            Player.save();
+            if (Player.save) Player.save();
             Msg.log(`【${d.name}】已從仙草園撤回，處於閒置狀態。`, "system");
             this.refresh();
         }
