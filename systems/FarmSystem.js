@@ -1,5 +1,5 @@
 /**
- * V2.9 FarmSystem.js (仙草園大腦)
+ * V3.0 FarmSystem.js (仙草園大腦 - 境界聯動版)
  * 職責：管理仙草園的工作門檻、計算弟子產出、處理詞條聯動與修為增長
  * 位置：/systems/FarmSystem.js
  */
@@ -96,7 +96,6 @@ export const FarmSystem = {
         if (!Player.data.sect || !Player.data.sect.disciples) return;
 
         let totalHerb = 0;
-        let levelUps = []; // 紀錄誰升級了
 
         // 篩選出目前在仙草園工作的弟子
         let farmWorkers = Player.data.sect.disciples.filter(d => d.status === 'farm');
@@ -105,18 +104,10 @@ export const FarmSystem = {
             let result = this.getDiscipleYield(d);
             totalHerb += result.yield;
             
-            // 勞動即修行：增加經驗值
-            if (result.exp > 0) {
-                d.exp += result.exp;
-                // 簡單升級判定 (假設每 100 經驗升 1 級)
-                let needExp = d.level * 100;
-                if (d.exp >= needExp) {
-                    d.level++;
-                    d.exp -= needExp;
-                    d.stats['戰力'] += 5; // 升級增加一點基礎屬性
-                    d.stats['體質'] += 2;
-                    levelUps.push(d.name);
-                }
+            // 🟢 V3.0 更新：勞動即修行，呼叫宗門大腦統一處理升級與戰力反哺
+            // 我們把原本寫死在這裡的升級判定刪除了，直接委託給 SectSystem 處理
+            if (result.exp > 0 && window.SectSystem && window.SectSystem.gainExp) {
+                window.SectSystem.gainExp(d.id, result.exp);
             }
 
             // 特殊事件播報
@@ -129,14 +120,11 @@ export const FarmSystem = {
             Player.data.materials.herb += totalHerb;
         }
 
-        // 若有人升級，發送通知
-        if (levelUps.length > 0) {
-            Msg.log(`✨ 經過仙草園的辛勤勞作，【${levelUps.join('、')}】境界突破了！`, "gold");
-        }
-
-        // 存檔
+        // 存檔 (SectSystem 內部也會存，但確保 herb 的數量也安全存下)
         if (Player.save) Player.save();
         
         return totalHerb; // 回傳給介面顯示
     }
 };
+
+window.FarmSystem = FarmSystem;
