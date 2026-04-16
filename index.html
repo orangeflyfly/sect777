@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>練功修練 - V2.8 「弟子爆炸更新」</title>
+    <title>練功修練 - V2.9 「仙草園大修」</title>
     
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/page_battle.css">
@@ -76,9 +76,13 @@
         import { UI_System } from './ui/ui_system.js'; 
         import { TribulationSystem } from './systems/TribulationSystem.js'; 
         
-        // 🌟 新增 V3.0 的招募大陣與宗門大腦
+        // 🌟 新增 V2.8 的招募大陣與宗門大腦
         import { UI_Recruit } from './ui/ui_recruit.js';
         import { SectSystem } from './systems/SectSystem.js';
+
+        // 🌟 新增 V2.9 的仙草園大陣與大腦
+        import { UI_Farm } from './ui/ui_farm.js';
+        import { FarmSystem } from './systems/FarmSystem.js';
 
         // 2. 導向全域 window 空間 (確保 HTML onclick 可用)
         window.Core = Core;
@@ -93,9 +97,13 @@
         window.UI_System = UI_System; 
         window.TribulationSystem = TribulationSystem; 
         
-        // 🌟 新增：掛載招募堂與宗門大腦至全域空間
+        // 🌟 掛載 V2.8 招募堂
         window.UI_Recruit = UI_Recruit;
         window.SectSystem = SectSystem;
+
+        // 🌟 掛載 V2.9 仙草園
+        window.UI_Farm = UI_Farm;
+        window.FarmSystem = FarmSystem;
 
         // 3. 相容性補丁：對接舊的 DEBUG_RESET 名稱
         window.DEBUG_RESET = () => {
@@ -104,7 +112,8 @@
 
         // 4. 大陣啟動
         window.onload = () => {
-            console.log("%c【系統】V3.0 萬象森羅版啟動，宗門人事大陣已就緒。", "color: #fbbf24; font-weight: bold;");
+            // 換成代表草木靈氣的綠色日誌
+            console.log("%c【系統】V2.9 仙草園大修版啟動，草木靈氣已就緒。", "color: #4ade80; font-weight: bold;");
             
             // 延遲一點點初始化，確保所有模組都已經掛載到 window
             setTimeout(() => {
