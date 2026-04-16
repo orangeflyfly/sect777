@@ -1,6 +1,6 @@
 /**
- * V2.4 core.js
- * 職責：引擎啟動、分頁調度、數據同步、全局初始化 (新增防崩潰機制)
+ * V3.3 core.js (天道齒輪 - 經濟循環版)
+ * 職責：引擎啟動、分頁調度、數據同步、全局初始化、驅動【仙草/靈礦】資源產出
  */
 
 import { Player } from './entities/player.js';
@@ -16,7 +16,7 @@ import { TaskSystem } from './systems/TaskSystem.js';
 
 export const Core = {
     init() {
-        console.log("%c🕉️ 練功修練：V2.0 飛升大陣啟動...", "color: #fbbf24; font-weight: bold; font-size: 1.2em;");
+        console.log("%c🕉️ 練功修練：V3.3 萬象森羅大陣啟動...", "color: #fbbf24; font-weight: bold; font-size: 1.2em;");
 
         try {
             Player.init();
@@ -27,29 +27,33 @@ export const Core = {
             CombatEngine.init(); 
             this.updateUI();
             
-            // 🟢 安全啟動外部系統 (即使報錯也不影響主體)
+            // 🟢 安全啟動外部系統 (即使報報錯也不影響主體)
             try { if (SectManager && SectManager.init) SectManager.init(); } catch (e) { console.warn("SectManager 尚未準備好", e); }
             try { if (TaskSystem && TaskSystem.init) TaskSystem.init(); } catch (e) { console.warn("TaskSystem 尚未準備好", e); }
 
+            // 啟動 UI 自動刷新
             this.startGlobalRefresh();
+
+            // 🌟 V3.3 新增：啟動宗門產出齒輪 (天道循環)
+            this.startEconomyTick();
 
             // 預設切換到歷練頁面
             this.switchPage('battle');
 
-            console.log("%c✅ 宗門運轉穩定，諸天模組連結成功。", "color: #10b981; font-weight: bold;");
+            console.log("%c✅ 宗門運轉穩定，生產管線已接通。", "color: #10b981; font-weight: bold;");
         } catch (error) {
             console.error("❌ 飛升大陣點火發生致命錯誤：", error);
         }
     },
 
     initAllUI() {
-        // 🟢 加入 try-catch，防止單一 UI 報錯導致整個遊戲黑屏，並補齊漏掉的 Shop 與 Sect
         try { if (UI_Battle.init) UI_Battle.init(); } catch(e) { console.error("UI_Battle 啟動失敗", e); }
         try { if (UI_Stats.init) UI_Stats.init(); } catch(e) { console.error("UI_Stats 啟動失敗", e); }
         try { if (UI_Bag.init) UI_Bag.init(); } catch(e) { console.error("UI_Bag 啟動失敗", e); }
-        try { if (UI_Shop.init) UI_Shop.init(); } catch(e) { console.error("UI_Shop 啟動失敗", e); }   // 修復：已補上
+        try { if (UI_Shop.init) UI_Shop.init(); } catch(e) { console.error("UI_Shop 啟動失敗", e); }
         try { if (UI_World.init) UI_World.init(); } catch(e) { console.error("UI_World 啟動失敗", e); }
-        try { if (UI_Sect.init) UI_Sect.init(); } catch(e) { console.error("UI_Sect 啟動失敗", e); }   // 修復：已補上
+        // 注意：UI_Sect 的 init 若有報錯，確保該檔案存在
+        try { if (window.UI_Sect && window.UI_Sect.init) window.UI_Sect.init(); } catch(e) { console.error("UI_Sect 啟動失敗", e); }
     },
 
     switchPage(pageId) {
@@ -90,6 +94,45 @@ export const Core = {
         } catch (e) {
             console.error(`[Core] 分頁 ${pageId} 渲染異常:`, e);
         }
+    },
+
+    /**
+     * 🌟 V3.3 核心：天道經濟齒輪
+     * 職責：每 60 秒驅動一次所有生產部門的結算
+     */
+    startEconomyTick() {
+        console.log("%c[天道] 生產齒輪開始咬合 (週期: 60s)", "color: #4ade80;");
+        
+        setInterval(() => {
+            let totalGainsLog = [];
+
+            // 1. 驅動仙草園
+            if (window.FarmSystem && window.FarmSystem.processTick) {
+                const herbGained = window.FarmSystem.processTick();
+                if (herbGained > 0) totalGainsLog.push(`🌿 仙草+${herbGained}`);
+            }
+
+            // 2. 驅動靈礦脈
+            if (window.MineSystem && window.MineSystem.processTick) {
+                const oreGained = window.MineSystem.processTick();
+                if (oreGained > 0) totalGainsLog.push(`⛏️ 玄鐵+${oreGained}`);
+            }
+
+            // 如果有產出，在控制台小小提醒一下
+            if (totalGainsLog.length > 0) {
+                console.log(`%c[產出結算] ${totalGainsLog.join(' | ')}`, "color: #4ade80; font-size: 10px;");
+                
+                // 如果玩家剛好在「世界」頁面，順便幫他刷一下畫面數字
+                const currentPage = document.querySelector('.game-page[style*="display: flex"]');
+                if (currentPage && currentPage.id === 'page-world' && UI_World.renderWorld) {
+                    UI_World.renderWorld();
+                }
+            }
+
+            // 每一分鐘自動保存一次玉簡
+            Player.save();
+
+        }, 60000); // 每一分鐘跳動一次
     },
 
     updateUI() {
