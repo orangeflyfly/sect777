@@ -1,5 +1,5 @@
 /**
- * V3.0 ui_sect.js (終極樞紐瘦身版)
+ * V3.0 ui_sect.js (終極樞紐瘦身版 - 完美防護)
  * 職責：管理宗門首頁六大入口，並負責將點擊分配給對應的專屬 UI 模組
  * 位置：/ui/ui_sect.js
  */
@@ -20,7 +20,17 @@ export const UI_Sect = {
     init() {
         console.log("【UI_Sect】宗門總樞紐初始化...");
         this.renderLayout();
+        this.ensureDataState(); // 獨立抽出的數據防護
+        
+        if(SectSystem && typeof SectSystem.init === 'function') {
+            SectSystem.init();
+        }
+    },
 
+    /**
+     * 🟢 新增：獨立的數據狀態防護，避免重複渲染畫面
+     */
+    ensureDataState() {
         if (Player.data && !Player.data.world) {
             Player.data.world = {
                 arrayLevel: 1, lastCollect: Date.now(),
@@ -30,8 +40,6 @@ export const UI_Sect = {
         if(Player.data && Player.data.sectPoints === undefined) {
             Player.data.sectPoints = 0; 
         }
-        
-        if(SectSystem) SectSystem.init();
     },
 
     renderLayout() {
@@ -77,11 +85,18 @@ export const UI_Sect = {
      * 🌟 路由核心：分配任務給各堂口
      */
     openDept(deptId) {
-        if (Player.data && !Player.data.world) this.init();
+        // 確保點擊前數據是存在的，且不觸發畫面重繪
+        this.ensureDataState();
 
-        // 🟢 如果是點擊「招募堂」，直接放權交給 UI_Recruit 處理！不在此處渲染
+        // 🟢 徹底放權：如果是招募堂，呼叫外部模組並中斷
         if (deptId === 'recruit') {
-            UI_Recruit.openModal();
+            if (UI_Recruit) {
+                UI_Recruit.openModal();
+            } else if (window.UI_Recruit) {
+                window.UI_Recruit.openModal();
+            } else {
+                Msg.log("❌ 招募堂大陣尚未準備完畢，請稍後再試！", "system");
+            }
             return;
         }
         
@@ -140,7 +155,7 @@ export const UI_Sect = {
 
         return `
             <div style="text-align:center;">
-                <p style="color:#cbd5e1; margin-bottom:10px; font-size:14px;">種植靈草，定期產出煉丹素材。</p>
+                <p style="color:#cbd5e1; margin-bottom:10px; font-size:14px;">種植靈草，由指派的弟子提供產能。</p>
                 <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; margin-bottom:15px;">
                     <p style="margin:5px 0;">當前等級：<b>Lv.${wData.farm.level}</b></p>
                     <p style="margin:5px 0;">預期產出：<b style="color:#4ade80;">${farmYield} 素材</b> / 10分鐘</p>
@@ -149,8 +164,8 @@ export const UI_Sect = {
                     <div style="margin-bottom:15px;">
                         <span style="font-size:16px; font-weight:bold; color:white;">目前派遣弟子: <span style="color:#4ade80;">${summary.farm}</span> 名</span>
                     </div>
-                    <button class="btn-eco-action" style="width:100%; padding:12px;" onclick="document.getElementById('sect-modal-overlay').remove(); UI_Recruit.openModal();">
-                        前往招募堂指派弟子
+                    <button class="btn-eco-action" style="width:100%; padding:12px; font-weight:bold;" onclick="document.getElementById('sect-modal-overlay').remove(); UI_Sect.openDept('recruit');">
+                        前往【招募堂】指派工作
                     </button>
                 ` : `
                     <button class="btn-eco-action btn-buy" style="width:100%; padding:12px;" onclick="UI_Sect.buildIndustry('farm'); event.stopPropagation()">
@@ -168,7 +183,7 @@ export const UI_Sect = {
 
         return `
             <div style="text-align:center;">
-                <p style="color:#cbd5e1; margin-bottom:10px; font-size:14px;">開採礦脈，持續為宗門提供靈石。</p>
+                <p style="color:#cbd5e1; margin-bottom:10px; font-size:14px;">開採礦脈，由指派的弟子提供產能。</p>
                 <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; margin-bottom:15px;">
                     <p style="margin:5px 0;">當前等級：<b>Lv.${wData.mine.level}</b></p>
                     <p style="margin:5px 0;">預期產出：<b style="color:#fbbf24;">${mineYield} 靈石</b> / 分鐘</p>
@@ -177,8 +192,8 @@ export const UI_Sect = {
                     <div style="margin-bottom:15px;">
                         <span style="font-size:16px; font-weight:bold; color:white;">目前派遣弟子: <span style="color:#fbbf24;">${summary.mine}</span> 名</span>
                     </div>
-                    <button class="btn-eco-action" style="width:100%; padding:12px;" onclick="document.getElementById('sect-modal-overlay').remove(); UI_Recruit.openModal();">
-                        前往招募堂指派弟子
+                    <button class="btn-eco-action" style="width:100%; padding:12px; font-weight:bold;" onclick="document.getElementById('sect-modal-overlay').remove(); UI_Sect.openDept('recruit');">
+                        前往【招募堂】指派工作
                     </button>
                 ` : `
                     <button class="btn-eco-action btn-buy" style="width:100%; padding:12px;" onclick="UI_Sect.buildIndustry('mine'); event.stopPropagation()">
