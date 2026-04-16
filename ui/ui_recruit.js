@@ -1,15 +1,25 @@
 /**
- * V3.0 ui_recruit.js (招募堂專屬 UI)
- * 職責：掌管抽卡介面、天驕特效、弟子名冊與詳細面板 (V3.0 更新：防呆指派機制與境界顯化)
+ * V3.4 ui_recruit.js (招募堂專屬 UI - 天道自動指派版)
+ * 職責：掌管抽卡介面、天驕特效、弟子名冊、以及「走後門」自動入職邏輯
  * 位置：/ui/ui_recruit.js
  */
 
 import { Player } from '../entities/player.js';
 import { SectSystem } from '../systems/SectSystem.js';
 import { DATA_SECT } from '../data/data_sect.js';
+import { MessageCenter as Msg } from '../utils/MessageCenter.js';
+
+// 🌟 引入生產系統以進行自動化指派
+import { FarmSystem } from '../systems/FarmSystem.js';
+import { MineSystem } from '../systems/MineSystem.js';
 
 export const UI_Recruit = {
     
+    init() {
+        console.log("【UI_Recruit】招募堂大陣初始化，自動入職管線已就緒。");
+        window.UI_Recruit = this;
+    },
+
     /**
      * 開啟招募堂主介面
      */
@@ -23,14 +33,13 @@ export const UI_Recruit = {
      * 專屬彈窗渲染
      */
     showModal(title, contentHtml) {
-        // 如果有舊的就先清掉
         const existing = document.getElementById('recruit-modal-overlay');
         if (existing) existing.remove();
 
         const modalHtml = `
             <div id="recruit-modal-overlay" class="modal-overlay" onclick="this.remove()">
                 <div class="modal-box" style="max-width: 350px; background:var(--glass-dark); border:1px solid var(--card-border);" onclick="event.stopPropagation()">
-                    <div class="modal-header">
+                    <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
                         <h3 style="color:#fcd34d; margin:0; font-size:18px;">${title}</h3>
                         <button class="btn-modal-close" onclick="document.getElementById('recruit-modal-overlay').remove()">✕</button>
                     </div>
@@ -70,18 +79,16 @@ export const UI_Recruit = {
             </div>
             
             <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
-                <p style="font-size:13px; color:#cbd5e1; margin-bottom:10px;">弟子名冊</p>
+                <p style="font-size:13px; color:#cbd5e1; margin-bottom:10px;">宗門名冊 (點擊查看詳細)</p>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; max-height:300px; overflow-y:auto; padding-right:5px;">
         `;
 
         if (list.length === 0) {
-            html += `<div style="grid-column:1/-1; text-align:center; padding:20px; color:#64748b;">宗門空虛，尚無弟子。</div>`;
+            html += `<div style="grid-column:1/-1; text-align:center; padding:20px; color:#64748b;">宗門初創，尚無弟子。</div>`;
         } else {
             [...list].reverse().forEach(d => {
                 const rootData = DATA_SECT.ROOT_LEVELS[d.root];
                 let statusText = d.status === 'farm' ? '<span style="color:#4ade80;">[草園]</span>' : (d.status === 'mine' ? '<span style="color:#fbbf24;">[礦脈]</span>' : '<span style="color:#94a3b8;">[閒置]</span>');
-                
-                // 讀取等級防呆機制
                 const lvl = d.level || 1;
 
                 html += `
@@ -109,44 +116,20 @@ export const UI_Recruit = {
         if (!d) return;
 
         const rootData = DATA_SECT.ROOT_LEVELS[d.root];
-        
-        // 境界與修為計算 (防呆處理)
         const level = d.level || 1;
         const exp = d.exp || 0;
-        const maxExp = d.maxExp || (level * 100); // 簡單的升級曲線預設
+        const maxExp = d.maxExp || (level * 100);
         const expPercent = Math.min(100, Math.floor((exp / maxExp) * 100));
-
-        let expBarHtml = `
-            <div style="margin: 10px 0; padding: 0 10px;">
-                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
-                    <span style="color:#fbbf24; font-weight:bold;">境界: Lv.${level}</span>
-                    <span style="color:#94a3b8;">修為: ${exp} / ${maxExp}</span>
-                </div>
-                <div style="width:100%; height:8px; background:rgba(0,0,0,0.5); border-radius:4px; overflow:hidden;">
-                    <div style="width:${expPercent}%; height:100%; background:linear-gradient(90deg, #3b82f6, #60a5fa); transition: width 0.3s;"></div>
-                </div>
-            </div>
-        `;
 
         let traitsHtml = d.traits.map(tKey => {
             let tData = DATA_SECT.TRAITS[tKey];
+            if(!tData) return '';
             let tColor = tData.type === 'buff' ? '#4ade80' : (tData.type === 'debuff' ? '#ef4444' : (tData.type === 'magic' ? '#c084fc' : '#fcd34d'));
             return `<div style="background:rgba(255,255,255,0.05); padding:6px; border-radius:4px; margin-bottom:5px;">
                         <span style="color:${tColor}; font-weight:bold; font-size:13px;">[${tKey}]</span> 
                         <span style="font-size:12px; color:#cbd5e1;">${tData.desc}</span>
                     </div>`;
         }).join('');
-
-        let statsHtml = `
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px; font-size:13px; margin:10px 0; background:rgba(0,0,0,0.3); padding:10px; border-radius:6px;">
-                <div>⚔️ 戰力: <b style="color:white;">${d.stats['戰力']}</b></div>
-                <div>🧠 悟性: <b style="color:white;">${d.stats['悟性']}</b></div>
-                <div>✨ 機緣: <b style="color:white;">${d.stats['機緣']}</b></div>
-                <div>❤️ 體質: <b style="color:white;">${d.stats['體質']}</b></div>
-                <div>🧘 基礎修為: <b style="color:white;">${d.stats['修為']}</b></div>
-                <div>🔨 匠心: <b style="color:white;">${d.stats['匠心']}</b></div>
-            </div>
-        `;
 
         let modalHtml = `
             <div id="disciple-detail-modal" class="modal-overlay" style="z-index:10001;" onclick="this.remove()">
@@ -156,22 +139,37 @@ export const UI_Recruit = {
                         <div style="font-size:14px; color:${rootData.color}; margin-top:5px;">${rootData.label}</div>
                     </div>
                     
-                    ${expBarHtml}
-                    ${statsHtml}
+                    <div style="margin: 10px 0; padding: 0 10px;">
+                        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+                            <span style="color:#fbbf24; font-weight:bold;">境界: Lv.${level}</span>
+                            <span style="color:#94a3b8;">修為: ${exp} / ${maxExp}</span>
+                        </div>
+                        <div style="width:100%; height:8px; background:rgba(0,0,0,0.5); border-radius:4px; overflow:hidden;">
+                            <div style="width:${expPercent}%; height:100%; background:linear-gradient(90deg, #3b82f6, #60a5fa); transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px; font-size:12px; margin:10px 0; background:rgba(0,0,0,0.3); padding:8px; border-radius:6px;">
+                        <div>⚔️ 戰力: <b style="color:white;">${d.stats['戰力']}</b></div>
+                        <div>🧠 悟性: <b style="color:white;">${d.stats['悟性']}</b></div>
+                        <div>✨ 機緣: <b style="color:white;">${d.stats['機緣']}</b></div>
+                        <div>❤️ 體質: <b style="color:white;">${d.stats['體質']}</b></div>
+                        <div>🔨 匠心: <b style="color:white;">${d.stats['匠心']}</b></div>
+                    </div>
                     
-                    <div style="margin-bottom:15px; max-height:100px; overflow-y:auto;">
+                    <div style="margin-bottom:15px; max-height:120px; overflow-y:auto;">
                         <div style="font-size:12px; color:#94a3b8; margin-bottom:5px;">本命詞條</div>
                         ${traitsHtml}
                     </div>
 
                     <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
-                        <div style="font-size:12px; color:#94a3b8; margin-bottom:5px;">指派任務</div>
+                        <div style="font-size:12px; color:#94a3b8; margin-bottom:5px;">職務指派</div>
                         <div style="display:flex; gap:5px; margin-bottom:10px;">
                             <button style="flex:1; padding:8px; border-radius:5px; border:none; background:${d.status==='idle'?'#94a3b8':'#334155'}; color:white;" onclick="UI_Recruit.assignDiscipleJob('${d.id}', 'idle')">閒置</button>
                             <button style="flex:1; padding:8px; border-radius:5px; border:none; background:${d.status==='farm'?'#4ade80':'#334155'}; color:white;" onclick="UI_Recruit.assignDiscipleJob('${d.id}', 'farm')">仙草</button>
                             <button style="flex:1; padding:8px; border-radius:5px; border:none; background:${d.status==='mine'?'#fbbf24':'#334155'}; color:white;" onclick="UI_Recruit.assignDiscipleJob('${d.id}', 'mine')">靈礦</button>
                         </div>
-                        <button style="width:100%; padding:8px; border-radius:5px; border:1px solid #ef4444; background:transparent; color:#ef4444; font-weight:bold;" onclick="UI_Recruit.doDismiss('${d.id}')">
+                        <button style="width:100%; padding:8px; border-radius:5px; border:1px solid #ef4444; background:transparent; color:#ef4444; font-weight:bold; cursor:pointer;" onclick="UI_Recruit.doDismiss('${d.id}')">
                             逐出宗門 (遣散)
                         </button>
                     </div>
@@ -182,116 +180,145 @@ export const UI_Recruit = {
     },
 
     /**
-     * 動作層：執行抽卡並播放特效
+     * 動作層：執行招募，並啟動「自動指派」後門邏輯
      */
     doRecruit(isTen) {
         let results = SectSystem.recruit(isTen);
         if (results && results.length > 0) {
+            // 🌟 核心：針對每一位新弟子執行自動指派
+            results.forEach(d => {
+                this.autoAssignBackdoor(d);
+            });
+            
             this.playGachaAnimation(results);
         }
     },
 
     /**
-     * 動作層：指派工作 (V3.0 加入嚴格防呆機制)
+     * 🌟 V3.4 核心：「走後門」自動指派邏輯
+     * 根據靈根資質與目前部門空位，自動將新弟子送往勞動現場
+     */
+    autoAssignBackdoor(disciple) {
+        // 1. 優先判定仙草園 (水、木、天、仙靈根)
+        const farmLevel = Player.data.world.farm.level || 1;
+        const maxFarmSlots = 2 + farmLevel;
+        const currentFarmWorkers = Player.data.sect.disciples.filter(x => x.status === 'farm').length;
+
+        if (currentFarmWorkers < maxFarmSlots && FarmSystem && FarmSystem.canWork(disciple)) {
+            disciple.status = 'farm';
+            Msg.log(`🌿 內定：【${disciple.name}】資質親和草木，已直接送往仙草園。`, "system");
+            return;
+        }
+
+        // 2. 其次判定靈礦脈 (地、金、天、仙靈根)
+        const mineLevel = Player.data.world.mine.level || 1;
+        const maxMineSlots = 2 + mineLevel;
+        const currentMineWorkers = Player.data.sect.disciples.filter(x => x.status === 'mine').length;
+
+        if (currentMineWorkers < maxMineSlots && MineSystem && MineSystem.canWork(disciple)) {
+            disciple.status = 'mine';
+            Msg.log(`⛏️ 內定：看【${disciple.name}】骨骼精奇，已直接領往下礦。`, "system");
+            return;
+        }
+
+        // 3. 若無合適位置或已滿，則保持閒置
+        disciple.status = 'idle';
+    },
+
+    /**
+     * 動作層：手動指派工作 (加強防呆)
      */
     assignDiscipleJob(id, job) {
         let d = Player.data.sect.disciples.find(x => x.id === id);
         if (!d) return;
 
-        // 1. 仙草園防呆判定
+        // 仙草園防呆
         if (job === 'farm') {
-            // 判定靈根資質 (確保 FarmSystem 存在)
-            if (window.FarmSystem && !window.FarmSystem.canWork(d)) {
-                if(window.Msg) Msg.log(`❌【${d.name}】不具備感應草木的靈根，無法指派至仙草園！`, "system");
-                return;
+            if (FarmSystem && !FarmSystem.canWork(d)) {
+                return Msg.log(`❌【${d.name}】不具備草木靈根，指派失敗！`, "system");
             }
-
-            // 判定坑位上限
-            const farmLevel = Player.data.world.farm.level || 0;
-            const maxSlots = 2 + farmLevel;
-            const currentWorkers = Player.data.sect.disciples.filter(x => x.status === 'farm').length;
-
-            if (currentWorkers >= maxSlots) {
-                if(window.Msg) Msg.log(`❌ 仙草園坑位已滿 (${currentWorkers}/${maxSlots})，請先升級園區！`, "system");
-                return;
+            const farmLevel = Player.data.world.farm.level || 1;
+            const max = 2 + farmLevel;
+            const current = Player.data.sect.disciples.filter(x => x.status === 'farm').length;
+            if (current >= max && d.status !== 'farm') {
+                return Msg.log(`❌ 仙草園坑位已滿 (${current}/${max})！`, "system");
             }
         }
 
-        // 這裡可預留未來鐵礦部的防呆判定
-        // if (job === 'mine') { ... }
+        // 靈礦脈防呆
+        if (job === 'mine') {
+            if (MineSystem && !MineSystem.canWork(d)) {
+                return Msg.log(`❌【${d.name}】資質不符，無法下礦！`, "system");
+            }
+            const mineLevel = Player.data.world.mine.level || 1;
+            const max = 2 + mineLevel;
+            const current = Player.data.sect.disciples.filter(x => x.status === 'mine').length;
+            if (current >= max && d.status !== 'mine') {
+                return Msg.log(`❌ 靈礦脈坑位已滿 (${current}/${max})！`, "system");
+            }
+        }
 
-        // 判定通過，執行正式指派
+        // 執行指派
         SectSystem.assignJob(id, job);
         
-        // 更新世界各部門的人數數據
+        // 同步存檔
         let sum = SectSystem.getSummary();
         Player.data.world.farm.assigned = sum.farm;
         Player.data.world.mine.assigned = sum.mine;
         Player.save();
 
-        if(window.Msg) Msg.log(`已指派【${d.name}】前往：${job === 'farm' ? '仙草園' : (job === 'mine' ? '靈礦脈' : '閒置')}`, "system");
+        Msg.log(`✅ 已將【${d.name}】派往：${job === 'farm' ? '仙草園' : (job === 'mine' ? '靈礦脈' : '閒置中')}`, "system");
 
-        // 關閉詳細面板並刷新招募主介面
         document.getElementById('disciple-detail-modal').remove();
         this.openModal(); 
     },
 
-    /**
-     * 動作層：遣散弟子
-     */
     doDismiss(id) {
         if (confirm("確定要將此弟子逐出宗門嗎？此舉不可逆！")) {
             SectSystem.dismissDisciple(id);
-            
             let sum = SectSystem.getSummary();
             Player.data.world.farm.assigned = sum.farm;
             Player.data.world.mine.assigned = sum.mine;
             Player.save();
-
             document.getElementById('disciple-detail-modal').remove();
             this.openModal();
         }
     },
 
-    /**
-     * 抽卡特效演出
-     */
     playGachaAnimation(results) {
         const highestRarity = Math.max(...results.map(d => DATA_SECT.ROOT_LEVELS[d.root].rarity));
-        
-        let overlayColor = "rgba(255,255,255,0.8)";
+        let overlayColor = "rgba(0,0,0,0.85)";
         let textMsg = "靈光乍現";
         let textColor = "#3b82f6";
 
         if (highestRarity >= 4) { 
-            overlayColor = "rgba(251,191,36, 0.95)";
+            overlayColor = "rgba(40, 20, 0, 0.95)";
             textMsg = highestRarity === 5 ? "仙姿佚貌" : "天驕降世";
-            textColor = "#fff";
+            textColor = "#fbbf24";
         } else if (highestRarity === 3) { 
-            overlayColor = "rgba(168,85,247, 0.9)";
+            overlayColor = "rgba(20, 0, 40, 0.9)";
             textMsg = "紫氣東來";
-            textColor = "#fff";
+            textColor = "#a855f7";
         }
 
         const animHtml = `
-            <div id="gacha-anim-layer" style="position:fixed; top:0; left:0; width:100%; height:100%; background:${overlayColor}; z-index:20000; display:flex; flex-direction:column; justify-content:center; align-items:center; transition: opacity 0.3s;">
-                <h1 style="font-size:48px; color:${textColor}; text-shadow: 0 0 20px rgba(0,0,0,0.5); letter-spacing:10px; animation: popIn 0.5s ease-out;">${textMsg}</h1>
-                <p style="color:#333; margin-top:20px; font-weight:bold;">點擊螢幕查看結果</p>
+            <div id="gacha-anim-layer" style="position:fixed; top:0; left:0; width:100%; height:100%; background:${overlayColor}; z-index:20000; display:flex; flex-direction:column; justify-content:center; align-items:center; cursor:pointer;">
+                <h1 style="font-size:48px; color:${textColor}; text-shadow: 0 0 20px ${textColor}; letter-spacing:10px; animation: popIn 0.5s ease-out;">${textMsg}</h1>
+                <p style="color:#fff; margin-top:20px; font-weight:bold; opacity:0.7;">點擊螢幕 查看名冊</p>
             </div>
             <style>
                 @keyframes popIn {
                     0% { transform: scale(0.1); opacity: 0; }
-                    60% { transform: scale(1.2); opacity: 1; }
+                    60% { transform: scale(1.1); opacity: 1; }
                     100% { transform: scale(1); }
                 }
             </style>
         `;
 
         document.body.insertAdjacentHTML('beforeend', animHtml);
-
         document.getElementById('gacha-anim-layer').onclick = () => {
             document.getElementById('gacha-anim-layer').remove();
-            UI_Recruit.openModal();
+            this.openModal();
         };
     }
 };
