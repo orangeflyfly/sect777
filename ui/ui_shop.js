@@ -1,5 +1,5 @@
 /**
- * V3.3 ui_shop.js (萬物樓 - 終極防呆交易版)
+ * V3.3.1 ui_shop.js (萬物樓 - 終極防呆交易版 + 分頁修復)
  * 職責：坊市交易介面渲染、自動補發 UUID、智能出售重複殘卷、保證交易絕對生效
  * 位置：/ui/ui_shop.js
  */
@@ -94,6 +94,12 @@ export const UI_Shop = {
                 ${this.currentTab === 'buy' ? this.renderBuyList() : this.renderSellList()}
             </div>
         `;
+    },
+
+    // 🟢 補回被誤刪的切換分頁法陣
+    setTab(tab) {
+        this.currentTab = tab;
+        this.renderShop();
     },
 
     renderBuyList() {
