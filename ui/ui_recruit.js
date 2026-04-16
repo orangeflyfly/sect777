@@ -1,6 +1,6 @@
 /**
  * V3.0 ui_recruit.js (招募堂專屬 UI)
- * 職責：掌管抽卡介面、天驕特效、弟子名冊與詳細面板
+ * 職責：掌管抽卡介面、天驕特效、弟子名冊與詳細面板 (V3.0 更新：防呆指派機制與境界顯化)
  * 位置：/ui/ui_recruit.js
  */
 
@@ -81,10 +81,13 @@ export const UI_Recruit = {
                 const rootData = DATA_SECT.ROOT_LEVELS[d.root];
                 let statusText = d.status === 'farm' ? '<span style="color:#4ade80;">[草園]</span>' : (d.status === 'mine' ? '<span style="color:#fbbf24;">[礦脈]</span>' : '<span style="color:#94a3b8;">[閒置]</span>');
                 
+                // 讀取等級防呆機制
+                const lvl = d.level || 1;
+
                 html += `
                     <div style="background:rgba(0,0,0,0.5); border-left:4px solid ${rootData.color}; border-radius:6px; padding:8px; cursor:pointer; display:flex; flex-direction:column; justify-content:center;"
                          onclick="UI_Recruit.showDiscipleDetail('${d.id}')">
-                        <div style="font-size:14px; font-weight:bold; color:white; margin-bottom:4px;">${d.name}</div>
+                        <div style="font-size:14px; font-weight:bold; color:white; margin-bottom:4px;">Lv.${lvl} ${d.name}</div>
                         <div style="font-size:12px; display:flex; justify-content:space-between;">
                             <span style="color:${rootData.color};">${rootData.label.split('/')[0]}</span>
                             ${statusText}
@@ -107,6 +110,24 @@ export const UI_Recruit = {
 
         const rootData = DATA_SECT.ROOT_LEVELS[d.root];
         
+        // 境界與修為計算 (防呆處理)
+        const level = d.level || 1;
+        const exp = d.exp || 0;
+        const maxExp = d.maxExp || (level * 100); // 簡單的升級曲線預設
+        const expPercent = Math.min(100, Math.floor((exp / maxExp) * 100));
+
+        let expBarHtml = `
+            <div style="margin: 10px 0; padding: 0 10px;">
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+                    <span style="color:#fbbf24; font-weight:bold;">境界: Lv.${level}</span>
+                    <span style="color:#94a3b8;">修為: ${exp} / ${maxExp}</span>
+                </div>
+                <div style="width:100%; height:8px; background:rgba(0,0,0,0.5); border-radius:4px; overflow:hidden;">
+                    <div style="width:${expPercent}%; height:100%; background:linear-gradient(90deg, #3b82f6, #60a5fa); transition: width 0.3s;"></div>
+                </div>
+            </div>
+        `;
+
         let traitsHtml = d.traits.map(tKey => {
             let tData = DATA_SECT.TRAITS[tKey];
             let tColor = tData.type === 'buff' ? '#4ade80' : (tData.type === 'debuff' ? '#ef4444' : (tData.type === 'magic' ? '#c084fc' : '#fcd34d'));
@@ -122,7 +143,7 @@ export const UI_Recruit = {
                 <div>🧠 悟性: <b style="color:white;">${d.stats['悟性']}</b></div>
                 <div>✨ 機緣: <b style="color:white;">${d.stats['機緣']}</b></div>
                 <div>❤️ 體質: <b style="color:white;">${d.stats['體質']}</b></div>
-                <div>🧘 修為: <b style="color:white;">${d.stats['修為']}</b></div>
+                <div>🧘 基礎修為: <b style="color:white;">${d.stats['修為']}</b></div>
                 <div>🔨 匠心: <b style="color:white;">${d.stats['匠心']}</b></div>
             </div>
         `;
@@ -135,6 +156,7 @@ export const UI_Recruit = {
                         <div style="font-size:14px; color:${rootData.color}; margin-top:5px;">${rootData.label}</div>
                     </div>
                     
+                    ${expBarHtml}
                     ${statsHtml}
                     
                     <div style="margin-bottom:15px; max-height:100px; overflow-y:auto;">
@@ -170,18 +192,48 @@ export const UI_Recruit = {
     },
 
     /**
-     * 動作層：指派工作
+     * 動作層：指派工作 (V3.0 加入嚴格防呆機制)
      */
     assignDiscipleJob(id, job) {
+        let d = Player.data.sect.disciples.find(x => x.id === id);
+        if (!d) return;
+
+        // 1. 仙草園防呆判定
+        if (job === 'farm') {
+            // 判定靈根資質 (確保 FarmSystem 存在)
+            if (window.FarmSystem && !window.FarmSystem.canWork(d)) {
+                if(window.Msg) Msg.log(`❌【${d.name}】不具備感應草木的靈根，無法指派至仙草園！`, "system");
+                return;
+            }
+
+            // 判定坑位上限
+            const farmLevel = Player.data.world.farm.level || 0;
+            const maxSlots = 2 + farmLevel;
+            const currentWorkers = Player.data.sect.disciples.filter(x => x.status === 'farm').length;
+
+            if (currentWorkers >= maxSlots) {
+                if(window.Msg) Msg.log(`❌ 仙草園坑位已滿 (${currentWorkers}/${maxSlots})，請先升級園區！`, "system");
+                return;
+            }
+        }
+
+        // 這裡可預留未來鐵礦部的防呆判定
+        // if (job === 'mine') { ... }
+
+        // 判定通過，執行正式指派
         SectSystem.assignJob(id, job);
         
+        // 更新世界各部門的人數數據
         let sum = SectSystem.getSummary();
         Player.data.world.farm.assigned = sum.farm;
         Player.data.world.mine.assigned = sum.mine;
         Player.save();
 
+        if(window.Msg) Msg.log(`已指派【${d.name}】前往：${job === 'farm' ? '仙草園' : (job === 'mine' ? '靈礦脈' : '閒置')}`, "system");
+
+        // 關閉詳細面板並刷新招募主介面
         document.getElementById('disciple-detail-modal').remove();
-        this.openModal(); // 刷新招募堂介面
+        this.openModal(); 
     },
 
     /**
