@@ -1,34 +1,31 @@
 /**
- * V3.4 FarmSystem.js (萬象森羅 - 終極產能大腦)
- * 職責：管理仙草園門檻、精算【洞府等級+個人屬性+團隊光環+外部天象】產出
- * 位置：/systems/FarmSystem.js
+ * V3.4 MineSystem.js (萬象森羅 - 終極產能大腦)
+ * 職責：管理鐵礦部、精算【礦脈等級+屬性+天象倍率】產出、處理亡靈與尋脈詞條
+ * 位置：/systems/MineSystem.js
  */
 
 import { Player } from '../entities/player.js';
 import { DATA_SECT } from '../data/data_sect.js';
 import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 
-export const FarmSystem = {
-    // 🟢 仙草園專屬靈根門檻
-    ALLOWED_ROOTS: ['水', '木', '天', '仙'],
-
+export const MineSystem = {
     init() {
-        console.log("%c【FarmSystem】仙草園大陣啟動，對接全模組共鳴...", "color: #4ade80; font-weight: bold;");
-        window.FarmSystem = this;
+        console.log("%c【MineSystem】地脈玄鐵感應中，對接萬象天道...", "color: #fbbf24; font-weight: bold;");
+        window.MineSystem = this;
 
         if (!Player.data.materials) {
             Player.data.materials = { herb: 0, ore: 0 };
         }
+        if (Player.data.materials.ore === undefined) {
+            Player.data.materials.ore = 0;
+        }
     },
 
     /**
-     * 判定弟子是否具備進入仙草園的資格
+     * 判定弟子是否具備下礦資格
      */
     canWork(disciple) {
-        // 1. 靈根檢測
-        if (!this.ALLOWED_ROOTS.includes(disciple.root)) return false;
-        
-        // 2. 詞條攔截：天生反骨或拒絕勞動的人
+        // 1. 詞條攔截：天生反骨或拒絕勞動的人
         let hasRefuseTrait = disciple.traits.some(tKey => {
             let effect = DATA_SECT.TRAITS[tKey]?.effect;
             return effect && (effect.refuse_work || effect.reverse_work);
@@ -39,143 +36,115 @@ export const FarmSystem = {
     },
 
     /**
-     * 精算單一弟子在仙草園的「單次產能」
+     * 精算單一弟子在礦脈的「單次產能」
+     * 影響因子：體質(基礎)、匠心(深度)、機緣(尋寶)、礦脈等級(環境)、詞條(聯動)
      */
-    getDiscipleYield(disciple, teamContext = { workerCount: 1, buffOthersMult: 1.0, annoyOthersMult: 1.0 }) {
-        // --- [1] 基礎產能計算 (體質與匠心影響) ---
+    getDiscipleYield(disciple) {
+        // --- [1] 基礎產能計算 (體質決定耐力，匠心決定採礦精準度) ---
         const con = disciple.stats['體質'] || 10;
         const craft = disciple.stats['匠心'] || 10;
         const luck = disciple.stats['機緣'] || 10;
         
-        let baseYield = 5 + (con * 0.5 + craft * 0.5) * 0.2; 
+        // 基礎 = (體質*0.6 + 匠心*0.4) 的 25% 加上底值 (礦工比藥農辛苦，底值略低但成長高)
+        let baseYield = 3 + (con * 0.6 + craft * 0.4) * 0.25; 
         
-        // --- [2] 洞府等級聯動 ---
-        const farmLevel = (Player.data.world && Player.data.world.farm) ? Player.data.world.farm.level : 1;
-        let levelMult = 1 + (Math.max(0, farmLevel - 1) * 0.2);
+        // --- [2] 礦脈等級聯動 (讀取洞府建築等級) ---
+        const mineLevel = (Player.data.world && Player.data.world.mine) ? Player.data.world.mine.level : 1;
+        let levelMult = 1 + (Math.max(0, mineLevel - 1) * 0.25); // 礦脈每級加成 25%
 
         let multiplier = 1.0 * levelMult;
-        let expGain = 2; 
+        let expGain = 3; // 挖礦勞損體力，基礎修為比種田高 1 點
 
         // --- [3] 靈根天賦加成 ---
-        if (disciple.root === '天') multiplier *= 1.3;
-        if (disciple.root === '仙') multiplier *= 1.8;
+        if (disciple.root === '地') multiplier *= 1.2; // 地靈根天生親和岩石
+        if (disciple.root === '天') multiplier *= 1.4;
+        if (disciple.root === '仙') multiplier *= 2.0;
 
         // --- [4] 詞條效果循環掃描 ---
         let isLazy = false;
-        let explode = false;
-        let isBuffer = false;
-        let isAnnoying = false;
-        let critChance = 0.05 + (luck / 1000); 
+        let isScary = false;
+        let critChance = 0.03 + (luck / 1200); // 尋獲礦髓的機率
 
         disciple.traits.forEach(tKey => {
             let trait = DATA_SECT.TRAITS[tKey];
             if (!trait || !trait.effect) return;
             let effect = trait.effect;
 
-            if (effect.buff_others) isBuffer = true;
-            if (effect.annoy_others) isAnnoying = true;
-            if (effect.farm_mult) multiplier *= effect.farm_mult;
+            // 挖礦專屬
+            if (effect.mine_mult) multiplier *= effect.mine_mult;
+            // 通用產能
             if (effect.prod_mult !== undefined) multiplier *= effect.prod_mult; 
+            // 修為加成
             if (effect.exp_mult) expGain *= effect.exp_mult;
 
-            if (effect.loner_buff && teamContext.workerCount === 1) multiplier *= effect.loner_buff;
-            if (effect.crowd_debuff && teamContext.workerCount > 1) multiplier *= effect.crowd_debuff;
-
+            // 負面與特殊狀態
             if (effect.lazy_chance && Math.random() < effect.lazy_chance) isLazy = true;
-            if (effect.explode_chance && Math.random() < effect.explode_chance) explode = true;
+            if (effect.scare_workers) isScary = true;
         });
 
-        // --- [5] 團隊光環影響 ---
-        if (!isBuffer) multiplier *= teamContext.buffOthersMult;
-        if (!isAnnoying) multiplier *= teamContext.annoyOthersMult;
+        // --- [5] 事件判定與最終結果 ---
+        if (isLazy) return { yield: 0, exp: 0, log: `【${disciple.name}】在礦道深處偷懶睡覺，弄得灰頭土臉卻沒挖到礦。` };
 
-        // --- [6] 事件判定與最終結果 ---
-        if (isLazy) return { yield: 0, exp: 0, log: `【${disciple.name}】在仙草園偷睡覺，一株草都沒拔...` };
-        
-        if (explode) {
-            return { 
-                yield: 0, 
-                exp: Math.floor(expGain * 0.5), 
-                log: `💥 慘劇！【${disciple.name}】採集時靈力失控，把仙草煉炸了！` 
-            };
+        // 判定：亡靈法師特效
+        let logMsg = null;
+        if (isScary && Math.random() < 0.15) {
+            logMsg = `💀 【${disciple.name}】召喚骷髏礦工幫忙，嚇得旁邊的散修驚叫連連！`;
         }
 
+        // 尋礦暴擊判定 (發現礦髓)
         let finalYield = baseYield * multiplier;
-        let isCrit = Math.random() < critChance;
-        if (isCrit) finalYield *= 2;
+        if (Math.random() < critChance) {
+            finalYield *= 2.5; // 礦髓暴擊倍率極高
+            logMsg = `💎 【${disciple.name}】挖掘到了一塊極品玄鐵礦髓，產量大爆發！`;
+        }
 
         return {
             yield: Math.floor(finalYield),
             exp: Math.floor(expGain),
-            log: isCrit ? `✨【${disciple.name}】機緣爆發，採集到了雙倍的仙草精華！` : null
+            log: logMsg
         };
     },
 
     /**
-     * 🌟 V3.4 重點：結算整個仙草園產出
-     * @param {number} externalMult - 由 Core 傳入的環境事件倍率 (預設 1.0)
+     * 🌟 V3.4 核心：結算整個靈礦脈產出
+     * @param {number} externalMult - 由 Core 傳入的環境事件倍率 (例如：地脈雷動)
      */
     processTick(externalMult = 1.0) {
         if (!Player.data || !Player.data.sect || !Player.data.sect.disciples) return 0;
 
-        let totalHerb = 0;
-        let farmWorkers = Player.data.sect.disciples.filter(d => d.status === 'farm');
-        let workerCount = farmWorkers.length;
+        let totalOre = 0;
+        let mineWorkers = Player.data.sect.disciples.filter(d => d.status === 'mine');
 
-        if (workerCount === 0) return 0;
+        if (mineWorkers.length === 0) return 0;
 
-        // --- 團隊環境掃描 ---
-        let teamBuffMult = 1.0;
-        let teamAnnoyMult = 1.0;
-        let bufferNames = [];
-
-        farmWorkers.forEach(d => {
-            d.traits.forEach(tKey => {
-                let effect = DATA_SECT.TRAITS[tKey]?.effect;
-                if (effect) {
-                    if (effect.buff_others) {
-                        teamBuffMult *= effect.buff_others;
-                        if (!bufferNames.includes(d.name)) bufferNames.push(d.name);
-                    }
-                    if (effect.annoy_others) teamAnnoyMult *= 0.9; 
-                }
-            });
-        });
-
-        if (bufferNames.length > 0 && Math.random() < 0.2) {
-            Msg.log(`🗣️ 【${bufferNames.join('、')}】正在仙草園畫大餅，眾弟子效率提升！`, "system");
-        }
-
-        let teamContext = { workerCount, buffOthersMult: teamBuffMult, annoyOthersMult: teamAnnoyMult };
-
-        // --- 計算個人產出並套用外部倍率 ---
-        farmWorkers.forEach(d => {
-            let result = this.getDiscipleYield(d, teamContext);
+        mineWorkers.forEach(d => {
+            let result = this.getDiscipleYield(d);
             
-            // 🌟 核心修正：在此乘上由天道(Core)傳入的外部倍率
+            // 🌟 套用外部天象倍率
             let actualYield = Math.floor(result.yield * externalMult);
-            totalHerb += actualYield;
+            totalOre += actualYield;
             
-            // 修為反哺
+            // 勞動即修行，經驗反哺
             if (result.exp > 0 && window.SectSystem) {
                 window.SectSystem.gainExp(d.id, result.exp);
             }
 
+            // 特殊事件播報
             if (result.log) Msg.log(result.log, "system");
         });
 
-        // --- 資源入庫與自動保存 ---
-        if (totalHerb > 0) {
+        // 🌟 資源入庫與自動保存
+        if (totalOre > 0) {
             if (!Player.data.materials) Player.data.materials = { herb: 0, ore: 0 };
-            Player.data.materials.herb = (Player.data.materials.herb || 0) + totalHerb;
+            Player.data.materials.ore = (Player.data.materials.ore || 0) + totalOre;
             
             if (Player.save) Player.save();
             else if (window.Player && window.Player.save) window.Player.save();
         }
 
-        // 回傳真實入庫的總數，讓 Core 播報時數字一致
-        return totalHerb; 
+        // 回傳真實入庫數字給 Core
+        return totalOre; 
     }
 };
 
-window.FarmSystem = FarmSystem;
+window.MineSystem = MineSystem;
