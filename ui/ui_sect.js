@@ -1,11 +1,13 @@
 /**
- * V2.3 ui_sect.js (架構瘦身 - 絕對無損搬遷版)
- * 職責：管理宗門介面、注入 HTML 結構、處理部門點擊、彈窗渲染與基礎升級調度
+ * V3.0 ui_sect.js (天驕降世 - 宗門人事重構版)
+ * 職責：管理宗門介面、注入 HTML 結構、處理部門點擊、彈窗渲染與全新抽卡特效
  * 位置：/ui/ui_sect.js
  */
 
 import { Player } from '../entities/player.js';
 import { MessageCenter as Msg } from '../utils/MessageCenter.js';
+import { SectSystem } from '../systems/SectSystem.js';
+import { DATA_SECT } from '../data/data_sect.js';
 
 export const UI_Sect = {
     // 🟢 宗門庫房專屬商品清單
@@ -19,28 +21,26 @@ export const UI_Sect = {
     init() {
         console.log("【UI_Sect】宗門大陣初始化，注入總部場景...");
         
-        // 🟢 注入原本在 index.html 的原始 HTML 片段 (保證與道友原版 100% 一致)
         this.renderLayout();
 
-        // 確保玩家數據有宗門世界欄位
         if (Player.data && !Player.data.world) {
             Player.data.world = {
                 arrayLevel: 1, lastCollect: Date.now(),
                 workers: 0, farm: { level: 0, assigned: 0 }, mine: { level: 0, assigned: 0 }
             };
         }
-        // 🟢 預備：新增宗門貢獻點 (Sect Points)
         if(Player.data && Player.data.sectPoints === undefined) {
             Player.data.sectPoints = 0; 
         }
+        
+        // 確保 SectSystem 也初始化
+        if(SectSystem) SectSystem.init();
     },
 
-    // 🟢 瘦身核心：將道友 index.html 的 page-sect 內容完整搬遷至此
     renderLayout() {
         const container = document.getElementById('page-sect');
         if (!container) return;
 
-        // 完全保留道友原本在 HTML 裡的標籤、樣式與九宮格佈局
         container.innerHTML = `
             <div class="sect-header">
                 <h2 class="sect-title">青雲宗門總部</h2>
@@ -76,11 +76,7 @@ export const UI_Sect = {
         `;
     },
 
-    /**
-     * 開啟指定部門視窗
-     */
     openDept(deptId) {
-        // 在打開前確保數據初始化 (避免 init 未執行的情況)
         if (Player.data && !Player.data.world) {
             this.init();
         }
@@ -98,7 +94,7 @@ export const UI_Sect = {
                 contentHtml = this.renderIron();
                 break;
             case 'recruit':
-                title = "👥 招募堂";
+                title = "👥 人事招募堂";
                 contentHtml = this.renderRecruit();
                 break;
             case 'bounty':
@@ -106,7 +102,6 @@ export const UI_Sect = {
                 contentHtml = this.renderBounty();
                 break;
             case 'vault':
-                // 🟢 解封：宗門庫房正式上線
                 title = "📦 宗門庫房";
                 contentHtml = this.renderVault();
                 break;
@@ -115,9 +110,6 @@ export const UI_Sect = {
         this.showModal(title, contentHtml);
     },
 
-    /**
-     * 渲染共用彈窗底層
-     */
     showModal(title, contentHtml) {
         const existing = document.getElementById('sect-modal-overlay');
         if (existing) existing.remove();
@@ -139,12 +131,12 @@ export const UI_Sect = {
     },
 
     // ==========================================
-    // 內部渲染邏輯 (絕對保留道友原始拼接方式)
+    // 仙草與靈礦 (同步新版弟子數據)
     // ==========================================
     renderHerb() {
         const wData = Player.data.world;
-        const farmYield = wData.farm.assigned * (wData.farm.level || 1);
-        const idleWorkers = wData.workers - wData.farm.assigned - wData.mine.assigned;
+        const summary = SectSystem.getSummary();
+        const farmYield = summary.farm * (wData.farm.level || 1) * 2; // 基礎產能預覽
 
         return `
             <div style="text-align:center;">
@@ -154,12 +146,12 @@ export const UI_Sect = {
                     <p style="margin:5px 0;">預期產出：<b style="color:#4ade80;">${farmYield} 素材</b> / 10分鐘</p>
                 </div>
                 ${wData.farm.level > 0 ? `
-                    <div class="worker-control">
-                        <button onclick="UI_Sect.assignWorker('farm', -1); event.stopPropagation()">-</button>
-                        <span>派遣弟子: ${wData.farm.assigned}</span>
-                        <button onclick="UI_Sect.assignWorker('farm', 1); event.stopPropagation()">+</button>
+                    <div style="margin-bottom:15px;">
+                        <span style="font-size:16px; font-weight:bold; color:white;">目前派遣弟子: <span style="color:#4ade80;">${summary.farm}</span> 名</span>
                     </div>
-                    <p style="font-size:12px; color:#94a3b8; margin-top:10px;">閒置弟子：${idleWorkers}</p>
+                    <button class="btn-eco-action" style="width:100%; padding:12px;" onclick="document.getElementById('sect-modal-overlay').remove(); UI_Sect.openDept('recruit');">
+                        前往招募堂指派弟子
+                    </button>
                 ` : `
                     <button class="btn-eco-action btn-buy" style="width:100%; padding:12px;" onclick="UI_Sect.buildIndustry('farm'); event.stopPropagation()">
                         花費 1000 靈石 開闢仙草園
@@ -171,8 +163,8 @@ export const UI_Sect = {
 
     renderIron() {
         const wData = Player.data.world;
-        const mineYield = wData.mine.assigned * (wData.mine.level || 1) * 2;
-        const idleWorkers = wData.workers - wData.farm.assigned - wData.mine.assigned;
+        const summary = SectSystem.getSummary();
+        const mineYield = summary.mine * (wData.mine.level || 1) * 5;
 
         return `
             <div style="text-align:center;">
@@ -182,12 +174,12 @@ export const UI_Sect = {
                     <p style="margin:5px 0;">預期產出：<b style="color:#fbbf24;">${mineYield} 靈石</b> / 分鐘</p>
                 </div>
                 ${wData.mine.level > 0 ? `
-                    <div class="worker-control">
-                        <button onclick="UI_Sect.assignWorker('mine', -1); event.stopPropagation()">-</button>
-                        <span>派遣弟子: ${wData.mine.assigned}</span>
-                        <button onclick="UI_Sect.assignWorker('mine', 1); event.stopPropagation()">+</button>
+                    <div style="margin-bottom:15px;">
+                        <span style="font-size:16px; font-weight:bold; color:white;">目前派遣弟子: <span style="color:#fbbf24;">${summary.mine}</span> 名</span>
                     </div>
-                    <p style="font-size:12px; color:#94a3b8; margin-top:10px;">閒置弟子：${idleWorkers}</p>
+                    <button class="btn-eco-action" style="width:100%; padding:12px;" onclick="document.getElementById('sect-modal-overlay').remove(); UI_Sect.openDept('recruit');">
+                        前往招募堂指派弟子
+                    </button>
                 ` : `
                     <button class="btn-eco-action btn-buy" style="width:100%; padding:12px;" onclick="UI_Sect.buildIndustry('mine'); event.stopPropagation()">
                         花費 2000 靈石 開闢靈礦脈
@@ -197,37 +189,213 @@ export const UI_Sect = {
         `;
     },
 
+    // ==========================================
+    // 🌟 V3.0 全新招募堂介面
+    // ==========================================
     renderRecruit() {
-        const wData = Player.data.world;
-        const idleWorkers = wData.workers - wData.farm.assigned - wData.mine.assigned;
+        const summary = SectSystem.getSummary();
+        const max = SectSystem.MAX_DISCIPLES;
+        const list = Player.data.sect.disciples || [];
 
-        return `
-            <div style="text-align:center;">
-                <p style="color:#cbd5e1; margin-bottom:15px; font-size:14px;">招募流浪散修，分派至各部門進行勞作。</p>
-                <div style="display:flex; justify-content:space-around; background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; margin-bottom:20px;">
-                    <div>
-                        <div style="font-size:12px; color:#94a3b8;">總弟子數</div>
-                        <div style="font-size:24px; font-weight:bold; color:white;">${wData.workers}</div>
-                    </div>
-                    <div>
-                        <div style="font-size:12px; color:#94a3b8;">閒置待命</div>
-                        <div style="font-size:24px; font-weight:bold; color:#4ade80;">${idleWorkers}</div>
-                    </div>
+        let html = `
+            <div style="text-align:center; margin-bottom:15px;">
+                <div style="display:flex; justify-content:space-between; background:rgba(0,0,0,0.3); padding:10px 15px; border-radius:8px; margin-bottom:15px;">
+                    <div><span style="font-size:12px; color:#94a3b8;">總人數</span><br><b style="font-size:18px;">${summary.total}/${max}</b></div>
+                    <div><span style="font-size:12px; color:#94a3b8;">閒置</span><br><b style="font-size:18px; color:#94a3b8;">${summary.idle}</b></div>
+                    <div><span style="font-size:12px; color:#94a3b8;">仙草</span><br><b style="font-size:18px; color:#4ade80;">${summary.farm}</b></div>
+                    <div><span style="font-size:12px; color:#94a3b8;">靈礦</span><br><b style="font-size:18px; color:#fbbf24;">${summary.mine}</b></div>
                 </div>
-                <button class="btn-eco-trade btn-sell" style="width:100%; padding:12px; font-size:15px;" onclick="UI_Sect.recruitWorker(); event.stopPropagation()">
-                    💰 1000 靈石 招募一名散修
-                </button>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-eco-action" style="flex:1; padding:10px; background:var(--glass-dark); border:1px solid #3b82f6;" onclick="UI_Sect.doRecruit(false)">
+                        💰 1,000<br>尋覓單人
+                    </button>
+                    <button class="btn-eco-action" style="flex:1; padding:10px; background:var(--glass-dark); border:1px solid #a855f7;" onclick="UI_Sect.doRecruit(true)">
+                        💰 10,000<br><span style="color:#a855f7;">十連保底</span>
+                    </button>
+                </div>
             </div>
+            
+            <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
+                <p style="font-size:13px; color:#cbd5e1; margin-bottom:10px;">弟子名冊</p>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; max-height:300px; overflow-y:auto; padding-right:5px;">
         `;
+
+        if (list.length === 0) {
+            html += `<div style="grid-column:1/-1; text-align:center; padding:20px; color:#64748b;">宗門空虛，尚無弟子。</div>`;
+        } else {
+            // 反轉陣列，讓新抽到的排在前面
+            [...list].reverse().forEach(d => {
+                const rootData = DATA_SECT.ROOT_LEVELS[d.root];
+                let statusText = d.status === 'farm' ? '<span style="color:#4ade80;">[草園]</span>' : (d.status === 'mine' ? '<span style="color:#fbbf24;">[礦脈]</span>' : '<span style="color:#94a3b8;">[閒置]</span>');
+                
+                html += `
+                    <div style="background:rgba(0,0,0,0.5); border-left:4px solid ${rootData.color}; border-radius:6px; padding:8px; cursor:pointer; display:flex; flex-direction:column; justify-content:center;"
+                         onclick="UI_Sect.showDiscipleDetail('${d.id}')">
+                        <div style="font-size:14px; font-weight:bold; color:white; margin-bottom:4px;">${d.name}</div>
+                        <div style="font-size:12px; display:flex; justify-content:space-between;">
+                            <span style="color:${rootData.color};">${rootData.label.split('/')[0]}</span>
+                            ${statusText}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        html += `</div></div>`;
+        return html;
     },
 
+    // ==========================================
+    // 🌟 V3.0 弟子詳細面板 (指派與遣散)
+    // ==========================================
+    showDiscipleDetail(id) {
+        const d = Player.data.sect.disciples.find(x => x.id === id);
+        if (!d) return;
+
+        const rootData = DATA_SECT.ROOT_LEVELS[d.root];
+        
+        let traitsHtml = d.traits.map(tKey => {
+            let tData = DATA_SECT.TRAITS[tKey];
+            let tColor = tData.type === 'buff' ? '#4ade80' : (tData.type === 'debuff' ? '#ef4444' : (tData.type === 'magic' ? '#c084fc' : '#fcd34d'));
+            return `<div style="background:rgba(255,255,255,0.05); padding:6px; border-radius:4px; margin-bottom:5px;">
+                        <span style="color:${tColor}; font-weight:bold; font-size:13px;">[${tKey}]</span> 
+                        <span style="font-size:12px; color:#cbd5e1;">${tData.desc}</span>
+                    </div>`;
+        }).join('');
+
+        let statsHtml = `
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px; font-size:13px; margin:10px 0; background:rgba(0,0,0,0.3); padding:10px; border-radius:6px;">
+                <div>⚔️ 戰力: <b style="color:white;">${d.stats['戰力']}</b></div>
+                <div>🧠 悟性: <b style="color:white;">${d.stats['悟性']}</b></div>
+                <div>✨ 機緣: <b style="color:white;">${d.stats['機緣']}</b></div>
+                <div>❤️ 體質: <b style="color:white;">${d.stats['體質']}</b></div>
+                <div>🧘 修為: <b style="color:white;">${d.stats['修為']}</b></div>
+                <div>🔨 匠心: <b style="color:white;">${d.stats['匠心']}</b></div>
+            </div>
+        `;
+
+        let modalHtml = `
+            <div id="disciple-detail-modal" class="modal-overlay" style="z-index:10001;" onclick="this.remove()">
+                <div class="modal-box" style="max-width: 300px; background:#1e293b; border:2px solid ${rootData.color};" onclick="event.stopPropagation()">
+                    <div style="text-align:center; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
+                        <div style="font-size:20px; font-weight:bold; color:white;">${d.name}</div>
+                        <div style="font-size:14px; color:${rootData.color}; margin-top:5px;">${rootData.label}</div>
+                    </div>
+                    
+                    ${statsHtml}
+                    
+                    <div style="margin-bottom:15px; max-height:100px; overflow-y:auto;">
+                        <div style="font-size:12px; color:#94a3b8; margin-bottom:5px;">本命詞條</div>
+                        ${traitsHtml}
+                    </div>
+
+                    <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
+                        <div style="font-size:12px; color:#94a3b8; margin-bottom:5px;">指派任務</div>
+                        <div style="display:flex; gap:5px; margin-bottom:10px;">
+                            <button style="flex:1; padding:8px; border-radius:5px; border:none; background:${d.status==='idle'?'#94a3b8':'#334155'}; color:white;" onclick="UI_Sect.assignDiscipleJob('${d.id}', 'idle')">閒置</button>
+                            <button style="flex:1; padding:8px; border-radius:5px; border:none; background:${d.status==='farm'?'#4ade80':'#334155'}; color:white;" onclick="UI_Sect.assignDiscipleJob('${d.id}', 'farm')">仙草</button>
+                            <button style="flex:1; padding:8px; border-radius:5px; border:none; background:${d.status==='mine'?'#fbbf24':'#334155'}; color:white;" onclick="UI_Sect.assignDiscipleJob('${d.id}', 'mine')">靈礦</button>
+                        </div>
+                        <button style="width:100%; padding:8px; border-radius:5px; border:1px solid #ef4444; background:transparent; color:#ef4444; font-weight:bold;" onclick="UI_Sect.doDismiss('${d.id}')">
+                            逐出宗門 (遣散)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
+
+    // ==========================================
+    // 🌟 V3.0 動作與特效邏輯
+    // ==========================================
+    doRecruit(isTen) {
+        let results = SectSystem.recruit(isTen);
+        if (results && results.length > 0) {
+            this.playGachaAnimation(results);
+        }
+    },
+
+    assignDiscipleJob(id, job) {
+        SectSystem.assignJob(id, job);
+        
+        // 🟢 兼容補丁：同步更新舊版 world.workers 數量，確保背景經濟循環不斷
+        let sum = SectSystem.getSummary();
+        Player.data.world.farm.assigned = sum.farm;
+        Player.data.world.mine.assigned = sum.mine;
+        Player.save();
+
+        document.getElementById('disciple-detail-modal').remove();
+        this.openDept('recruit'); // 刷新列表
+    },
+
+    doDismiss(id) {
+        if (confirm("確定要將此弟子逐出宗門嗎？此舉不可逆！")) {
+            SectSystem.dismissDisciple(id);
+            
+            // 🟢 同步舊版數量
+            let sum = SectSystem.getSummary();
+            Player.data.world.farm.assigned = sum.farm;
+            Player.data.world.mine.assigned = sum.mine;
+            Player.save();
+
+            document.getElementById('disciple-detail-modal').remove();
+            this.openDept('recruit');
+        }
+    },
+
+    /**
+     * 🌟 天驕降世特效大陣
+     */
+    playGachaAnimation(results) {
+        // 找出這次抽卡中最高的稀有度
+        const highestRarity = Math.max(...results.map(d => DATA_SECT.ROOT_LEVELS[d.root].rarity));
+        
+        let overlayColor = "rgba(255,255,255,0.8)";
+        let textMsg = "靈光乍現";
+        let textColor = "#3b82f6";
+
+        if (highestRarity >= 4) { // 天級或仙級
+            overlayColor = "rgba(251,191,36, 0.95)";
+            textMsg = highestRarity === 5 ? "仙姿佚貌" : "天驕降世";
+            textColor = "#fff";
+        } else if (highestRarity === 3) { // 地級
+            overlayColor = "rgba(168,85,247, 0.9)";
+            textMsg = "紫氣東來";
+            textColor = "#fff";
+        }
+
+        const animHtml = `
+            <div id="gacha-anim-layer" style="position:fixed; top:0; left:0; width:100%; height:100%; background:${overlayColor}; z-index:20000; display:flex; flex-direction:column; justify-content:center; align-items:center; transition: opacity 0.3s;">
+                <h1 style="font-size:48px; color:${textColor}; text-shadow: 0 0 20px rgba(0,0,0,0.5); letter-spacing:10px; animation: popIn 0.5s ease-out;">${textMsg}</h1>
+                <p style="color:#333; margin-top:20px; font-weight:bold;">點擊螢幕查看結果</p>
+            </div>
+            <style>
+                @keyframes popIn {
+                    0% { transform: scale(0.1); opacity: 0; }
+                    60% { transform: scale(1.2); opacity: 1; }
+                    100% { transform: scale(1); }
+                }
+            </style>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', animHtml);
+
+        // 點擊後關閉動畫，並刷新介面
+        document.getElementById('gacha-anim-layer').onclick = () => {
+            document.getElementById('gacha-anim-layer').remove();
+            UI_Sect.openDept('recruit');
+        };
+    },
+
+    // ==========================================
+    // 舊版功能保留區
+    // ==========================================
     renderBounty() {
         if (!Player.data.tasks || Player.data.tasks.length === 0) {
             return `<div class="empty-msg" style="padding:40px 10px;">長老正在整理任務卷宗，請稍後再來。</div>`;
         }
-
         const currentPoints = Player.data.sectPoints || 0;
-        
         let html = `
             <div style="text-align:center; margin-bottom: 15px;">
                 <p style="color:#cbd5e1; font-size:13px; margin-bottom:5px;">提交修仙界素材，換取宗門底蘊。</p>
@@ -237,12 +405,10 @@ export const UI_Sect = {
             </div>
             <div style="display:flex; flex-direction:column; gap:10px; max-height: 400px; overflow-y: auto; padding-right: 5px;">
         `;
-
         Player.data.tasks.forEach(task => {
             const itemIndex = Player.data.inventory.findIndex(i => i.id === task.targetId || i.name === task.targetName);
             const currentCount = itemIndex !== -1 ? (Player.data.inventory[itemIndex].count || 1) : 0;
             const isEnough = currentCount >= task.count;
-            
             const countColor = isEnough ? '#4ade80' : '#ef4444';
             const btnBg = isEnough ? 'var(--exp-color)' : 'rgba(255,255,255,0.1)';
             const btnCursor = isEnough ? 'pointer' : 'not-allowed';
@@ -265,15 +431,12 @@ export const UI_Sect = {
                 </div>
             `;
         });
-
         html += `</div>`;
         return html;
     },
 
-    // 🟢 渲染宗門庫房
     renderVault() {
         const currentPoints = Player.data.sectPoints || 0;
-        
         let html = `
             <div style="text-align:center; margin-bottom: 15px;">
                 <p style="color:#cbd5e1; font-size:13px; margin-bottom:5px;">消耗貢獻點，兌換宗門底蘊寶物。</p>
@@ -283,7 +446,6 @@ export const UI_Sect = {
             </div>
             <div style="display:flex; flex-direction:column; gap:10px; max-height: 400px; overflow-y: auto; padding-right: 5px;">
         `;
-
         this.vaultItems.forEach(item => {
             const canAfford = currentPoints >= item.cost;
             const btnBg = canAfford ? 'var(--hp-color)' : 'rgba(255,255,255,0.1)';
@@ -308,44 +470,21 @@ export const UI_Sect = {
                 </div>
             `;
         });
-
         html += `</div>`;
         return html;
-    },
-
-    // ==========================================
-    // 互動數據邏輯
-    // ==========================================
-    recruitWorker() {
-        if (Player.data.coin < 1000) return Msg.log("靈石不足，無法發放安家費！", "system");
-        Player.data.coin -= 1000;
-        Player.data.world.workers++;
-        Player.save();
-        Msg.log("一名散修感念恩德，加入宗門！", "gold");
-        this.openDept('recruit'); 
-        if(window.Core) window.Core.updateUI();
-    },
-
-    assignWorker(type, change) {
-        const wData = Player.data.world;
-        const target = wData[type];
-        const idleWorkers = wData.workers - wData.farm.assigned - wData.mine.assigned;
-
-        if (change > 0 && idleWorkers < change) return Msg.log("閒置人手不足！", "system");
-        if (change < 0 && target.assigned < Math.abs(change)) return Msg.log("該處已無人手可撤回！", "system");
-
-        target.assigned += change;
-        Player.save();
-        this.openDept(type); 
     },
 
     buildIndustry(type) {
         const cost = type === 'mine' ? 2000 : 1000;
         const name = type === 'mine' ? '靈礦脈' : '仙草園';
 
-        if (Player.data.coin < cost) return Msg.log(`開闢【${name}】需要 ${cost} 靈石！`, "system");
+        if ((Player.data.coin !== undefined ? Player.data.coin : Player.data.coins) < cost) {
+            return Msg.log(`開闢【${name}】需要 ${cost} 靈石！`, "system");
+        }
 
-        Player.data.coin -= cost;
+        if (Player.data.coin !== undefined) Player.data.coin -= cost;
+        else Player.data.coins -= cost;
+
         Player.data.world[type].level = 1;
         Player.save();
         Msg.log(`轟隆！天地靈氣匯聚，成功開闢【${name}】！`, "gold");
