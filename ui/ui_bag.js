@@ -1,6 +1,6 @@
 /**
- * V2.7 ui_bag.js
- * 職責：儲物袋渲染、分類篩選、一鍵售出裝備、一鍵清空重複殘卷、道具使用
+ * V3.2 ui_bag.js (儲物袋純淨版)
+ * 職責：儲物袋渲染、分類篩選、裝備穿戴與道具使用 (已將交易功能完全移交至 ui_shop.js)
  * 位置：/ui/ui_bag.js
  */
 
@@ -22,7 +22,7 @@ export const UI_Bag = {
     currentFilter: 'all',
 
     init() {
-        console.log("【UI_Bag】啟動儲物袋陣法...");
+        console.log("【UI_Bag】啟動儲物袋純淨陣法...");
         this.renderLayout();
         this.renderFilters();
         this.renderBag();
@@ -32,21 +32,9 @@ export const UI_Bag = {
         const container = document.getElementById('page-bag');
         if (!container) return;
 
-        // 🟢 新增：批量操作區域 (Button Group)
+        // 🟢 瘦身：已經把「一鍵售出」等按鈕移除了，這裡只留標題和篩選區
         container.innerHTML = `
-            <div class="page-title">儲物袋</div>
-            
-            <div class="bag-actions-bar" style="display: flex; gap: 10px; margin-bottom: 15px; padding: 0 10px;">
-                <button class="btn-eco-action btn-sell-all" onclick="UI_Bag.sellAllEquipment()" 
-                        style="background: #7f1d1d; flex: 1; font-size: 12px; padding: 8px;">
-                    ♻️ 一鍵售出裝備
-                </button>
-                <button class="btn-eco-action btn-sell-all" onclick="UI_Bag.sellDuplicateFragments()" 
-                        style="background: #1e3a8a; flex: 1; font-size: 12px; padding: 8px;">
-                    📜 一鍵清重複殘卷
-                </button>
-            </div>
-
+            <div class="page-title">個人儲物袋</div>
             <div id="bag-filters" class="bag-filters"></div>
             <div id="bag-content" class="bag-grid"></div>
         `;
@@ -140,75 +128,6 @@ export const UI_Bag = {
             fragment: '📜', material: '💎', special: '🎁', consumable: '🧪'
         };
         return icons[type] || '📦';
-    },
-
-    /**
-     * 🟢 新增：一鍵售出所有裝備
-     */
-    sellAllEquipment() {
-        if (!Player.data.inventory || Player.data.inventory.length === 0) return;
-        
-        const toSell = Player.data.inventory.filter(i => 
-            ['weapon', 'armor', 'accessory'].includes(i.type)
-        );
-
-        if (toSell.length === 0) return Msg.log("儲物袋內並無可售出的裝備。", "system");
-
-        if (!confirm(`是否將這 ${toSell.length} 件裝備售換為靈石？`)) return;
-
-        let totalGold = 0;
-        toSell.forEach(item => {
-            // 基礎價格根據稀有度與等級計算
-            const basePrice = item.price || (item.rarity * 20) + (item.level || 1) * 5;
-            totalGold += basePrice;
-        });
-
-        // 從背包移除
-        Player.data.inventory = Player.data.inventory.filter(i => 
-            !['weapon', 'armor', 'accessory'].includes(i.type)
-        );
-
-        Player.data.coin += totalGold;
-        Msg.log(`♻️ 一鍵熔煉完成，獲得 ${totalGold} 靈石。`, "gold");
-        
-        Player.save();
-        this.renderBag();
-        if (window.Core) window.Core.updateUI();
-    },
-
-    /**
-     * 🟢 新增：一鍵清理重複殘卷
-     * 邏輯：保留每種殘卷(同名同卷數)各1份，其餘售出
-     */
-    sellDuplicateFragments() {
-        if (!Player.data.inventory) return;
-
-        const fragments = Player.data.inventory.filter(i => i.type === 'fragment');
-        if (fragments.length === 0) return Msg.log("儲物袋內並無任何殘卷。", "system");
-
-        let totalGold = 0;
-        let sellCount = 0;
-
-        // 遍歷所有殘卷，處理 count > 1 的部分
-        fragments.forEach(item => {
-            const count = item.count || 1;
-            if (count > 1) {
-                const duplicates = count - 1;
-                const pricePerOne = item.price || 30; // 殘卷單價
-                totalGold += duplicates * pricePerOne;
-                sellCount += duplicates;
-                item.count = 1; // 修正數量為 1
-            }
-        });
-
-        if (sellCount === 0) return Msg.log("你所持有的殘卷皆為孤本，無需清理。", "system");
-
-        Player.data.coin += totalGold;
-        Msg.log(`📜 清理了 ${sellCount} 份重複殘卷，獲得 ${totalGold} 靈石。`, "gold");
-
-        Player.save();
-        this.renderBag();
-        if (window.Core) window.Core.updateUI();
     },
 
     useItem(uuid, event) {
