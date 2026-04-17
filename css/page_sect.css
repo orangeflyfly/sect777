@@ -1,6 +1,6 @@
 /**
- * V2.2 page_sect.css (飛升模組版 - 宗門大廳與空間跳轉)
- * 職責：浮空神識令、宗門總部大廳、九宮格部門卡片視覺
+ * V3.5.8 page_sect.css (飛升模組版 - 宗門大廳與神兵特效)
+ * 職責：浮空神識令、宗門總部大廳、九宮格部門卡片視覺、新增神裝鍛造全螢幕特效
  */
 
 /* 1. 載入全域變數 */
@@ -170,4 +170,115 @@
     color: #f8fafc;
     letter-spacing: 1px;
     text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+/* =========================================
+   🌟 煉器大殿：神兵降世特效 (Divine Forge FX)
+   ========================================= */
+#divine-fx {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    /* 深色背景帶有金色中心光暈 */
+    background: radial-gradient(circle at center, rgba(251, 191, 36, 0.3) 0%, rgba(0, 0, 0, 0.95) 70%);
+    z-index: 30000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    animation: divineFadeIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    overflow: hidden;
+}
+
+/* 背景旋轉發散光線 */
+.divine-rays {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 200vw; height: 200vw;
+    margin-top: -100vw; margin-left: -100vw;
+    background: repeating-conic-gradient(from 0deg, rgba(251, 191, 36, 0.15) 0deg 15deg, transparent 15deg 30deg);
+    animation: divineSpin 20s linear infinite;
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* 標題閃爍 */
+.divine-title {
+    font-size: 28px;
+    color: #fde047;
+    margin-bottom: 20px;
+    text-shadow: 0 0 20px #fbbf24, 0 0 40px #f59e0b;
+    letter-spacing: 5px;
+    animation: divinePulse 1.5s infinite alternate;
+}
+
+/* 神兵名稱爆發特效 */
+.divine-weapon-name {
+    font-size: 50px;
+    font-weight: 900;
+    color: #ffffff;
+    text-shadow: 0 0 20px #fbbf24, 0 0 40px #f59e0b, 0 0 60px #ea580c;
+    letter-spacing: 2px;
+    animation: divinePop 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, divineFloat 2s ease-in-out infinite alternate 1s;
+    text-align: center;
+    position: relative;
+    z-index: 2;
+}
+
+/* 描述文字 */
+.divine-desc {
+    color: #fcd34d;
+    margin-top: 30px;
+    font-weight: bold;
+    font-size: 18px;
+    letter-spacing: 3px;
+    text-shadow: 0 2px 5px rgba(0,0,0,0.8);
+    z-index: 2;
+}
+
+/* 收納按鈕 */
+.divine-btn {
+    margin-top: 50px;
+    padding: 12px 40px;
+    background: linear-gradient(180deg, #facc15, #eab308);
+    border: 2px solid #fff;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 18px;
+    cursor: pointer;
+    color: #451a03;
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.6);
+    transition: all 0.2s;
+    z-index: 2;
+}
+
+.divine-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 30px rgba(251, 191, 36, 1);
+}
+
+/* --- 動畫關鍵影格 --- */
+@keyframes divineFadeIn {
+    0% { opacity: 0; transform: scale(0.8); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes divineSpin {
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes divinePulse {
+    0% { opacity: 0.7; text-shadow: 0 0 10px #fbbf24; }
+    100% { opacity: 1; text-shadow: 0 0 30px #fbbf24, 0 0 50px #f59e0b; }
+}
+
+@keyframes divinePop {
+    0% { transform: scale(0); filter: brightness(3); }
+    50% { transform: scale(1.2); filter: brightness(2); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+
+@keyframes divineFloat {
+    0% { transform: translateY(0px); }
+    100% { transform: translateY(-10px); }
 }
