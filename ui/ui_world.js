@@ -1,6 +1,6 @@
 /**
- * V3.4 ui_world.js (萬象森羅 - 真實數據連動版)
- * 職責：洞府渲染、聚靈陣掛機收益、對接真實產能預估、統一升級物價
+ * V3.4 ui_world.js (萬象森羅 - 三大產業連動版)
+ * 職責：洞府渲染、聚靈陣掛機收益、對接真實產能預估、統一升級物價、新增煉丹閣入口
  * 位置：/ui/ui_world.js
  */
 
@@ -10,7 +10,7 @@ import { SectSystem } from '../systems/SectSystem.js';
 
 export const UI_World = {
     init() {
-        console.log("【UI_World】洞府法陣啟動，對接宗門大腦與真實產能...");
+        console.log("【UI_World】洞府法陣啟動，三大產業鏈接完畢...");
         this.renderLayout();
         
         if (Player.data && !Player.data.world) {
@@ -22,6 +22,9 @@ export const UI_World = {
         if (w.arrayGuard === undefined) w.arrayGuard = null; 
         if (!w.farm) w.farm = { level: 0, assigned: 0 };
         if (!w.mine) w.mine = { level: 0, assigned: 0 };
+        
+        // 🌟 新增：確保煉丹閣數據存在
+        if (!w.alchemy) w.alchemy = { level: 0, assigned: 0 };
 
         if (w.workers !== undefined) delete w.workers;
 
@@ -48,9 +51,10 @@ export const UI_World = {
         const now = Date.now();
         let elapsedSeconds = Math.floor((now - wData.lastCollect) / 1000);
         
-        const sectSum = window.SectSystem ? window.SectSystem.getSummary() : { total: 0, idle: 0, farm: 0, mine: 0 };
+        const sectSum = window.SectSystem ? window.SectSystem.getSummary() : { total: 0, idle: 0, farm: 0, mine: 0, alchemy: 0 };
         wData.farm.assigned = sectSum.farm;
         wData.mine.assigned = sectSum.mine;
+        wData.alchemy.assigned = sectSum.alchemy || 0; // 🌟 綁定煉丹師人數
 
         // --- 陣眼駐守邏輯 ---
         let guardName = "無人駐守";
@@ -84,7 +88,7 @@ export const UI_World = {
         const pendingExp = Math.floor((elapsedSeconds / 10) * finalEfficiency);
         const progressPercent = Math.min(100, (elapsedSeconds / maxSeconds) * 100);
 
-        // 🌟 修正盲點二：真實產能連動 (向 System 大腦要真實數據)
+        // --- 真實產能連動 ---
         let mineYieldEst = 0;
         let farmYieldEst = 0;
         
@@ -94,13 +98,13 @@ export const UI_World = {
         }
         if (window.FarmSystem && Player.data.sect) {
             const farmers = Player.data.sect.disciples.filter(d => d.status === 'farm');
-            // 簡化團隊光環傳遞，抓取基礎個人產能總和作為預估
             farmers.forEach(w => farmYieldEst += window.FarmSystem.getDiscipleYield(w, {workerCount: farmers.length, buffOthersMult: 1, annoyOthersMult: 1}).yield);
         }
 
-        // 🌟 修正升級費用顯示 (統一與 ui_mine.js 同步，或設定為開闢費用)
+        // --- 升級費用計算 ---
         const farmCost = wData.farm.level === 0 ? 1000 : wData.farm.level * 1500;
         const mineCost = wData.mine.level === 0 ? 2000 : wData.mine.level * 1500;
+        const alcCost = wData.alchemy.level === 0 ? 3000 : wData.alchemy.level * 3000; // 🌟 煉丹閣比較貴
 
         this.updateResourceBar(sectSum);
 
@@ -180,6 +184,19 @@ export const UI_World = {
                         ${wData.farm.level > 0 ? `<button class="btn-eco-trade" style="flex:1; background:#16a34a; color:white; border:none; border-radius:4px; cursor:pointer;" onclick="if(window.UI_Farm) UI_Farm.openModal(); else Msg.log('仙草園管理介面建置中...','system')">入園</button>` : ''}
                     </div>
                 </div>
+
+                <div class="management-card">
+                    <h4>🔥 煉丹閣 (Lv.${wData.alchemy.level})</h4>
+                    <p>駐守丹師：<b style="color:#ef4444;">${wData.alchemy.assigned}</b> 人</p>
+                    <p style="font-size:11px; color:#94a3b8; margin-top:2px;">將仙草煉化為修為丹與療傷藥</p>
+                    <div style="display:flex; gap:5px; margin-top:10px;">
+                        <button class="btn-upgrade-mini" style="flex:1;" onclick="UI_World.upgradeIndustry('alchemy')">
+                            ${wData.alchemy.level === 0 ? `✨ 開闢 (${alcCost})` : `🔼 升級 (${alcCost})`}
+                        </button>
+                        ${wData.alchemy.level > 0 ? `<button class="btn-eco-trade" style="flex:1; background:#dc2626; color:white; border:none; border-radius:4px; cursor:pointer;" onclick="if(window.UI_Alchemy) UI_Alchemy.openModal(); else Msg.log('煉丹閣管理介面建置中...','system')">開爐</button>` : ''}
+                    </div>
+                </div>
+
             </div>
         `;
     },
@@ -209,16 +226,25 @@ export const UI_World = {
         if (window.Core) window.Core.updateUI();
     },
 
-    // 🌟 修正盲點一：統一升級物價邏輯
+    // 🌟 修正盲點一：統一升級物價邏輯 (涵蓋三大產業)
     upgradeIndustry(type) {
         const wData = Player.data.world;
         const currentLv = wData[type].level;
-        const name = type === 'mine' ? '靈礦脈' : '仙草園';
         
-        const baseCost = type === 'mine' ? 2000 : 1000;
-        const upgradeCost = currentLv === 0 ? baseCost : currentLv * 1500; // 統一後續升級費用為 Lv * 1500
+        let name = '';
+        let baseCost = 0;
+        let scale = 1500;
 
-        if (Player.data.coin < upgradeCost) return Msg.log(`靈石不足！${currentLv === 0 ? '開闢' : '升級'}需要 ${upgradeCost} 靈石`, "system");
+        // 判定不同產業的基底價格
+        switch (type) {
+            case 'mine': name = '靈礦脈'; baseCost = 2000; scale = 1500; break;
+            case 'farm': name = '仙草園'; baseCost = 1000; scale = 1500; break;
+            case 'alchemy': name = '煉丹閣'; baseCost = 3000; scale = 3000; break; // 煉丹閣比較貴
+        }
+        
+        const upgradeCost = currentLv === 0 ? baseCost : currentLv * scale; 
+
+        if (Player.data.coin < upgradeCost) return Msg.log(`靈石不足！${currentLv === 0 ? '開闢' : '升級'}需要 ${upgradeCost.toLocaleString()} 靈石`, "system");
 
         Player.data.coin -= upgradeCost;
         wData[type].level += 1;
