@@ -1,6 +1,6 @@
 /**
- * V3.5 ui_sect.js (終極樞紐 - 全設施解耦完美路由版)
- * 職責：管理宗門首頁七大入口，並負責將點擊分配給對應的專屬 UI 模組
+ * V3.5.5 ui_sect.js (終極樞紐 - 煉器擴充版)
+ * 職責：管理宗門首頁八大入口，並負責將點擊分配給對應的專屬 UI 模組
  * 位置：/ui/ui_sect.js
  */
 
@@ -12,7 +12,8 @@ import { UI_Farm } from './ui_farm.js';
 import { UI_Mine } from './ui_mine.js';       
 import { UI_Alchemy } from './ui_alchemy.js'; 
 import { UI_Bounty } from './ui_bounty.js';   
-import { UI_Vault } from './ui_vault.js';     // 🌟 新增：正式引入庫房專屬 UI
+import { UI_Vault } from './ui_vault.js';     
+import { UI_Forge } from './ui_forge.js';     // 🌟 新增：正式引入煉器大殿專屬 UI
 
 export const UI_Sect = {
     init() {
@@ -59,6 +60,10 @@ export const UI_Sect = {
                 <div class="dept-card" onclick="UI_Sect.openDept('alchemy')">
                     <div class="dept-icon">🔥</div>
                     <div class="dept-name">煉丹閣</div>
+                </div>
+                <div class="dept-card" onclick="UI_Sect.openDept('forge')" style="border-color: rgba(251,146,60,0.5); box-shadow: 0 0 10px rgba(251,146,60,0.1);">
+                    <div class="dept-icon">🔨</div>
+                    <div class="dept-name" style="color: #fb923c;">煉器大殿</div>
                 </div>
                 <div class="dept-card" onclick="UI_Sect.openDept('recruit')">
                     <div class="dept-icon">👥</div>
@@ -113,6 +118,14 @@ export const UI_Sect = {
             else Msg.log("❌ 煉丹閣大陣尚未準備完畢，請稍後再試！", "system");
             return;
         }
+        
+        // 🌟 新增：煉器大殿專屬路由
+        if (deptId === 'forge') {
+            if (UI_Forge) UI_Forge.openModal();
+            else if (window.UI_Forge) window.UI_Forge.openModal();
+            else Msg.log("❌ 煉器大殿陣紋尚未準備完畢，請稍後再試！", "system");
+            return;
+        }
 
         if (deptId === 'bounty') {
             if (UI_Bounty) UI_Bounty.openModal();
@@ -121,7 +134,6 @@ export const UI_Sect = {
             return;
         }
 
-        // 🌟 新增：將宗門庫房完美轉交給 UI_Vault
         if (deptId === 'vault') {
             if (UI_Vault) UI_Vault.openModal();
             else if (window.UI_Vault) window.UI_Vault.openModal();
