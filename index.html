@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>練功修練 - V3.6.0 「萬象森羅：微縮視界與宗門模擬」</title>
+    <title>練功修練 - V3.7.0 「萬象森羅：左側視界與生活轉職框架」</title>
 
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/page_battle.css">
@@ -23,6 +23,46 @@
             0% { filter: brightness(1); }
             50% { filter: brightness(1.4); }
             100% { filter: brightness(1); }
+        }
+
+        /* 🌟 V3.7.0 新增：左側導航覆寫陣紋 (輕量化 CSS 佈局轉換) */
+        .bottom-nav {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            bottom: auto !important;
+            width: 75px !important;
+            height: 100vh !important;
+            flex-direction: column !important;
+            justify-content: flex-start !important;
+            padding-top: 15px !important;
+            border-top: none !important;
+            border-right: 1px solid rgba(255,255,255,0.1) !important;
+            background: #0f172a !important; /* 加深側邊欄底色 */
+            z-index: 1000 !important;
+        }
+        .bottom-nav .nav-btn {
+            width: 80% !important;
+            margin: 8px auto !important;
+            flex-direction: column !important;
+            height: auto !important;
+            padding: 12px 0 !important;
+            border-radius: 12px !important;
+            font-size: 11px !important;
+            gap: 6px !important;
+            justify-content: center !important;
+            align-items: center !important;
+            display: flex !important;
+        }
+        /* 調整主畫面與頭部，避開左側 75px 的空間 */
+        .header-info {
+            left: 75px !important;
+            width: calc(100% - 75px) !important;
+        }
+        #game-container {
+            margin-left: 75px !important;
+            width: calc(100% - 75px) !important;
+            padding-bottom: 0 !important; /* 抵消原本底部導航留出的空間 */
         }
     </style>
 </head>
@@ -51,15 +91,24 @@
     <main id="game-container">
         <section id="page-battle" class="game-page active"></section>
         <section id="page-sect" class="game-page" style="display:none;"></section>
-        <section id="page-sim" class="game-page" style="display:none;"></section> <section id="page-world" class="game-page" style="display:none; flex-direction:column;"></section>
+        <section id="page-sim" class="game-page" style="display:none;"></section> 
+        <section id="page-world" class="game-page" style="display:none; flex-direction:column;"></section>
         <section id="page-stats" class="game-page" style="display:none;"></section>
         <section id="page-bag" class="game-page" style="display:none;"></section>
         <section id="page-shop" class="game-page" style="display:none;"></section>
+        
+        <section id="page-life" class="game-page" style="display:none; flex-direction:column;"></section>
+        <section id="page-class" class="game-page" style="display:none; flex-direction:column;"></section>
     </main>
 
     <nav class="bottom-nav">
         <button class="nav-btn active" onclick="Core.switchPage('battle')">⚔️ 歷練</button>
-        <button class="nav-btn" onclick="Core.switchPage('sim')">👁️ 視察</button> <button class="nav-btn" onclick="Core.switchPage('stats')">🧘‍♂️ 修為</button>
+        <button class="nav-btn" onclick="Core.switchPage('sim')">👁️ 視察</button> 
+        
+        <button class="nav-btn" onclick="Core.switchPage('life')">🌲 生活</button>
+        <button class="nav-btn" onclick="Core.switchPage('class')">📖 轉職</button>
+        
+        <button class="nav-btn" onclick="Core.switchPage('stats')">🧘‍♂️ 修為</button>
         <button class="nav-btn" onclick="Core.switchPage('bag')">🎒 儲物</button>
         <button class="nav-btn" onclick="Core.switchPage('shop')">🏪 坊市</button>
     </nav>
@@ -116,7 +165,7 @@
         import { UI_Bounty } from './ui/ui_bounty.js';
         import { UI_Vault } from './ui/ui_vault.js';                
         import { UI_Forge } from './ui/ui_forge.js';                
-        import { UI_Sim } from './ui/ui_sim.js';                   // 🌟 新增：模擬介面
+        import { UI_Sim } from './ui/ui_sim.js';                    
 
         // ==========================================
         // 4. 引入 核心與數據 (Core & Data)
@@ -157,17 +206,17 @@
         window.UI_Bounty = UI_Bounty;
         window.UI_Vault = UI_Vault;           
         window.UI_Forge = UI_Forge;           
-        window.UI_Sim = UI_Sim;                            // 🌟 註冊模擬介面
+        window.UI_Sim = UI_Sim;                                            
 
         window.Core = Core;
         window.DB = DB;            
-        window.DATA = DB; // 相容性別名
+        window.DATA = DB; 
 
         // ==========================================
         // 5. 大陣啟動邏輯
         // ==========================================
         window.onload = () => {
-            console.log("%c【系統】V3.6.0 萬象森羅：微縮視界與宗門模擬大陣啟動！", "color: #38bdf8; font-weight: bold; font-size: 14px;");
+            console.log("%c【系統】V3.7.0 萬象森羅：左側視界與生活轉職框架大陣啟動！", "color: #38bdf8; font-weight: bold; font-size: 14px;");
 
             setTimeout(() => {
                 Core.init();
