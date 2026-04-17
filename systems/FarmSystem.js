@@ -1,6 +1,6 @@
 /**
- * V3.4 FarmSystem.js (萬象森羅 - 終極產能大腦)
- * 職責：管理仙草園門檻、精算【洞府等級+個人屬性+團隊光環+外部天象】產出
+ * V3.6.1 FarmSystem.js (萬象森羅 - 仙草園機緣聯動版)
+ * 職責：管理仙草園門檻、精算產出，並將突發機緣 (偷懶/爆擊/炸爐) 即時顯化於微縮視界
  * 位置：/systems/FarmSystem.js
  */
 
@@ -13,7 +13,7 @@ export const FarmSystem = {
     ALLOWED_ROOTS: ['水', '木', '天', '仙'],
 
     init() {
-        console.log("%c【FarmSystem】仙草園大陣啟動，對接全模組共鳴...", "color: #4ade80; font-weight: bold;");
+        console.log("%c【FarmSystem】仙草園大陣啟動，對接全模組與微縮視界共鳴...", "color: #4ade80; font-weight: bold;");
         window.FarmSystem = this;
 
         if (!Player.data.materials) {
@@ -36,6 +36,25 @@ export const FarmSystem = {
 
         if (hasRefuseTrait) return false;
         return true;
+    },
+
+    /**
+     * 🌟 輔助法陣：觸發微縮視界 (UI_Sim) 的專屬事件飄字
+     */
+    triggerSimBubble(discipleId, text, color = '#0f172a') {
+        if (!window.UI_Sim) return;
+        const bubble = document.getElementById(`bubble-${discipleId}`);
+        if (bubble) {
+            bubble.innerText = text;
+            bubble.style.color = color;
+            bubble.classList.add('sim-bubble-show');
+            setTimeout(() => {
+                if (bubble) {
+                    bubble.classList.remove('sim-bubble-show');
+                    bubble.style.color = '#0f172a'; // 恢復預設顏色
+                }
+            }, 3500);
+        }
     },
 
     /**
@@ -89,10 +108,14 @@ export const FarmSystem = {
         if (!isBuffer) multiplier *= teamContext.buffOthersMult;
         if (!isAnnoying) multiplier *= teamContext.annoyOthersMult;
 
-        // --- [6] 事件判定與最終結果 ---
-        if (isLazy) return { yield: 0, exp: 0, log: `【${disciple.name}】在仙草園偷睡覺，一株草都沒拔...` };
+        // --- [6] 事件判定與最終結果 (🌟 結合 UI_Sim 飄字) ---
+        if (isLazy) {
+            this.triggerSimBubble(disciple.id, "呼... 偷偷睡一下 zZZ", "#64748b");
+            return { yield: 0, exp: 0, log: `【${disciple.name}】在仙草園偷睡覺，一株草都沒拔...` };
+        }
         
         if (explode) {
+            this.triggerSimBubble(disciple.id, "糟糕！靈氣暴走了！💥", "#ef4444");
             return { 
                 yield: 0, 
                 exp: Math.floor(expGain * 0.5), 
@@ -102,7 +125,11 @@ export const FarmSystem = {
 
         let finalYield = baseYield * multiplier;
         let isCrit = Math.random() < critChance;
-        if (isCrit) finalYield *= 2;
+        
+        if (isCrit) {
+            finalYield *= 2;
+            this.triggerSimBubble(disciple.id, "大豐收！這株仙草極品！✨", "#f59e0b");
+        }
 
         return {
             yield: Math.floor(finalYield),
@@ -112,7 +139,7 @@ export const FarmSystem = {
     },
 
     /**
-     * 🌟 V3.4 重點：結算整個仙草園產出
+     * 結算整個仙草園產出
      * @param {number} externalMult - 由 Core 傳入的環境事件倍率 (預設 1.0)
      */
     processTick(externalMult = 1.0) {
@@ -128,6 +155,7 @@ export const FarmSystem = {
         let teamBuffMult = 1.0;
         let teamAnnoyMult = 1.0;
         let bufferNames = [];
+        let bufferIds = []; // 🌟 記錄畫餅大師的 ID
 
         farmWorkers.forEach(d => {
             d.traits.forEach(tKey => {
@@ -135,7 +163,10 @@ export const FarmSystem = {
                 if (effect) {
                     if (effect.buff_others) {
                         teamBuffMult *= effect.buff_others;
-                        if (!bufferNames.includes(d.name)) bufferNames.push(d.name);
+                        if (!bufferNames.includes(d.name)) {
+                            bufferNames.push(d.name);
+                            bufferIds.push(d.id);
+                        }
                     }
                     if (effect.annoy_others) teamAnnoyMult *= 0.9; 
                 }
@@ -144,6 +175,8 @@ export const FarmSystem = {
 
         if (bufferNames.length > 0 && Math.random() < 0.2) {
             Msg.log(`🗣️ 【${bufferNames.join('、')}】正在仙草園畫大餅，眾弟子效率提升！`, "system");
+            // 🌟 觸發畫餅大師的專屬飄字
+            bufferIds.forEach(id => this.triggerSimBubble(id, "明年給大家換新飛劍！", "#3b82f6"));
         }
 
         let teamContext = { workerCount, buffOthersMult: teamBuffMult, annoyOthersMult: teamAnnoyMult };
@@ -152,7 +185,7 @@ export const FarmSystem = {
         farmWorkers.forEach(d => {
             let result = this.getDiscipleYield(d, teamContext);
             
-            // 🌟 核心修正：在此乘上由天道(Core)傳入的外部倍率
+            // 在此乘上由天道(Core)傳入的外部倍率
             let actualYield = Math.floor(result.yield * externalMult);
             totalHerb += actualYield;
             
