@@ -1,6 +1,6 @@
 /**
- * V3.4.1 core.js (萬象天道演化 - 煉丹大成版)
- * 職責：引擎核心導航、數據完整性防護、戰鬥準備管線、經濟隨機事件驅動、煉丹閣結算
+ * V3.4.2 core.js (萬象天道演化 - 懸賞外派版)
+ * 職責：引擎核心導航、數據完整性防護、戰鬥準備管線、經濟隨機事件驅動、煉丹與懸賞結算
  * 位置：/core.js
  */
 
@@ -15,13 +15,13 @@ import { UI_World } from './ui/ui_world.js';
 import { SectManager } from './systems/SectManager.js'; 
 import { TaskSystem } from './systems/TaskSystem.js'; 
 
-// 🌟 新增：直接引入煉丹閣
 import { AlchemySystem } from './systems/AlchemySystem.js';
+import { BountySystem } from './systems/BountySystem.js'; // 🌟 新增：直接引入懸賞堂大腦
 
 export const Core = {
     // 陣法狀態鎖定
     isReady: false,
-    version: "V3.4.1",
+    version: "V3.4.2",
     
     // 戰鬥階段控制器 (對接戰鬥準備邏輯)
     battleState: "idle", // idle, preparing, fighting
@@ -117,6 +117,7 @@ export const Core = {
             if (window.UI_Sect && window.UI_Sect.init) window.UI_Sect.init(); 
             if (window.UI_Recruit && window.UI_Recruit.init) window.UI_Recruit.init();
             if (window.UI_Alchemy && window.UI_Alchemy.init) window.UI_Alchemy.init(); // 🌟 啟動煉丹介面
+            if (window.UI_Bounty && window.UI_Bounty.init) window.UI_Bounty.init();   // 🌟 啟動懸賞堂介面
         } catch(e) { 
             console.warn("高級宗門介面模組尚未歸位。"); 
         }
@@ -131,7 +132,8 @@ export const Core = {
             { name: 'TaskSystem', ref: TaskSystem },
             { name: 'FarmSystem', ref: window.FarmSystem },
             { name: 'MineSystem', ref: window.MineSystem },
-            { name: 'AlchemySystem', ref: AlchemySystem } // 🌟 加入煉丹大腦
+            { name: 'AlchemySystem', ref: AlchemySystem }, // 🌟 加入煉丹大腦
+            { name: 'BountySystem', ref: BountySystem }    // 🌟 加入懸賞堂大腦
         ];
 
         sys.forEach(s => {
@@ -210,7 +212,7 @@ export const Core = {
     },
 
     /**
-     * 🌟 V3.4.1 核心：天道經濟循環 (加入煉丹閣)
+     * 🌟 V3.4.2 核心：天道經濟循環 (加入煉丹閣與懸賞堂)
      * 職責：精算產出、觸發環境隨機事件、對接數據持久化
      */
     startEconomyTick() {
@@ -249,11 +251,14 @@ export const Core = {
                 if (ore > 0) tickReport.push(`⛏️ 玄鐵 +${ore}`);
             }
 
-            // --- 3. 結算煉丹 (消耗仙草，產出丹藥) 🌟 新增
+            // --- 3. 結算煉丹 (消耗仙草，產出丹藥)
             if (AlchemySystem && AlchemySystem.processTick) {
-                // 煉丹閣也會受到環境倍率影響 (產量暴擊)
                 AlchemySystem.processTick(globalMult);
-                // (註：煉丹的詳細產出已經在 AlchemySystem 內部寫了專屬的 Log，所以不加進 tickReport 以免洗頻)
+            }
+
+            // --- 4. 結算懸賞堂歷練 (弟子歸來) 🌟 新增
+            if (BountySystem && BountySystem.processTick) {
+                BountySystem.processTick();
             }
 
             // --- 介面即時同步與存檔 ---
