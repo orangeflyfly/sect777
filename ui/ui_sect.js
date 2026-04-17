@@ -1,5 +1,5 @@
 /**
- * V3.4 ui_sect.js (終極樞紐 - 三大產業完美路由版)
+ * V3.4 ui_sect.js (終極樞紐 - 四大產業完美路由版)
  * 職責：管理宗門首頁七大入口，並負責將點擊分配給對應的專屬 UI 模組
  * 位置：/ui/ui_sect.js
  */
@@ -9,8 +9,9 @@ import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 import { SectSystem } from '../systems/SectSystem.js';
 import { UI_Recruit } from './ui_recruit.js'; 
 import { UI_Farm } from './ui_farm.js';       
-import { UI_Mine } from './ui_mine.js';       // 🌟 修正：正式引入靈礦脈專屬 UI
-import { UI_Alchemy } from './ui_alchemy.js'; // 🌟 引入煉丹閣專屬 UI
+import { UI_Mine } from './ui_mine.js';       
+import { UI_Alchemy } from './ui_alchemy.js'; 
+import { UI_Bounty } from './ui_bounty.js';   // 🌟 修正：正式引入懸賞堂專屬 UI
 
 export const UI_Sect = {
     // 宗門庫房專屬商品清單
@@ -105,7 +106,6 @@ export const UI_Sect = {
             return;
         }
 
-        // 🌟 修正：將鐵礦部完美轉交給 UI_Mine，拔除舊的 renderIron
         if (deptId === 'iron') {
             if (UI_Mine) UI_Mine.openModal();
             else if (window.UI_Mine) window.UI_Mine.openModal();
@@ -119,23 +119,27 @@ export const UI_Sect = {
             else Msg.log("❌ 煉丹閣大陣尚未準備完畢，請稍後再試！", "system");
             return;
         }
+
+        // 🌟 新增：將懸賞堂完美轉交給 UI_Bounty，拔除舊的 renderBounty
+        if (deptId === 'bounty') {
+            if (UI_Bounty) UI_Bounty.openModal();
+            else if (window.UI_Bounty) window.UI_Bounty.openModal();
+            else Msg.log("❌ 懸賞堂大陣尚未準備完畢，請稍後再試！", "system");
+            return;
+        }
         
         let title = "";
         let contentHtml = "";
 
         switch(deptId) {
-            // iron 已經在上面 return 掉了，所以這裡拿掉 case 'iron'
-            case 'bounty':
-                title = "📜 懸賞堂";
-                contentHtml = this.renderBounty();
-                break;
+            // bounty 已經在上面 return 掉了，所以這裡拿掉 case 'bounty'
             case 'vault':
                 title = "📦 宗門庫房";
                 contentHtml = this.renderVault();
                 break;
         }
 
-        // 只有懸賞和庫房會走到這一步，使用共用的彈窗
+        // 只有庫房會走到這一步，使用共用的彈窗
         if (contentHtml) {
             this.showModal(title, contentHtml);
         }
@@ -161,49 +165,7 @@ export const UI_Sect = {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     },
 
-    renderBounty() {
-        if (!Player.data.tasks || Player.data.tasks.length === 0) {
-            return `<div class="empty-msg" style="padding:40px 10px;">長老正在整理任務卷宗，請稍後再來。</div>`;
-        }
-        const currentPoints = Player.data.sectPoints || 0;
-        let html = `
-            <div style="text-align:center; margin-bottom: 15px;">
-                <p style="color:#cbd5e1; font-size:13px; margin-bottom:5px;">提交修仙界素材，換取宗門底蘊。</p>
-                <div style="color:#fcd34d; font-weight:bold; font-size:15px; padding: 5px; background:rgba(251,191,36,0.1); border-radius:5px; display:inline-block;">
-                    當前貢獻：🌟 ${currentPoints} 點
-                </div>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:10px; max-height: 400px; overflow-y: auto; padding-right: 5px;">
-        `;
-        Player.data.tasks.forEach(task => {
-            const itemIndex = Player.data.inventory.findIndex(i => i.id === task.targetId || i.name === task.targetName);
-            const currentCount = itemIndex !== -1 ? (Player.data.inventory[itemIndex].count || 1) : 0;
-            const isEnough = currentCount >= task.count;
-            const countColor = isEnough ? '#4ade80' : '#ef4444';
-            const btnBg = isEnough ? 'var(--exp-color)' : 'rgba(255,255,255,0.1)';
-            const btnCursor = isEnough ? 'pointer' : 'not-allowed';
-            const btnAction = isEnough ? `TaskSystem.submitTask('${task.uuid}')` : '';
-
-            html += `
-                <div style="background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:12px; text-align:left;">
-                    <div style="font-size:12px; color:#94a3b8; margin-bottom:8px; line-height:1.4;">${task.desc}</div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; background:rgba(255,255,255,0.05); padding:6px; border-radius:5px;">
-                        <span style="font-size:14px; font-weight:bold; color:white;">📦 ${task.targetName}</span>
-                        <span style="font-size:13px; font-weight:bold; color:${countColor};">${currentCount} / ${task.count}</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="color:#fcd34d; font-size:13px; font-weight:bold;">獎勵: 🌟 ${task.reward}</span>
-                        <button style="border:none; border-radius:6px; padding:8px 16px; font-weight:bold; color:white; background:${btnBg}; cursor:${btnCursor}; transition:0.2s;" 
-                                onclick="${btnAction}; event.stopPropagation()">
-                            交付
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-        html += `</div>`;
-        return html;
-    },
+    // 🌟 註：此處已將舊版 renderBounty 徹底刪除，因其邏輯已轉移至 ui_bounty.js
 
     renderVault() {
         const currentPoints = Player.data.sectPoints || 0;
