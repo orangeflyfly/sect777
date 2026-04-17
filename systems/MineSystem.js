@@ -1,6 +1,6 @@
 /**
- * V3.4 MineSystem.js (萬象森羅 - 終極產能大腦)
- * 職責：管理鐵礦部、精算【礦脈等級+屬性+天象倍率】產出、處理亡靈與尋脈詞條
+ * V3.6.1 MineSystem.js (萬象森羅 - 靈礦脈機緣聯動版)
+ * 職責：管理鐵礦部、精算產出，並將突發機緣 (偷懶/爆擊/亡靈法師) 即時顯化於微縮視界
  * 位置：/systems/MineSystem.js
  */
 
@@ -10,7 +10,7 @@ import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 
 export const MineSystem = {
     init() {
-        console.log("%c【MineSystem】地脈玄鐵感應中，對接萬象天道...", "color: #fbbf24; font-weight: bold;");
+        console.log("%c【MineSystem】地脈玄鐵感應中，對接微縮視界共鳴...", "color: #fbbf24; font-weight: bold;");
         window.MineSystem = this;
 
         if (!Player.data.materials) {
@@ -33,6 +33,25 @@ export const MineSystem = {
 
         if (hasRefuseTrait) return false;
         return true;
+    },
+
+    /**
+     * 🌟 輔助法陣：觸發微縮視界 (UI_Sim) 的專屬事件飄字
+     */
+    triggerSimBubble(discipleId, text, color = '#0f172a') {
+        if (!window.UI_Sim) return;
+        const bubble = document.getElementById(`bubble-${discipleId}`);
+        if (bubble) {
+            bubble.innerText = text;
+            bubble.style.color = color;
+            bubble.classList.add('sim-bubble-show');
+            setTimeout(() => {
+                if (bubble) {
+                    bubble.classList.remove('sim-bubble-show');
+                    bubble.style.color = '#0f172a'; 
+                }
+            }, 3500);
+        }
     },
 
     /**
@@ -82,12 +101,16 @@ export const MineSystem = {
             if (effect.scare_workers) isScary = true;
         });
 
-        // --- [5] 事件判定與最終結果 ---
-        if (isLazy) return { yield: 0, exp: 0, log: `【${disciple.name}】在礦道深處偷懶睡覺，弄得灰頭土臉卻沒挖到礦。` };
+        // --- [5] 事件判定與最終結果 (🌟 結合 UI_Sim 飄字) ---
+        if (isLazy) {
+            this.triggerSimBubble(disciple.id, "呼... 礦坑好適合睡覺", "#64748b");
+            return { yield: 0, exp: 0, log: `【${disciple.name}】在礦道深處偷懶睡覺，弄得灰頭土臉卻沒挖到礦。` };
+        }
 
         // 判定：亡靈法師特效
         let logMsg = null;
         if (isScary && Math.random() < 0.15) {
+            this.triggerSimBubble(disciple.id, "起來吧！骷髏苦力！💀", "#9333ea");
             logMsg = `💀 【${disciple.name}】召喚骷髏礦工幫忙，嚇得旁邊的散修驚叫連連！`;
         }
 
@@ -95,6 +118,7 @@ export const MineSystem = {
         let finalYield = baseYield * multiplier;
         if (Math.random() < critChance) {
             finalYield *= 2.5; // 礦髓暴擊倍率極高
+            this.triggerSimBubble(disciple.id, "挖到極品玄鐵了！💎", "#f59e0b");
             logMsg = `💎 【${disciple.name}】挖掘到了一塊極品玄鐵礦髓，產量大爆發！`;
         }
 
