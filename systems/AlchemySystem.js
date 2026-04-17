@@ -109,4 +109,44 @@ export const AlchemySystem = {
         if (!Player.data.materials || Player.data.materials.herb <= 0) return; // 沒仙草就不開爐
 
         let alchemists = Player.data.sect.disciples.filter(d => d.status === 'alchemy');
-        if (alchemists.length === 0) return
+        if (alchemists.length === 0) return;
+
+        let totalHerbCost = 0;
+        let gainedItems = {};
+
+        alchemists.forEach(d => {
+            // 檢查材料夠不夠最低門檻
+            if (Player.data.materials.herb - totalHerbCost < 15) return; 
+
+            let result = this.craft(d, externalMult);
+            totalHerbCost += result.costHerb;
+
+            if (result.itemGained && result.amount > 0) {
+                if (!gainedItems[result.itemGained]) gainedItems[result.itemGained] = 0;
+                gainedItems[result.itemGained] += result.amount;
+            }
+
+            if (result.log) Msg.log(result.log, "system");
+        });
+
+        // --- 結算入庫 ---
+        if (totalHerbCost > 0) {
+            Player.data.materials.herb = Math.max(0, Player.data.materials.herb - totalHerbCost);
+        }
+
+        let summaryLogs = [];
+        for (let item in gainedItems) {
+            if (!Player.data.inventory[item]) Player.data.inventory[item] = 0;
+            Player.data.inventory[item] += gainedItems[item];
+            summaryLogs.push(`💊 ${item} +${gainedItems[item]}`);
+        }
+
+        if (summaryLogs.length > 0) {
+            console.log(`%c[煉丹結算] 消耗仙草 -${totalHerbCost} | ${summaryLogs.join(' | ')}`, "color: #ef4444;");
+        }
+
+        Player.save();
+    }
+};
+
+window.AlchemySystem = AlchemySystem;
