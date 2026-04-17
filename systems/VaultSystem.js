@@ -1,6 +1,7 @@
 /**
- * V3.4 VaultSystem.js (宗門庫房核心)
+ * V3.5.7 VaultSystem.js (宗門庫房核心 - 空間法則修復版)
  * 職責：管理庫房商品清單、處理貢獻點扣除與物品發放
+ * 修正：完美對接 dictionary (字典) 型態的 inventory，解決兌換按鈕失效崩潰的問題
  * 位置：/systems/VaultSystem.js
  */
 
@@ -17,7 +18,7 @@ export const VaultSystem = {
     ],
 
     init() {
-        console.log("%c【VaultSystem】宗門庫房大門已開啟，奇珍異寶盤點完畢。", "color: #eab308; font-weight: bold;");
+        console.log("%c【VaultSystem】宗門庫房大門已開啟，空間法則修復完畢。", "color: #eab308; font-weight: bold;");
         window.VaultSystem = this;
     },
 
@@ -34,36 +35,36 @@ export const VaultSystem = {
             return false;
         }
 
-        // 建立要發放進背包的物品物件
-        const newItem = {
-            id: item.id,
-            uuid: `vault_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-            name: item.name,
-            type: item.type,
-            desc: item.desc,
-            rarity: item.rarity || 3
-        };
+        // 🌟 核心修正：將物品以「字典鍵值(Key-Value)」存入 inventory
+        // 徹底避開 Player.addItem() 呼叫陣列 push 所導致的崩潰當機
+        if (!Player.data.inventory) {
+            Player.data.inventory = {};
+        }
         
-        // 如果是功法殘卷，加上專屬屬性
-        if (item.type === 'fragment') {
-            newItem.skillName = item.skillName;
-            newItem.volume = item.volume;
+        // 庫房物品（殘卷、丹藥、鑰匙）均為可堆疊的奇珍異寶，直接疊加數量
+        if (typeof Player.data.inventory[item.name] !== 'number') {
+            Player.data.inventory[item.name] = 0;
         }
+        Player.data.inventory[item.name] += 1;
 
-        // 呼叫 Player 的背包 API 發放物品
-        if (Player.addItem(newItem)) {
-            Player.data.sectPoints -= item.cost;
-            Player.save();
-            Msg.log(`🎁 消耗 ${item.cost} 點貢獻，成功兌換【${item.name}】！`, "gold");
-            
-            // 通知 UI 更新 (如果介面正開著)
-            if (window.UI_Vault && window.UI_Vault.isOpen) {
-                window.UI_Vault.openModal(); 
-            }
-            if (window.Core) window.Core.updateUI();
-            return true;
+        // 扣除貢獻點
+        Player.data.sectPoints -= item.cost;
+        
+        // 存檔
+        Player.save();
+        Msg.log(`🎁 消耗 ${item.cost} 點貢獻，成功兌換【${item.name}】！`, "gold");
+        
+        // 🌟 即時通知 UI 重繪庫房介面，讓貢獻點與按鈕狀態瞬間更新
+        if (window.UI_Vault && window.UI_Vault.isOpen) {
+            window.UI_Vault.openModal(); 
         }
-        return false;
+        
+        // 喚醒天道，更新上方資源條
+        if (window.Core && window.Core.updateUI) {
+            window.Core.updateUI();
+        }
+        
+        return true;
     }
 };
 
