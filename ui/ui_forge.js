@@ -173,16 +173,13 @@ export const UI_Forge = {
 
     playDivineEffect(name) {
         const fxHtml = `
-            <div id="divine-fx" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:30000; display:flex; flex-direction:column; justify-content:center; align-items:center; animation: fadeIn 0.5s;">
-                <div style="font-size:24px; color:#fbbf24; margin-bottom:20px; text-shadow:0 0 20px #fbbf24;">🌅 萬丈金光 🌅</div>
-                <h1 style="font-size:42px; color:white; text-shadow:0 0 30px #fbbf24; animation: scaleUp 0.8s infinite alternate;">【${name}】</h1>
-                <p style="color:#fbbf24; margin-top:40px; font-weight:bold;">神兵降世，天下共鳴！</p>
-                <button onclick="document.getElementById('divine-fx').remove()" style="margin-top:50px; padding:10px 30px; background:linear-gradient(180deg, #facc15, #eab308); border:none; border-radius:5px; font-weight:bold; cursor:pointer; color:black;">收納入庫</button>
+            <div id="divine-fx">
+                <div class="divine-rays"></div>
+                <div class="divine-title">🌅 萬丈金光 🌅</div>
+                <h1 class="divine-weapon-name">【${name}】</h1>
+                <p class="divine-desc">神兵降世，天下共鳴！</p>
+                <button class="divine-btn" onclick="document.getElementById('divine-fx').remove()">收納入庫</button>
             </div>
-            <style>
-                @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
-                @keyframes scaleUp { from { transform:scale(1); } to { transform:scale(1.1); } }
-            </style>
         `;
         document.body.insertAdjacentHTML('beforeend', fxHtml);
     }
