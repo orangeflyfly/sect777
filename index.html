@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>練功修練 - V3.5.0 「萬象森羅：宗門大成與天道循環」</title>
+    <title>練功修練 - V3.5.5 「萬象森羅：煉器大殿與天道強化」</title>
 
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/page_battle.css">
@@ -93,7 +93,8 @@
         import { MineSystem } from './systems/MineSystem.js';
         import { AlchemySystem } from './systems/AlchemySystem.js'; 
         import { BountySystem } from './systems/BountySystem.js'; 
-        import { VaultSystem } from './systems/VaultSystem.js';     // 🌟 新增：庫房大腦
+        import { VaultSystem } from './systems/VaultSystem.js';     
+        import { ForgeSystem } from './systems/ForgeSystem.js';     // 🌟 新增：煉器大腦
         import { TribulationSystem } from './systems/TribulationSystem.js';
         import { TaskSystem } from './systems/TaskSystem.js';
         import { SectManager } from './systems/SectManager.js';
@@ -113,7 +114,8 @@
         import { UI_Mine } from './ui/ui_mine.js';
         import { UI_Alchemy } from './ui/ui_alchemy.js'; 
         import { UI_Bounty } from './ui/ui_bounty.js';
-        import { UI_Vault } from './ui/ui_vault.js';               // 🌟 新增：庫房 UI
+        import { UI_Vault } from './ui/ui_vault.js';                
+        import { UI_Forge } from './ui/ui_forge.js';                // 🌟 新增：煉器 UI
 
         // ==========================================
         // 4. 引入 核心與數據 (Core & Data)
@@ -135,7 +137,8 @@
         window.MineSystem = MineSystem;
         window.AlchemySystem = AlchemySystem; 
         window.BountySystem = BountySystem; 
-        window.VaultSystem = VaultSystem;     // 🌟 註冊庫房大腦
+        window.VaultSystem = VaultSystem;     
+        window.ForgeSystem = ForgeSystem;     // 🌟 註冊煉器大腦
         window.TribulationSystem = TribulationSystem;
         window.TaskSystem = TaskSystem;
         window.SectManager = SectManager;
@@ -152,7 +155,8 @@
         window.UI_Mine = UI_Mine;
         window.UI_Alchemy = UI_Alchemy; 
         window.UI_Bounty = UI_Bounty;
-        window.UI_Vault = UI_Vault;           // 🌟 註冊庫房 UI
+        window.UI_Vault = UI_Vault;           
+        window.UI_Forge = UI_Forge;           // 🌟 註冊煉器 UI
 
         window.Core = Core;
         window.DB = DB;            
@@ -163,7 +167,7 @@
         // ==========================================
         window.onload = () => {
             // 系統啟動日誌
-            console.log("%c【系統】V3.5.0 萬象森羅：全產業鏈、外派歷練與宗門庫房大陣啟動！", "color: #fbbf24; font-weight: bold; font-size: 14px;");
+            console.log("%c【系統】V3.5.5 萬象森羅：煉器大殿與天道強化大陣啟動！", "color: #fbbf24; font-weight: bold; font-size: 14px;");
 
             // 延遲初始化，確保所有 DOM 節點與全局對象已就緒
             setTimeout(() => {
