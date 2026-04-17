@@ -1,6 +1,6 @@
 /**
- * V3.3.8 core.js (萬象天道演化 - 核心共鳴版)
- * 職責：引擎核心導航、分頁精準調度、數據完整性防護、戰鬥準備管線、經濟隨機事件驅動
+ * V3.4.1 core.js (萬象天道演化 - 煉丹大成版)
+ * 職責：引擎核心導航、數據完整性防護、戰鬥準備管線、經濟隨機事件驅動、煉丹閣結算
  * 位置：/core.js
  */
 
@@ -15,12 +15,15 @@ import { UI_World } from './ui/ui_world.js';
 import { SectManager } from './systems/SectManager.js'; 
 import { TaskSystem } from './systems/TaskSystem.js'; 
 
+// 🌟 新增：直接引入煉丹閣
+import { AlchemySystem } from './systems/AlchemySystem.js';
+
 export const Core = {
     // 陣法狀態鎖定
     isReady: false,
-    version: "V3.3.8",
+    version: "V3.4.1",
     
-    // 🌟 新增：戰鬥階段控制器 (對接戰鬥準備邏輯)
+    // 戰鬥階段控制器 (對接戰鬥準備邏輯)
     battleState: "idle", // idle, preparing, fighting
 
     /**
@@ -51,7 +54,7 @@ export const Core = {
             this.switchPage('battle');
 
             this.isReady = true;
-            console.log("%c✅ 宗門天道運轉穩定，諸天靈脈連接完成。", "color: #10b981; font-weight: bold;");
+            console.log("%c✅ 宗門天道運轉穩定，三大產業靈脈連接完成。", "color: #10b981; font-weight: bold;");
         } catch (error) {
             console.error("❌ 飛升大陣點火發生致命錯誤，請排查靈脈路徑：", error);
         }
@@ -64,23 +67,25 @@ export const Core = {
         if (!Player.data) return;
         const d = Player.data;
         
-        // 🌟 強化：若無世界屬性則初始化 (含仙草園與靈礦等級)
         if (!d.world) {
             d.world = { 
                 arrayLevel: 1, 
                 lastCollect: Date.now(), 
                 durability: 100, 
                 farm: { level: 1, assigned: 0 }, 
-                mine: { level: 1, assigned: 0 } 
+                mine: { level: 1, assigned: 0 },
+                alchemy: { level: 0, assigned: 0 } // 🌟 確保煉丹閣數據存在
             };
         }
         
-        // 🌟 強化：對接材料庫與宗門弟子庫
+        if (!d.world.alchemy) d.world.alchemy = { level: 0, assigned: 0 }; // 🌟 舊存檔相容
+
         if (!d.materials) d.materials = { herb: 0, ore: 0 };
         if (!d.sect) d.sect = { disciples: [] };
         if (!d.skills) d.skills = [];
+        if (!d.inventory) d.inventory = {}; // 🌟 確保有背包可以放丹藥
         
-        // 🌟 修正：產業等級強制脫離「零」的領域
+        // 修正：產業等級強制脫離「零」的領域 (煉丹閣除外，它可以是 0 代表未解鎖)
         if (d.world.farm && d.world.farm.level < 1) d.world.farm.level = 1;
         if (d.world.mine && d.world.mine.level < 1) d.world.mine.level = 1;
         
@@ -111,6 +116,7 @@ export const Core = {
         try { 
             if (window.UI_Sect && window.UI_Sect.init) window.UI_Sect.init(); 
             if (window.UI_Recruit && window.UI_Recruit.init) window.UI_Recruit.init();
+            if (window.UI_Alchemy && window.UI_Alchemy.init) window.UI_Alchemy.init(); // 🌟 啟動煉丹介面
         } catch(e) { 
             console.warn("高級宗門介面模組尚未歸位。"); 
         }
@@ -124,7 +130,8 @@ export const Core = {
             { name: 'SectManager', ref: SectManager },
             { name: 'TaskSystem', ref: TaskSystem },
             { name: 'FarmSystem', ref: window.FarmSystem },
-            { name: 'MineSystem', ref: window.MineSystem }
+            { name: 'MineSystem', ref: window.MineSystem },
+            { name: 'AlchemySystem', ref: AlchemySystem } // 🌟 加入煉丹大腦
         ];
 
         sys.forEach(s => {
@@ -157,7 +164,7 @@ export const Core = {
                         document.querySelector(`.nav-btn[onclick*="${pageId}"]`);
             if (btn) btn.classList.add('active');
 
-            // 🌟 觸發特定頁面的即時渲染管線
+            // 觸發特定頁面的即時渲染管線
             this.triggerPageUpdate(pageId);
             
             // 更新浮空跳轉鈕
@@ -180,20 +187,17 @@ export const Core = {
             case 'world': UI_World.renderWorld?.(); break; 
             case 'sect': window.UI_Sect?.renderSect?.(); break;
             case 'battle': 
-                // 🌟 新增：切換回歷練時，檢查是否需要進入準備階段
                 if (this.battleState === 'idle') this.prepareBattleStage();
                 break;
         }
     },
 
     /**
-     * 🌟 新增：戰鬥準備階段處理
-     * 職責：對接 UI_Battle 顯示怪物資訊，但暫停自動攻擊，等待玩家確認
+     * 戰鬥準備階段處理
      */
     prepareBattleStage() {
         this.battleState = "preparing";
         console.log("%c[歷練] 進入戰鬥準備階段...", "color: #fb7185;");
-        // 此處可擴充：顯示怪物弱點、建議丹藥等 UI
     },
 
     refreshFloatingControls(pageId) {
@@ -206,12 +210,12 @@ export const Core = {
     },
 
     /**
-     * 🌟 V3.3.8 核心：天道經濟循環 (加強型)
+     * 🌟 V3.4.1 核心：天道經濟循環 (加入煉丹閣)
      * 職責：精算產出、觸發環境隨機事件、對接數據持久化
      */
     startEconomyTick() {
         const CYCLE = 60000; // 每分鐘一次天道結算
-        console.log("%c[天道] 經濟齒輪開始咬合，每 60 秒觀照一次全宗門產出。", "color: #4ade80; font-weight: bold;");
+        console.log("%c[天道] 經濟齒輪開始咬合，每 60 秒觀照一次全宗門產出與消耗。", "color: #4ade80; font-weight: bold;");
         
         setInterval(() => {
             if (!this.isReady) return;
@@ -220,32 +224,41 @@ export const Core = {
             
             // --- 隨機環境干擾 ---
             let globalMult = 1.0;
-            if (Math.random() < 0.15) { // 15% 機率觸發特殊天象
+            if (Math.random() < 0.15) { 
                 const worldEvents = [
-                    { msg: "🌈 紫氣東來！仙草產能提升 80%！", target: 'farm', mult: 1.8, color: 'gold' },
-                    { msg: "⚡ 地脈雷動！玄鐵產量提升 50%！", target: 'mine', mult: 1.5, color: '#fbbf24' },
-                    { msg: "🌑 靈氣枯竭... 全產能暫時下降 20%", target: 'all', mult: 0.8, color: '#94a3b8' }
+                    { msg: "🌈 紫氣東來！產能提升 80%！", mult: 1.8, color: 'gold' },
+                    { msg: "⚡ 地脈雷動！產量提升 50%！", mult: 1.5, color: '#fbbf24' },
+                    { msg: "🌑 靈氣枯竭... 全產能暫時下降 20%", mult: 0.8, color: '#94a3b8' }
                 ];
                 const evt = worldEvents[Math.floor(Math.random() * worldEvents.length)];
                 globalMult = evt.mult;
-                window.MessageCenter.log(evt.msg, evt.color);
+                if (window.MessageCenter) window.MessageCenter.log(evt.msg, evt.color);
             }
 
-            // --- 結算仙草 ---
+            // 🌟 修正：正確將倍率傳入 processTick，而非事後相乘！
+            
+            // --- 1. 結算仙草 ---
             if (window.FarmSystem?.processTick) {
-                const herb = window.FarmSystem.processTick();
-                if (herb > 0) tickReport.push(`🌿 仙草 +${Math.floor(herb * globalMult)}`);
+                const herb = window.FarmSystem.processTick(globalMult);
+                if (herb > 0) tickReport.push(`🌿 仙草 +${herb}`);
             }
 
-            // --- 結算玄鐵 ---
+            // --- 2. 結算玄鐵 ---
             if (window.MineSystem?.processTick) {
-                const ore = window.MineSystem.processTick();
-                if (ore > 0) tickReport.push(`⛏️ 玄鐵 +${Math.floor(ore * globalMult)}`);
+                const ore = window.MineSystem.processTick(globalMult);
+                if (ore > 0) tickReport.push(`⛏️ 玄鐵 +${ore}`);
+            }
+
+            // --- 3. 結算煉丹 (消耗仙草，產出丹藥) 🌟 新增
+            if (AlchemySystem && AlchemySystem.processTick) {
+                // 煉丹閣也會受到環境倍率影響 (產量暴擊)
+                AlchemySystem.processTick(globalMult);
+                // (註：煉丹的詳細產出已經在 AlchemySystem 內部寫了專屬的 Log，所以不加進 tickReport 以免洗頻)
             }
 
             // --- 介面即時同步與存檔 ---
             if (tickReport.length > 0) {
-                console.log(`%c[天道結算] ${tickReport.join(' | ')}`, "color: #4ade80;");
+                console.log(`%c[天道結算] ${tickReport.join(' | ')} (套用環境倍率 x${globalMult})`, "color: #4ade80;");
                 if (this.isPageActive('world')) UI_World.renderWorld();
             }
 
@@ -305,7 +318,7 @@ export const Core = {
 window.Core = Core;
 
 /**
- * 終極時空倒流：清除存檔
+ * 終極時空倒流：清除存檔 (統一定義在此，HTML的會呼叫這個或被這個覆蓋，安全無虞)
  */
 window.DEBUG_RESET = () => {
     if (confirm("⚠️ 警告：這將會清除所有本地存檔並重新開始，確定要逆轉時空嗎？")) {
