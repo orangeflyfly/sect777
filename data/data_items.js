@@ -1,10 +1,10 @@
 /**
- * V2.0 data_items.js
- * 職責：物品數據庫、裝備詞條庫 (80組)、物品與殘卷資料
- * 狀態：已轉化為 ES Module
+ * V3.5.9 data_items.js (萬象歸一 - 法寶總綱版)
+ * 職責：物品數據庫、裝備詞條庫 (80組)、物品模版與殘卷資料
+ * 修正：補完妖獸素材模版、擴充裝備後綴、實裝資源歸一化模版
  */
 
-// 1. 導出裝備詞條庫 (Prefixes)
+// 1. 導出裝備詞條庫 (Prefixes) - 保持原味 80 組，絕不簡化
 export const PREFIXES = [
     /* 力量系 (Str) - 20組 */
     { name: "破碎的", attr: "str", value: 1 }, { name: "生鏽的", attr: "str", value: 2 },
@@ -55,15 +55,55 @@ export const PREFIXES = [
     { name: "至聖的", attr: "int", value: 16000 }, { name: "道源的", attr: "int", value: 30000 }
 ];
 
-// 2. 導出後綴庫 (Suffixes)
+// 2. 導出後綴庫 (Suffixes) - 🌟 擴充：增加法寶多樣性
 export const SUFFIXES = [
+    /* 武器類 */
     { name: "之劍", type: "weapon", baseAtk: 10 },
-    { name: "之盾", type: "armor", baseHp: 50 },
-    { name: "之戒", type: "accessory", baseAtk: 5, baseHp: 20 }
+    { name: "之刃", type: "weapon", baseAtk: 12 },
+    { name: "之斧", type: "weapon", baseAtk: 15 },
+    { name: "之杖", type: "weapon", baseAtk: 8, baseInt: 5 },
+    
+    /* 護甲類 */
+    { name: "之盾", type: "armor", baseHp: 50, baseDef: 5 },
+    { name: "之甲", type: "armor", baseHp: 80, baseDef: 3 },
+    { name: "之袍", type: "armor", baseHp: 40, baseDef: 2, baseInt: 3 },
+    
+    /* 飾品類 */
+    { name: "之戒", type: "accessory", baseAtk: 5, baseHp: 20 },
+    { name: "之佩", type: "accessory", baseInt: 10 },
+    { name: "之符", type: "accessory", baseDex: 8 },
+    { name: "之護心鏡", type: "accessory", baseHp: 100 }
 ];
 
-// 3. 導出物品庫
-export const ITEMS = {};
+// 3. 導出物品庫 - 🌟 補完：定義所有可能出現的實體道具模版
+export const ITEMS = {
+    // --- 資源歸一化模版 (供商店大腦讀取定價) ---
+    "herb": { id: "herb", name: "仙草", type: "material", rarity: 2, desc: "蘊含靈氣的草藥，煉丹必備。" },
+    "ore": { id: "ore", name: "玄鐵", type: "material", rarity: 2, desc: "堅硬的礦石，煉器基石。" },
+
+    // --- 妖獸素材模版 (對應 data_monsters.js) ---
+    "rabbit_fur": { id: "rabbit_fur", name: "柔軟兔毛", type: "material", rarity: 1, desc: "野兔身上的細毛，可製作低階符紙。" },
+    "feather": { id: "feather", name: "山雞翎羽", type: "material", rarity: 1, desc: "山雞尾部的羽毛，質地堅韌。" },
+    "wolf_fang": { id: "wolf_fang", name: "殘缺狼牙", type: "material", rarity: 1, desc: "灰狼的犬齒，隱約帶著一絲煞氣。" },
+    "wolf_hide": { id: "wolf_hide", name: "灰狼皮", type: "material", rarity: 2, desc: "完整的灰狼皮毛，是製作皮甲的好材料。" },
+    "tiger_claw": { id: "tiger_claw", name: "猛虎利爪", type: "material", rarity: 2, desc: "猛虎最鋒利的爪子，透著寒芒。" },
+    "tiger_bone": { id: "tiger_bone", name: "虎王壯骨", type: "material", rarity: 3, desc: "虎王的一截脛骨，沉重如鐵。" },
+    "tiger_soul": { id: "tiger_soul", name: "虎王精魂", type: "material", rarity: 4, desc: "凝聚了虎王生前殺意的精魄。" },
+    "snake_skin": { id: "snake_skin", name: "乾枯蛇皮", type: "material", rarity: 1, desc: "赤腹蛇蛻下的老皮。" },
+    "snake_gall": { id: "snake_gall", name: "赤腹蛇膽", type: "material", rarity: 2, desc: "極苦的蛇膽，具有清熱明目之效。" },
+    "water_bead": { id: "water_bead", name: "水靈珠碎塊", type: "material", rarity: 2, desc: "破碎的靈珠，依舊散發著水靈力。" },
+    "ancient_iron": { id: "ancient_iron", name: "鏽蝕古鐵", type: "material", rarity: 2, desc: "遺跡守衛崩裂落下的金屬殘片。" },
+    "dragon_blood": { id: "dragon_blood", name: "蛟龍真血", type: "material", rarity: 4, desc: "玄水惡蛟的一滴本命精血，狂暴無比。" },
+    "dragon_scale": { id: "dragon_scale", name: "惡蛟逆鱗", type: "material", rarity: 5, desc: "觸之必怒！蛟龍全身最堅硬的一塊鱗片。" },
+    "golem_core": { id: "golem_core", name: "傀儡動力核心", type: "material", rarity: 5, desc: "守境傀儡的核心，跳動著精準的靈力脈衝。" },
+    "boar_tusk": { id: "boar_tusk", name: "魔化獠牙", type: "material", rarity: 2, desc: "被魔氣侵染的獠牙，漆黑如墨。" },
+    "spider_silk": { id: "spider_silk", name: "劇毒蛛絲", type: "material", rarity: 2, desc: "幽林毒蛛吐出的黏稠絲線。" },
+    "venom_sac": { id: "venom_sac", name: "毒囊", type: "material", rarity: 3, desc: "充滿劇毒液體的腺體。" },
+    "bat_wing": { id: "bat_wing", name: "嗜血蝠翼", type: "material", rarity: 1, desc: "蝙蝠的膜翼，輕薄如紙。" },
+    "ape_fur": { id: "ape_fur", name: "烈焰猿鬃", type: "material", rarity: 3, desc: "烈焰巨猿頸部的毛髮，摸起來微微發燙。" },
+    "spirit_branch": { id: "spirit_branch", name: "聚靈枯枝", type: "material", rarity: 3, desc: "萬年樹妖身上充滿靈氣的殘枝。" },
+    "tree_heart": { id: "tree_heart", name: "萬年木心", type: "material", rarity: 5, desc: "整棵樹妖的生命精華，萬年方成一寸。" }
+};
 
 // 4. 導出殘卷庫
 export const FRAGMENTS = {
@@ -73,7 +113,6 @@ export const FRAGMENTS = {
 
 /**
  * --- 🛡️ 兼容性法陣 ---
- * 為了確保舊的 window.GAMEDATA.ITEMS 依然能運作
  */
 window.GAMEDATA = window.GAMEDATA || {};
 window.GAMEDATA.PREFIXES = PREFIXES;
@@ -81,4 +120,4 @@ window.GAMEDATA.SUFFIXES = SUFFIXES;
 window.GAMEDATA.ITEMS = ITEMS;
 window.GAMEDATA.FRAGMENTS = FRAGMENTS;
 
-console.log("💎 物品數據庫 ESM 模組載入成功");
+console.log("💎 物品數據庫 V3.5.9 ESM 模組載入成功，法寶總綱已同步。");
