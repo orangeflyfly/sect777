@@ -1,5 +1,5 @@
 /**
- * V3.4 ui_sect.js (終極樞紐 - 四大產業完美路由版)
+ * V3.5 ui_sect.js (終極樞紐 - 全設施解耦完美路由版)
  * 職責：管理宗門首頁七大入口，並負責將點擊分配給對應的專屬 UI 模組
  * 位置：/ui/ui_sect.js
  */
@@ -11,18 +11,12 @@ import { UI_Recruit } from './ui_recruit.js';
 import { UI_Farm } from './ui_farm.js';       
 import { UI_Mine } from './ui_mine.js';       
 import { UI_Alchemy } from './ui_alchemy.js'; 
-import { UI_Bounty } from './ui_bounty.js';   // 🌟 修正：正式引入懸賞堂專屬 UI
+import { UI_Bounty } from './ui_bounty.js';   
+import { UI_Vault } from './ui_vault.js';     // 🌟 新增：正式引入庫房專屬 UI
 
 export const UI_Sect = {
-    // 宗門庫房專屬商品清單
-    vaultItems: [
-        { id: 'v_frag_1', name: '殘卷：奔雷訣(卷一)', type: 'fragment', skillName: '奔雷訣', volume: 1, cost: 200, rarity: 4, desc: '宗門不傳之秘，蘊含一絲天地雷劫之威。' },
-        { id: 'v_pill_1', name: '洗髓丹', type: 'special', cost: 500, rarity: 3, desc: '伐骨洗髓，服用後似乎能讓修煉之路更加順暢。(功能開發中)' },
-        { id: 'v_fruit_1', name: '造化果', type: 'special', cost: 1500, rarity: 5, desc: '奪天地造化之神物，據說能强行提升先天悟性。(功能開發中)' }
-    ],
-
     init() {
-        console.log("【UI_Sect】宗門總樞紐初始化，產業大陣已連接...");
+        console.log("【UI_Sect】宗門總樞紐初始化，全產業大陣已連接...");
         this.renderLayout();
         this.ensureDataState(); 
         
@@ -87,7 +81,7 @@ export const UI_Sect = {
     },
 
     /**
-     * 🌟 路由核心：徹底放權，將產業點擊導向專屬 UI 模組
+     * 🌟 路由核心：徹底放權，將所有產業點擊導向專屬 UI 模組
      */
     openDept(deptId) {
         this.ensureDataState();
@@ -120,120 +114,19 @@ export const UI_Sect = {
             return;
         }
 
-        // 🌟 新增：將懸賞堂完美轉交給 UI_Bounty，拔除舊的 renderBounty
         if (deptId === 'bounty') {
             if (UI_Bounty) UI_Bounty.openModal();
             else if (window.UI_Bounty) window.UI_Bounty.openModal();
             else Msg.log("❌ 懸賞堂大陣尚未準備完畢，請稍後再試！", "system");
             return;
         }
-        
-        let title = "";
-        let contentHtml = "";
 
-        switch(deptId) {
-            // bounty 已經在上面 return 掉了，所以這裡拿掉 case 'bounty'
-            case 'vault':
-                title = "📦 宗門庫房";
-                contentHtml = this.renderVault();
-                break;
-        }
-
-        // 只有庫房會走到這一步，使用共用的彈窗
-        if (contentHtml) {
-            this.showModal(title, contentHtml);
-        }
-    },
-
-    showModal(title, contentHtml) {
-        const existing = document.getElementById('sect-modal-overlay');
-        if (existing) existing.remove();
-
-        const modalHtml = `
-            <div id="sect-modal-overlay" class="modal-overlay" onclick="this.remove()">
-                <div class="modal-box" style="max-width: 350px; background:var(--glass-dark); border:1px solid var(--card-border);" onclick="event.stopPropagation()">
-                    <div class="modal-header">
-                        <h3 style="color:#fcd34d; margin:0; font-size:18px;">${title}</h3>
-                        <button class="btn-modal-close" onclick="document.getElementById('sect-modal-overlay').remove()">✕</button>
-                    </div>
-                    <div class="modal-body" id="sect-modal-body" style="padding: 15px 0 0 0;">
-                        ${contentHtml}
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-    },
-
-    // 🌟 註：此處已將舊版 renderBounty 徹底刪除，因其邏輯已轉移至 ui_bounty.js
-
-    renderVault() {
-        const currentPoints = Player.data.sectPoints || 0;
-        let html = `
-            <div style="text-align:center; margin-bottom: 15px;">
-                <p style="color:#cbd5e1; font-size:13px; margin-bottom:5px;">消耗貢獻點，兌換宗門底蘊寶物。</p>
-                <div style="color:#fcd34d; font-weight:bold; font-size:15px; padding: 5px; background:rgba(251,191,36,0.1); border-radius:5px; display:inline-block;">
-                    當前貢獻：🌟 ${currentPoints} 點
-                </div>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:10px; max-height: 400px; overflow-y: auto; padding-right: 5px;">
-        `;
-        this.vaultItems.forEach(item => {
-            const canAfford = currentPoints >= item.cost;
-            const btnBg = canAfford ? 'var(--hp-color)' : 'rgba(255,255,255,0.1)';
-            const btnCursor = canAfford ? 'pointer' : 'not-allowed';
-            const btnAction = canAfford ? `UI_Sect.buyVaultItem('${item.id}')` : '';
-
-            html += `
-                <div style="background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:12px; text-align:left;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-                        <div>
-                            <div style="font-size:15px; font-weight:bold; color:white; margin-bottom:4px;">${item.name}</div>
-                            <div style="font-size:12px; color:#94a3b8; line-height:1.4;">${item.desc}</div>
-                        </div>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; background:rgba(255,255,255,0.05); padding:8px; border-radius:5px;">
-                        <span style="color:#fcd34d; font-size:13px; font-weight:bold;">售價: 🌟 ${item.cost}</span>
-                        <button style="border:none; border-radius:6px; padding:6px 16px; font-weight:bold; color:white; background:${btnBg}; cursor:${btnCursor}; transition:0.2s;" 
-                                onclick="${btnAction}; event.stopPropagation()">
-                            兌換
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-        html += `</div>`;
-        return html;
-    },
-
-    buyVaultItem(itemId) {
-        const item = this.vaultItems.find(i => i.id === itemId);
-        if (!item) return;
-
-        if ((Player.data.sectPoints || 0) < item.cost) {
-            return Msg.log(`貢獻點不足，無法兌換【${item.name}】！`, "system");
-        }
-
-        const newItem = {
-            id: item.id,
-            uuid: `v_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-            name: item.name,
-            type: item.type,
-            desc: item.desc,
-            rarity: item.rarity || 3
-        };
-        
-        if (item.type === 'fragment') {
-            newItem.skillName = item.skillName;
-            newItem.volume = item.volume;
-        }
-
-        if (Player.addItem(newItem)) {
-            Player.data.sectPoints -= item.cost;
-            Player.save();
-            Msg.log(`🎁 消耗 ${item.cost} 點貢獻，成功兌換【${item.name}】！`, "gold");
-            this.openDept('vault'); 
-            if (window.Core) window.Core.updateUI();
+        // 🌟 新增：將宗門庫房完美轉交給 UI_Vault
+        if (deptId === 'vault') {
+            if (UI_Vault) UI_Vault.openModal();
+            else if (window.UI_Vault) window.UI_Vault.openModal();
+            else Msg.log("❌ 宗門庫房大陣尚未準備完畢，請稍後再試！", "system");
+            return;
         }
     }
 };
