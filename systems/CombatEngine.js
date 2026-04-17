@@ -1,6 +1,6 @@
 /**
- * V2.7 CombatEngine.js
- * 職責：處理主動/被動技能、冷卻計時、境界壓制、暴擊與閃避判定、終極 NaN 防護、特效對接
+ * V3.5.9 CombatEngine.js (萬象因果 - 專屬掉落與資源歸一版)
+ * 職責：處理主動/被動技能、冷卻計時、境界壓制、特效對接、修正妖獸專屬掉落因果
  * 位置：/systems/CombatEngine.js
  */
 
@@ -86,7 +86,6 @@ export const CombatEngine = {
 
         this.isProcessing = true;
         
-        // 🟢 特效同步：根據技能設定抓取圖示，預設攻擊為 🔥
         const icon = skillDef.icon || (skillDef.type === 'heal' ? "✨" : "🔥"); 
         await FX.skillCutIn(skillName, icon); 
 
@@ -159,19 +158,16 @@ export const CombatEngine = {
                     const playerSkill = Player.data.skills.find(s => s.name === skillName);
                     const skillLv = playerSkill ? playerSkill.level : 1;
                     
-                    // 🟢 終極防 NaN 加固：確保 CONFIG 與倍率皆為有效數字
                     const configBoost = (dataSrc.CONFIG && dataSrc.CONFIG.SKILL_UPGRADE_BOOST) ? Number(dataSrc.CONFIG.SKILL_UPGRADE_BOOST) : 0.2;
                     const safeBoost = isNaN(configBoost) ? 0.2 : configBoost;
                     const boost = 1 + ((skillLv - 1) * safeBoost);
                     
-                    // 嘗試抓取各種可能的倍率名稱
                     let rawMult = skillUsed.multiplier || skillUsed.power || skillUsed.damage || 1.5;
                     let skillMult = Number(rawMult);
                     if (isNaN(skillMult)) skillMult = 1.5;
 
                     finalDamage = Math.floor(finalDamage * skillMult * boost);
 
-                    // 🚨 萬一最後還是 NaN 的最終保險
                     if (isNaN(finalDamage)) {
                         console.error("❌ 戰鬥引擎：偵測到 NaN 傷害，啟動強制修正");
                         finalDamage = Math.max(1, Math.floor(baseDamage));
@@ -312,6 +308,9 @@ export const CombatEngine = {
         }).join('');
     },
 
+    /**
+     * 🌟 核心修正：根據妖獸專屬掉落表結算戰利品
+     */
     handleVictory() {
         const m = this.currentMonster;
         Msg.log(`${m.name} 已被擊敗！`, "system");
@@ -325,6 +324,39 @@ export const CombatEngine = {
             setTimeout(() => FX.spawnPopText(`+${m.gold} 靈石`, 'player', '#fbbf24'), 250);
         }
 
+        // --- 1. 處理妖獸專屬掉落表 (V3.5.9 新增) ---
+        if (m.drops && Array.isArray(m.drops)) {
+            m.drops.forEach(drop => {
+                if (Math.random() < drop.chance) {
+                    if (drop.type === 'resource') {
+                        // 🌟 資源歸一：直接增加數值，不再產生 ghost item
+                        const amount = Array.isArray(drop.amount) 
+                            ? Math.floor(Math.random() * (drop.amount[1] - drop.amount[0] + 1)) + drop.amount[0]
+                            : (drop.amount || 1);
+                        
+                        if (drop.id === 'herb') Player.data.materials.herb += amount;
+                        if (drop.id === 'ore') Player.data.materials.ore += amount;
+                        
+                        Msg.log(`📦 收集到：【${drop.name}】x${amount}`, "reward");
+                    } else if (drop.type === 'item') {
+                        // 🌟 實體材料：進入 inventory 陣列，可以在商店賣錢
+                        const material = {
+                            uuid: 'it_mat_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                            name: drop.name, 
+                            type: 'material', 
+                            rarity: drop.rarity || 1, 
+                            count: 1,
+                            desc: `從${m.name}身上採集的珍稀素材。`,
+                            price: 50 // 基礎價值，商店回收用
+                        };
+                        Player.addItem(material);
+                        Msg.log(`📦 採集到素材：【${drop.name}】`, "reward");
+                    }
+                }
+            });
+        }
+
+        // --- 2. 隨機裝備掉落 (保留原本 ItemFactory 邏輯) ---
         if (Math.random() < 0.1) {
             const item = ItemFactory.createEquipment(Player.data.level); 
             if (item) {
@@ -333,19 +365,7 @@ export const CombatEngine = {
             }
         }
 
-        if (Math.random() < 0.6) {
-            const matNames = ["妖獸骨骸", "殘破皮毛", "低階妖丹", "陣法殘片"];
-            const randomMat = matNames[Math.floor(Math.random() * matNames.length)];
-            const material = {
-                uuid: 'it_mat_' + Date.now(),
-                name: randomMat, type: 'material', rarity: 1, count: 1,
-                desc: `從妖獸身上採集的素材。`,
-                price: 15
-            };
-            Player.addItem(material);
-            Msg.log(`📦 採集到素材：【${randomMat}】`, "reward");
-        }
-
+        // --- 3. 隨機功法殘卷掉落 (保留原本隨機邏輯) ---
         if (Math.random() < 0.15) {
             const skillList = ["烈焰斬", "回春術", "青元劍訣", "破軍劍擊", "天雷正法"];
             const skillName = skillList[Math.floor(Math.random() * skillList.length)];
@@ -353,11 +373,11 @@ export const CombatEngine = {
             const volMap = {1:"一", 2:"二", 3:"三", 4:"四", 5:"五"};
 
             const fragment = {
-                uuid: 'frag_' + Date.now(),
+                uuid: 'frag_' + Date.now() + Math.random().toString(36).substr(2, 5),
                 name: `殘卷：${skillName}(卷${volMap[volNum]})`,
                 type: 'fragment', skillName: skillName, volume: volNum, rarity: 3, count: 1,
                 desc: `記載著部分心法的殘卷。`,
-                price: 50
+                price: 150
             };
             Player.addItem(fragment);
             Msg.log(`📜 發現殘卷：【${fragment.name}】！`, "gold");
