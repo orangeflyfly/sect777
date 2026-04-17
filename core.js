@@ -1,5 +1,5 @@
 /**
- * V3.5 core.js (萬象天道演化 - 全設施解耦版)
+ * V3.5.5 core.js (萬象天道演化 - 煉器大殿接入版)
  * 職責：引擎核心導航、數據完整性防護、戰鬥準備管線、經濟隨機事件驅動、全產業與懸賞結算
  * 位置：/core.js
  */
@@ -17,12 +17,13 @@ import { TaskSystem } from './systems/TaskSystem.js';
 
 import { AlchemySystem } from './systems/AlchemySystem.js';
 import { BountySystem } from './systems/BountySystem.js'; 
-import { VaultSystem } from './systems/VaultSystem.js'; // 🌟 新增：直接引入宗門庫房大腦
+import { VaultSystem } from './systems/VaultSystem.js';
+import { ForgeSystem } from './systems/ForgeSystem.js'; // 🌟 新增：直接引入煉器大殿大腦
 
 export const Core = {
     // 陣法狀態鎖定
     isReady: false,
-    version: "V3.5.0",
+    version: "V3.5.5",
     
     // 戰鬥階段控制器 (對接戰鬥準備邏輯)
     battleState: "idle", // idle, preparing, fighting
@@ -75,18 +76,21 @@ export const Core = {
                 durability: 100, 
                 farm: { level: 1, assigned: 0 }, 
                 mine: { level: 1, assigned: 0 },
-                alchemy: { level: 0, assigned: 0 } 
+                alchemy: { level: 0, assigned: 0 },
+                forge: { level: 0, assigned: 0 } // 🌟 確保煉器殿數據存在
             };
         }
         
         if (!d.world.alchemy) d.world.alchemy = { level: 0, assigned: 0 }; 
+        if (!d.world.forge) d.world.forge = { level: 0, assigned: 0 }; // 🌟 舊存檔相容：加入煉器殿
 
         if (!d.materials) d.materials = { herb: 0, ore: 0 };
         if (!d.sect) d.sect = { disciples: [] };
         if (!d.skills) d.skills = [];
         if (!d.inventory) d.inventory = {}; 
+        if (!d.forge) d.forge = { pityCount: 0, totalForged: 0 }; // 🌟 確保玩家存檔有打鐵保底數據
         
-        // 修正：產業等級強制脫離「零」的領域 (煉丹閣除外，它可以是 0 代表未解鎖)
+        // 修正：產業等級強制脫離「零」的領域 (煉丹閣與煉器殿除外，它們可以是 0 代表未解鎖)
         if (d.world.farm && d.world.farm.level < 1) d.world.farm.level = 1;
         if (d.world.mine && d.world.mine.level < 1) d.world.mine.level = 1;
         
@@ -119,7 +123,8 @@ export const Core = {
             if (window.UI_Recruit && window.UI_Recruit.init) window.UI_Recruit.init();
             if (window.UI_Alchemy && window.UI_Alchemy.init) window.UI_Alchemy.init(); 
             if (window.UI_Bounty && window.UI_Bounty.init) window.UI_Bounty.init();   
-            if (window.UI_Vault && window.UI_Vault.init) window.UI_Vault.init(); // 🌟 優化：啟動庫房介面
+            if (window.UI_Vault && window.UI_Vault.init) window.UI_Vault.init(); 
+            if (window.UI_Forge && window.UI_Forge.init) window.UI_Forge.init(); // 🌟 優化：啟動煉器介面
         } catch(e) { 
             console.warn("高級宗門介面模組尚未歸位。"); 
         }
@@ -136,7 +141,8 @@ export const Core = {
             { name: 'MineSystem', ref: window.MineSystem },
             { name: 'AlchemySystem', ref: AlchemySystem }, 
             { name: 'BountySystem', ref: BountySystem },   
-            { name: 'VaultSystem', ref: VaultSystem }      // 🌟 新增：加入宗門庫房大腦
+            { name: 'VaultSystem', ref: VaultSystem },
+            { name: 'ForgeSystem', ref: ForgeSystem }      // 🌟 新增：加入煉器大腦
         ];
 
         sys.forEach(s => {
