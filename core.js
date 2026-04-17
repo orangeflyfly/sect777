@@ -1,6 +1,6 @@
 /**
- * V3.4.2 core.js (萬象天道演化 - 懸賞外派版)
- * 職責：引擎核心導航、數據完整性防護、戰鬥準備管線、經濟隨機事件驅動、煉丹與懸賞結算
+ * V3.5 core.js (萬象天道演化 - 全設施解耦版)
+ * 職責：引擎核心導航、數據完整性防護、戰鬥準備管線、經濟隨機事件驅動、全產業與懸賞結算
  * 位置：/core.js
  */
 
@@ -16,12 +16,13 @@ import { SectManager } from './systems/SectManager.js';
 import { TaskSystem } from './systems/TaskSystem.js'; 
 
 import { AlchemySystem } from './systems/AlchemySystem.js';
-import { BountySystem } from './systems/BountySystem.js'; // 🌟 新增：直接引入懸賞堂大腦
+import { BountySystem } from './systems/BountySystem.js'; 
+import { VaultSystem } from './systems/VaultSystem.js'; // 🌟 新增：直接引入宗門庫房大腦
 
 export const Core = {
     // 陣法狀態鎖定
     isReady: false,
-    version: "V3.4.2",
+    version: "V3.5.0",
     
     // 戰鬥階段控制器 (對接戰鬥準備邏輯)
     battleState: "idle", // idle, preparing, fighting
@@ -54,7 +55,7 @@ export const Core = {
             this.switchPage('battle');
 
             this.isReady = true;
-            console.log("%c✅ 宗門天道運轉穩定，三大產業靈脈連接完成。", "color: #10b981; font-weight: bold;");
+            console.log("%c✅ 宗門天道運轉穩定，全產業靈脈連接完成。", "color: #10b981; font-weight: bold;");
         } catch (error) {
             console.error("❌ 飛升大陣點火發生致命錯誤，請排查靈脈路徑：", error);
         }
@@ -74,16 +75,16 @@ export const Core = {
                 durability: 100, 
                 farm: { level: 1, assigned: 0 }, 
                 mine: { level: 1, assigned: 0 },
-                alchemy: { level: 0, assigned: 0 } // 🌟 確保煉丹閣數據存在
+                alchemy: { level: 0, assigned: 0 } 
             };
         }
         
-        if (!d.world.alchemy) d.world.alchemy = { level: 0, assigned: 0 }; // 🌟 舊存檔相容
+        if (!d.world.alchemy) d.world.alchemy = { level: 0, assigned: 0 }; 
 
         if (!d.materials) d.materials = { herb: 0, ore: 0 };
         if (!d.sect) d.sect = { disciples: [] };
         if (!d.skills) d.skills = [];
-        if (!d.inventory) d.inventory = {}; // 🌟 確保有背包可以放丹藥
+        if (!d.inventory) d.inventory = {}; 
         
         // 修正：產業等級強制脫離「零」的領域 (煉丹閣除外，它可以是 0 代表未解鎖)
         if (d.world.farm && d.world.farm.level < 1) d.world.farm.level = 1;
@@ -116,8 +117,9 @@ export const Core = {
         try { 
             if (window.UI_Sect && window.UI_Sect.init) window.UI_Sect.init(); 
             if (window.UI_Recruit && window.UI_Recruit.init) window.UI_Recruit.init();
-            if (window.UI_Alchemy && window.UI_Alchemy.init) window.UI_Alchemy.init(); // 🌟 啟動煉丹介面
-            if (window.UI_Bounty && window.UI_Bounty.init) window.UI_Bounty.init();   // 🌟 啟動懸賞堂介面
+            if (window.UI_Alchemy && window.UI_Alchemy.init) window.UI_Alchemy.init(); 
+            if (window.UI_Bounty && window.UI_Bounty.init) window.UI_Bounty.init();   
+            if (window.UI_Vault && window.UI_Vault.init) window.UI_Vault.init(); // 🌟 優化：啟動庫房介面
         } catch(e) { 
             console.warn("高級宗門介面模組尚未歸位。"); 
         }
@@ -132,8 +134,9 @@ export const Core = {
             { name: 'TaskSystem', ref: TaskSystem },
             { name: 'FarmSystem', ref: window.FarmSystem },
             { name: 'MineSystem', ref: window.MineSystem },
-            { name: 'AlchemySystem', ref: AlchemySystem }, // 🌟 加入煉丹大腦
-            { name: 'BountySystem', ref: BountySystem }    // 🌟 加入懸賞堂大腦
+            { name: 'AlchemySystem', ref: AlchemySystem }, 
+            { name: 'BountySystem', ref: BountySystem },   
+            { name: 'VaultSystem', ref: VaultSystem }      // 🌟 新增：加入宗門庫房大腦
         ];
 
         sys.forEach(s => {
@@ -212,7 +215,7 @@ export const Core = {
     },
 
     /**
-     * 🌟 V3.4.2 核心：天道經濟循環 (加入煉丹閣與懸賞堂)
+     * 🌟 V3.5 核心：天道經濟循環
      * 職責：精算產出、觸發環境隨機事件、對接數據持久化
      */
     startEconomyTick() {
@@ -236,8 +239,6 @@ export const Core = {
                 globalMult = evt.mult;
                 if (window.MessageCenter) window.MessageCenter.log(evt.msg, evt.color);
             }
-
-            // 🌟 修正：正確將倍率傳入 processTick，而非事後相乘！
             
             // --- 1. 結算仙草 ---
             if (window.FarmSystem?.processTick) {
@@ -256,7 +257,7 @@ export const Core = {
                 AlchemySystem.processTick(globalMult);
             }
 
-            // --- 4. 結算懸賞堂歷練 (弟子歸來) 🌟 新增
+            // --- 4. 結算懸賞堂歷練 (弟子歸來) 
             if (BountySystem && BountySystem.processTick) {
                 BountySystem.processTick();
             }
