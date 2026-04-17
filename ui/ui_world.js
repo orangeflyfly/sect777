@@ -1,6 +1,6 @@
 /**
- * V3.4 ui_world.js (萬象森羅 - 三大產業連動版)
- * 職責：洞府渲染、聚靈陣掛機收益、對接真實產能預估、統一升級物價、新增煉丹閣入口
+ * V3.5.5 ui_world.js (萬象森羅 - 全產業鏈連動版)
+ * 職責：洞府渲染、聚靈陣掛機收益與升級、對接真實產能預估、統一升級物價、新增煉器殿入口
  * 位置：/ui/ui_world.js
  */
 
@@ -10,7 +10,7 @@ import { SectSystem } from '../systems/SectSystem.js';
 
 export const UI_World = {
     init() {
-        console.log("【UI_World】洞府法陣啟動，三大產業鏈接完畢...");
+        console.log("【UI_World】洞府法陣啟動，全產業鏈接完畢...");
         this.renderLayout();
         
         if (Player.data && !Player.data.world) {
@@ -23,10 +23,13 @@ export const UI_World = {
         if (!w.farm) w.farm = { level: 0, assigned: 0 };
         if (!w.mine) w.mine = { level: 0, assigned: 0 };
         
-        // 🌟 新增：確保煉丹閣數據存在
+        // 確保煉丹閣數據存在
         if (!w.alchemy) w.alchemy = { level: 0, assigned: 0 };
+        
+        // 🌟 新增：確保煉器殿數據存在
+        if (!w.forge) w.forge = { level: 0, assigned: 0 };
 
-        if (w.workers !== undefined) delete w.workers;
+        if (w.workers !== undefined) delete w.workers; // 清理舊版本數據
 
         Player.save();
         this.calculateOfflineGains(true);
@@ -51,10 +54,12 @@ export const UI_World = {
         const now = Date.now();
         let elapsedSeconds = Math.floor((now - wData.lastCollect) / 1000);
         
-        const sectSum = window.SectSystem ? window.SectSystem.getSummary() : { total: 0, idle: 0, farm: 0, mine: 0, alchemy: 0 };
+        const sectSum = window.SectSystem ? window.SectSystem.getSummary() : { total: 0, idle: 0, farm: 0, mine: 0, alchemy: 0, forge: 0 };
         wData.farm.assigned = sectSum.farm;
         wData.mine.assigned = sectSum.mine;
-        wData.alchemy.assigned = sectSum.alchemy || 0; // 🌟 綁定煉丹師人數
+        wData.alchemy.assigned = sectSum.alchemy || 0; 
+        // 煉器殿尚未設定專屬派遣狀態前，先給 0
+        wData.forge.assigned = sectSum.forge || 0; 
 
         // --- 陣眼駐守邏輯 ---
         let guardName = "無人駐守";
@@ -78,17 +83,20 @@ export const UI_World = {
         }
 
         // --- 聚靈陣邏輯 ---
-        const maxTimeMap = { 1: 300, 2: 1800, 3: 28800 }; 
+        // 🌟 擴增：支援更高階的聚靈陣時間上限
+        const maxTimeMap = { 1: 300, 2: 1800, 3: 28800, 4: 86400, 5: 259200 }; 
         const maxSeconds = maxTimeMap[wData.arrayLevel] || 300;
         const isFull = elapsedSeconds >= maxSeconds;
         if (isFull) elapsedSeconds = maxSeconds;
         
         const baseEfficiency = wData.durability < 50 ? 0.5 : 1.0;
         const finalEfficiency = baseEfficiency * guardBonus;
-        const pendingExp = Math.floor((elapsedSeconds / 10) * finalEfficiency);
+        // 🌟 優化：聚靈陣等級也會略微提升基礎獲取量
+        const levelBonus = 1 + (wData.arrayLevel - 1) * 0.2;
+        const pendingExp = Math.floor((elapsedSeconds / 10) * finalEfficiency * levelBonus);
         const progressPercent = Math.min(100, (elapsedSeconds / maxSeconds) * 100);
 
-        // --- 真實產能連動 ---
+        // --- 真實產能連動預估 ---
         let mineYieldEst = 0;
         let farmYieldEst = 0;
         
@@ -104,7 +112,9 @@ export const UI_World = {
         // --- 升級費用計算 ---
         const farmCost = wData.farm.level === 0 ? 1000 : wData.farm.level * 1500;
         const mineCost = wData.mine.level === 0 ? 2000 : wData.mine.level * 1500;
-        const alcCost = wData.alchemy.level === 0 ? 3000 : wData.alchemy.level * 3000; // 🌟 煉丹閣比較貴
+        const alcCost = wData.alchemy.level === 0 ? 3000 : wData.alchemy.level * 3000;
+        const forgeCost = wData.forge.level === 0 ? 5000 : wData.forge.level * 4000; // 🌟 煉器殿最貴
+        const arrayUpgradeCost = wData.arrayLevel * 5000; // 🌟 聚靈陣升級費用
 
         this.updateResourceBar(sectSum);
 
@@ -115,7 +125,10 @@ export const UI_World = {
                 <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
 
                 <div class="array-header" style="display:flex; justify-content:space-between; align-items:center; position:relative; z-index:1;">
-                    <div class="array-title">聚靈大陣 (階級 ${wData.arrayLevel})</div>
+                    <div class="array-title" style="display:flex; align-items:center; gap:10px;">
+                        聚靈大陣 (階級 ${wData.arrayLevel})
+                        ${wData.arrayLevel < 5 ? `<button onclick="UI_World.upgradeArray()" style="background:#3b82f6; color:white; border:none; padding:2px 8px; border-radius:4px; font-size:11px; cursor:pointer;">升級 (${arrayUpgradeCost})</button>` : '<span style="font-size:10px; color:#fbbf24;">(已滿階)</span>'}
+                    </div>
                     <div class="array-durability" style="font-size:12px; color:${wData.durability < 30 ? '#ef4444' : '#94a3b8'}">
                         🔧 耐久: ${wData.durability}%
                     </div>
@@ -135,7 +148,7 @@ export const UI_World = {
                 
                 <div class="array-status" style="position:relative; z-index:1;">
                     <p>當前凝聚靈氣：<b style="color:var(--exp-color); font-size:16px;">${pendingExp}</b> EXP 
-                       ${finalEfficiency !== 1.0 ? `<span style="color:${finalEfficiency > 1 ? '#4ade80' : '#ef4444'}; font-size:11px;">(效率 x${finalEfficiency.toFixed(1)})</span>` : ''}
+                       ${finalEfficiency !== 1.0 || levelBonus !== 1.0 ? `<span style="color:#4ade80; font-size:11px;">(綜合效率 x${(finalEfficiency * levelBonus).toFixed(2)})</span>` : ''}
                     </p>
                     
                     <div class="array-progress-container" style="width:100%; height:8px; background:#1e293b; border-radius:4px; margin:10px 0; overflow:hidden; border:1px solid rgba(255,255,255,0.1);">
@@ -197,6 +210,17 @@ export const UI_World = {
                     </div>
                 </div>
 
+                <div class="management-card" style="border: 1px solid rgba(251,146,60,0.5); box-shadow: 0 0 10px rgba(251,146,60,0.1);">
+                    <h4 style="color:#fb923c;">🔨 煉器大殿 (Lv.${wData.forge.level})</h4>
+                    <p style="font-size:11px; color:#94a3b8; margin-top:2px; margin-bottom:8px;">消耗玄鐵鍛造神兵，支援千錘百鍊與靈力強化。</p>
+                    <div style="display:flex; gap:5px; margin-top:auto;">
+                        <button class="btn-upgrade-mini" style="flex:1;" onclick="UI_World.upgradeIndustry('forge')">
+                            ${wData.forge.level === 0 ? `✨ 開闢 (${forgeCost})` : `🔼 升級 (${forgeCost})`}
+                        </button>
+                        ${wData.forge.level > 0 ? `<button class="btn-eco-trade" style="flex:1; background:#ea580c; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;" onclick="if(window.UI_Forge) UI_Forge.openModal(); else Msg.log('煉器大殿建置中...','system')">鍛造</button>` : ''}
+                    </div>
+                </div>
+
             </div>
         `;
     },
@@ -217,8 +241,14 @@ export const UI_World = {
     },
 
     repairArray() {
-        if (Player.data.coin < 500) return Msg.log("靈石不足，無法修繕法陣！", "system");
-        Player.data.coin -= 500;
+        // 兼容性靈石檢查
+        let currentCoins = Player.data.coin !== undefined ? Player.data.coin : (Player.data.coins || 0);
+
+        if (currentCoins < 500) return Msg.log("靈石不足，無法修繕法陣！", "system");
+        
+        if (Player.data.coin !== undefined) Player.data.coin -= 500;
+        else Player.data.coins -= 500;
+
         Player.data.world.durability = 100;
         Msg.log("消耗 500 靈石，聚靈陣煥然一新！效率恢復！", "gold");
         Player.save();
@@ -226,7 +256,30 @@ export const UI_World = {
         if (window.Core) window.Core.updateUI();
     },
 
-    // 🌟 修正盲點一：統一升級物價邏輯 (涵蓋三大產業)
+    // 🌟 新增：聚靈大陣專屬升級邏輯
+    upgradeArray() {
+        const d = Player.data;
+        const currentLevel = d.world.arrayLevel || 1;
+        if (currentLevel >= 5) return Msg.log("聚靈陣已達當前境界巔峰！", "system");
+
+        const cost = currentLevel * 5000;
+        let currentCoins = d.coin !== undefined ? d.coin : (d.coins || 0);
+
+        if (currentCoins < cost) return Msg.log(`❌ 靈石不足！升級聚靈陣需要 ${cost.toLocaleString()} 靈石。`, "system");
+
+        if (d.coin !== undefined) d.coin -= cost;
+        else d.coins -= cost;
+
+        d.world.arrayLevel += 1;
+        
+        Player.save();
+        Msg.log(`☯️ 陣法轟鳴！聚靈大陣升級至 Lv.${d.world.arrayLevel}，掛機時限與效率皆獲提升！`, "reward");
+        
+        if (window.Core && window.Core.updateUI) window.Core.updateUI();
+        this.renderWorld(); 
+    },
+
+    // 🌟 修正：統一升級物價邏輯 (涵蓋四大產業)
     upgradeIndustry(type) {
         const wData = Player.data.world;
         const currentLv = wData[type].level;
@@ -239,20 +292,26 @@ export const UI_World = {
         switch (type) {
             case 'mine': name = '靈礦脈'; baseCost = 2000; scale = 1500; break;
             case 'farm': name = '仙草園'; baseCost = 1000; scale = 1500; break;
-            case 'alchemy': name = '煉丹閣'; baseCost = 3000; scale = 3000; break; // 煉丹閣比較貴
+            case 'alchemy': name = '煉丹閣'; baseCost = 3000; scale = 3000; break; 
+            case 'forge': name = '煉器大殿'; baseCost = 5000; scale = 4000; break; // 🌟 煉器殿最貴
         }
         
         const upgradeCost = currentLv === 0 ? baseCost : currentLv * scale; 
 
-        if (Player.data.coin < upgradeCost) return Msg.log(`靈石不足！${currentLv === 0 ? '開闢' : '升級'}需要 ${upgradeCost.toLocaleString()} 靈石`, "system");
+        // 兼容性靈石檢查
+        let currentCoins = Player.data.coin !== undefined ? Player.data.coin : (Player.data.coins || 0);
 
-        Player.data.coin -= upgradeCost;
+        if (currentCoins < upgradeCost) return Msg.log(`靈石不足！${currentLv === 0 ? '開闢' : '升級'}需要 ${upgradeCost.toLocaleString()} 靈石`, "system");
+
+        if (Player.data.coin !== undefined) Player.data.coin -= upgradeCost;
+        else Player.data.coins -= upgradeCost;
+
         wData[type].level += 1;
         
         Msg.log(`🎊 【${name}】${currentLv === 0 ? '開闢成功' : '晉升至 Lv.' + wData[type].level}！`, "gold");
         Player.save();
         this.renderWorld();
-        if (window.Core) window.Core.updateUI();
+        if (window.Core && window.Core.updateUI) window.Core.updateUI();
     },
 
     selectArrayGuard() {
@@ -272,7 +331,14 @@ export const UI_World = {
         if (idleDisciples.length === 0) {
             html += `<div style="text-align:center; color:#94a3b8; margin-top:10px;">無閒置弟子可供調遣。</div>`;
         } else {
-            idleDisciples.forEach(d => {
+            // 優化：有聚靈體質的人排前面
+            const sortedIdle = [...idleDisciples].sort((a, b) => {
+                const aSpecial = a.traits.includes('聚靈體質') ? 1 : 0;
+                const bSpecial = b.traits.includes('聚靈體質') ? 1 : 0;
+                return bSpecial - aSpecial;
+            });
+
+            sortedIdle.forEach(d => {
                 const isSpecial = d.traits.includes('聚靈體質');
                 html += `
                     <div style="background:rgba(0,0,0,0.5); border:1px solid ${isSpecial ? '#a855f7' : '#334155'}; padding:10px; border-radius:5px; display:flex; justify-content:space-between; align-items:center;">
@@ -328,7 +394,7 @@ export const UI_World = {
         const now = Date.now();
         let elapsedSeconds = Math.floor((now - wData.lastCollect) / 1000);
         
-        const maxTimeMap = { 1: 300, 2: 1800, 3: 28800 };
+        const maxTimeMap = { 1: 300, 2: 1800, 3: 28800, 4: 86400, 5: 259200 };
         const maxSeconds = maxTimeMap[wData.arrayLevel] || 300;
         const effectiveSeconds = Math.min(elapsedSeconds, maxSeconds);
 
@@ -341,8 +407,9 @@ export const UI_World = {
             }
         }
         const finalEfficiency = baseEfficiency * guardBonus;
+        const levelBonus = 1 + (wData.arrayLevel - 1) * 0.2;
         
-        const gainedExp = Math.floor((effectiveSeconds / 10) * finalEfficiency);
+        const gainedExp = Math.floor((effectiveSeconds / 10) * finalEfficiency * levelBonus);
 
         if (gainedExp <= 0) {
             Msg.log("靈氣稀薄，再等等吧。", "system");
@@ -356,7 +423,7 @@ export const UI_World = {
         wData.lastCollect = Date.now();
         Player.save();
         this.renderWorld();
-        if (window.Core) window.Core.updateUI();
+        if (window.Core && window.Core.updateUI) window.Core.updateUI();
     },
 
     calculateOfflineGains(isLogin = false) {
