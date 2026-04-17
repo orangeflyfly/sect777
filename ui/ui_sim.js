@@ -1,7 +1,7 @@
 /**
- * V3.6.3 ui_sim.js (萬象森羅 - 宗門微縮視界 + 終極互動與事件版)
+ * V3.6.4 ui_sim.js (萬象森羅 - 宗門微縮視界 + 防走後門版)
  * 職責：可視化弟子、漫遊AI、隨機性格飄字、實裝點擊指派微操、建築等級動態外觀、弟子轉向
- * 新增：點擊建築升級(大興土木)、雲遊商人與妖獸入侵事件(天道無常)
+ * 新增：防走後門機制 (assignJob 容量檢測)
  * 位置：/ui/ui_sim.js
  */
 
@@ -13,18 +13,16 @@ export const UI_Sim = {
     containerId: 'page-sim',
     updateInterval: null,
     eventInterval: null,
-    activeEvent: null, // 記錄當前場上的突發事件
+    activeEvent: null, 
 
-    // 定義設施的虛擬座標 (使用百分比)
     facilityCoords: {
-        'idle': { x: 50, y: 50 },    // 宗門廣場 (中央)
-        'mine': { x: 15, y: 15 },    // 靈礦脈 (左上)
-        'farm': { x: 85, y: 15 },    // 仙草園 (右上)
-        'alchemy': { x: 15, y: 85 }, // 煉丹閣 (左下)
-        'forge': { x: 85, y: 85 }    // 煉器殿 (右下)
+        'idle': { x: 50, y: 50 },    
+        'mine': { x: 15, y: 15 },    
+        'farm': { x: 85, y: 15 },    
+        'alchemy': { x: 15, y: 85 }, 
+        'forge': { x: 85, y: 85 }    
     },
 
-    // 性格與狀態對應的台詞庫
     bubbleLines: {
         'status_mine': ["鏘！鏘！", "這石頭真硬...", "挖到靈石了？", "腰酸背痛..."],
         'status_farm': ["除草真累", "長快點啊小寶貝", "這株好像快枯了", "靈氣好充沛"],
@@ -32,7 +30,6 @@ export const UI_Sim = {
         'status_forge': ["八十！八十！", "這鐵怎麼打不扁", "好燙好燙", "神兵即將出世！"],
         'status_idle': ["今天天氣真好~", "修煉？明天再說", "宗主怎麼還不發工資", "偷閒摸魚真開心"],
         
-        // 針對特殊性格的專屬台詞
         'trait_苟道中人': ["外面太危險了...", "活著不好嗎？", "不要看我，我只是路過", "這事有風險，我不幹"],
         'trait_吃貨': ["什麼時候放飯？", "好餓啊...", "那邊那株仙草看起來很好吃", "肚子咕咕叫"],
         'trait_中二病晚期': ["爆裂吧！現實！", "我體內的洪荒之力...", "凡人，仰望我吧！", "漆黑的烈焰啊..."],
@@ -41,7 +38,7 @@ export const UI_Sim = {
     },
 
     init() {
-        console.log("%c【UI_Sim】宗門模擬視界陣法啟動 (終極互動版)...", "color: #38bdf8; font-weight: bold;");
+        console.log("%c【UI_Sim】宗門模擬視界陣法啟動 (防走後門版)...", "color: #38bdf8; font-weight: bold;");
         this.injectStyles(); 
         this.renderLayout();
         this.startSimulation();
@@ -98,7 +95,6 @@ export const UI_Sim = {
                 box-shadow: 0 2px 4px rgba(0,0,0,0.5);
                 pointer-events: none;
             }
-            /* 🌟 新增：設施點擊與升級特效 */
             .sim-facility:hover {
                 filter: brightness(1.2) !important;
                 transform: translate(-50%, -50%) scale(1.1) !important;
@@ -111,7 +107,6 @@ export const UI_Sim = {
             .fac-upgrading {
                 animation: upgrade-flash 1s ease-out;
             }
-            /* 🌟 新增：事件 NPC 特效 */
             .sim-event-npc {
                 position: absolute;
                 font-size: 30px;
@@ -142,12 +137,10 @@ export const UI_Sim = {
             <div id="sim-ground" style="position:relative; width:100%; height:60vh; min-height: 400px; background:radial-gradient(circle at center, #1e293b 0%, #020617 100%); border:2px solid #475569; border-radius:16px; overflow:hidden; box-shadow: inset 0 0 50px rgba(0,0,0,0.8);">
         `;
 
-        // 繪製五大設施地標 (🌟 新增 onclick 觸發升級面板)
         if (DATA_SECT && DATA_SECT.FACILITIES) {
             for (let key in DATA_SECT.FACILITIES) {
                 const fac = DATA_SECT.FACILITIES[key];
                 const pos = this.facilityCoords[key];
-                // 宗門廣場不可升級
                 const clickAction = key === 'idle' ? `Msg.log('宗門廣場，眾弟子休憩交流之地。', 'system')` : `UI_Sim.showFacilityModal('${key}')`;
                 
                 html += `
@@ -173,21 +166,16 @@ export const UI_Sim = {
         this.updateFacilities(); 
         this.updateDisciples();
         
-        // 尋路與狀態掃描 (2s)
         this.updateInterval = setInterval(() => {
             this.updateFacilities(); 
             this.updateDisciples();
         }, 2000);
 
-        // 🌟 突發事件發生器 (每 15 秒擲骰子)
         this.eventInterval = setInterval(() => {
             this.triggerRandomEvent();
         }, 15000);
     },
 
-    // ==========================================
-    // 🌟 路線二：大興土木 (建築升級邏輯)
-    // ==========================================
     showFacilityModal(facKey) {
         if (!Player.data || !Player.data.world) return;
         const wData = Player.data.world;
@@ -196,7 +184,6 @@ export const UI_Sim = {
 
         let currentLevel = wData[facKey] ? wData[facKey].level || 0 : 0;
         
-        // 升級消耗公式
         let costCoin = 1000 * (currentLevel + 1);
         let costOre = 100 * (currentLevel + 1);
         let maxLevel = 10;
@@ -249,7 +236,6 @@ export const UI_Sim = {
             return;
         }
 
-        // 扣款與升級
         Player.data.coin -= costCoin;
         Player.data.materials.ore -= costOre;
         
@@ -259,15 +245,13 @@ export const UI_Sim = {
         Player.save();
         if (window.Core) window.Core.updateUI();
 
-        // 移除 Modal
         const modal = document.getElementById('sim-fac-modal');
         if (modal) modal.remove();
 
-        // 🌟 觸發視覺升級特效
         const facEl = document.getElementById(`fac-${facKey}`);
         if (facEl) {
             facEl.classList.remove('fac-upgrading');
-            void facEl.offsetWidth; // 觸發 reflow 重新啟動動畫
+            void facEl.offsetWidth; 
             facEl.classList.add('fac-upgrading');
         }
 
@@ -292,7 +276,6 @@ export const UI_Sim = {
                 facEl.style.filter = 'grayscale(100%) opacity(0.4)';
             } else {
                 facEl.style.filter = 'none';
-                // 根據等級放大 (有加上 CSS transition 會很滑順)
                 const scale = 1 + (level - 1) * 0.05;
                 facEl.style.transform = `translate(-50%, -50%) scale(${Math.min(scale, 1.5)})`;
                 
@@ -315,11 +298,8 @@ export const UI_Sim = {
         }
     },
 
-    // ==========================================
-    // 🌟 路線三：天道無常 (隨機世界事件)
-    // ==========================================
     triggerRandomEvent() {
-        if (this.activeEvent) return; // 場上已有事件則不觸發
+        if (this.activeEvent) return; 
         
         const rand = Math.random();
         if (rand < 0.1) {
@@ -342,7 +322,7 @@ export const UI_Sim = {
         npc.style.left = '50%';
         npc.style.top = '50%';
         npc.style.transform = 'translate(-50%, -50%)';
-        npc.style.pointerEvents = 'auto'; // 允許點擊
+        npc.style.pointerEvents = 'auto'; 
         
         npc.onclick = () => {
             if (confirm("雲遊商人：嘿嘿，道友，花 500 靈石買個盲盒機緣如何？")) {
@@ -351,7 +331,6 @@ export const UI_Sim = {
                     Player.data.coin -= 500;
                     if (!Player.data.materials) Player.data.materials = { herb: 0, ore: 0 };
                     
-                    // 隨機獎勵
                     if (Math.random() > 0.5) {
                         Player.data.materials.herb += 10;
                         Msg.log("🎁 商人給了你一大包【仙草 x10】！", "gold");
@@ -371,7 +350,6 @@ export const UI_Sim = {
 
         layer.appendChild(npc);
 
-        // 30秒後自動離開
         setTimeout(() => {
             if (document.body.contains(npc)) {
                 npc.remove();
@@ -392,7 +370,6 @@ export const UI_Sim = {
         npc.className = 'sim-event-npc';
         npc.innerHTML = '🐺';
         
-        // 隨機出現在礦脈或仙草園附近
         const isFarm = Math.random() > 0.5;
         const basePos = isFarm ? this.facilityCoords['farm'] : this.facilityCoords['mine'];
         npc.style.left = `${basePos.x + (Math.random()*10 - 5)}%`;
@@ -423,9 +400,6 @@ export const UI_Sim = {
         }, 20000);
     },
 
-    // ==========================================
-    // 🌟 原有漫遊尋路與微操模組
-    // ==========================================
     updateDisciples() {
         const layer = document.getElementById('sim-disciples-layer');
         if (!layer || !Player.data || !Player.data.sect || !Player.data.sect.disciples) return;
@@ -440,7 +414,6 @@ export const UI_Sim = {
         disciples.forEach(d => {
             let el = document.getElementById(`sim-d-${d.id}`);
             
-            // A. 首次生成
             if (!el) {
                 el = document.createElement('div');
                 el.id = `sim-d-${d.id}`;
@@ -457,7 +430,6 @@ export const UI_Sim = {
                     }
                 }
 
-                // onclick 觸發微操選單
                 el.innerHTML = `
                     <div class="sim-speech-bubble" id="bubble-${d.id}"></div>
                     <div class="sim-avatar-emoji" style="font-size:20px; transition: transform 0.2s; position:relative;">${emoji}</div>
@@ -478,7 +450,6 @@ export const UI_Sim = {
                 el.getBoundingClientRect();
             }
 
-            // B. 漫遊尋路 AI 強化
             const targetKey = d.status || 'idle';
             const pos = this.facilityCoords[targetKey] || this.facilityCoords['idle'];
             const isIdle = (targetKey === 'idle');
@@ -501,11 +472,9 @@ export const UI_Sim = {
             
             const transitionTime = Math.max(0.5, 3.0 / speedMult); 
 
-            // 執行移動
             el.style.transition = `transform ${transitionTime}s cubic-bezier(0.4, 0, 0.2, 1)`;
             el.style.transform = `translate(${targetX}px, ${targetY}px)`;
             
-            // 靈動身法：轉向
             const prevX = parseFloat(el.dataset.lastX);
             el.dataset.lastX = targetX; 
             
@@ -522,13 +491,11 @@ export const UI_Sim = {
                 }
             }
 
-            // C. 飄字系統
             if (Math.random() < 0.15) {
                 this.spawnBubble(d);
             }
         });
 
-        // 移除解雇的弟子
         const existingEls = layer.querySelectorAll('.sim-disciple');
         existingEls.forEach(el => {
             const id = el.id.replace('sim-d-', '');
@@ -610,10 +577,29 @@ export const UI_Sim = {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     },
 
+    // 🌟 修正：加入容量防呆檢測
     assignJob(discipleId, newStatus) {
         if (!Player.data || !Player.data.sect || !Player.data.sect.disciples) return;
         const d = Player.data.sect.disciples.find(x => x.id === discipleId);
         if (!d) return;
+
+        // 🛑 防呆與防走後門：檢查設施容量 (除了廣場 idle 之外)
+        if (newStatus !== 'idle') {
+            const facLevel = Player.data.world[newStatus] ? Player.data.world[newStatus].level : 0;
+            if (facLevel === 0) {
+                if(window.MessageCenter) window.MessageCenter.log(`❌ 該設施尚未建立，無法指派！`, "red");
+                return;
+            }
+            
+            // 系統設定：設施每 1 級可容納 2 名弟子
+            const maxCapacity = facLevel * 2; 
+            const currentWorkers = Player.data.sect.disciples.filter(x => x.status === newStatus).length;
+            
+            if (currentWorkers >= maxCapacity) {
+                if(window.MessageCenter) window.MessageCenter.log(`❌ 【${DATA_SECT.FACILITIES[newStatus].name}】已滿員 (目前 ${currentWorkers}/${maxCapacity})，請先升級建築！`, "red");
+                return;
+            }
+        }
 
         d.status = newStatus;
         Player.save();
