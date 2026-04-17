@@ -1,37 +1,107 @@
 /**
- * V2.2 SectManager.js (飛升模組版 - 宗門大腦)
- * 職責：負責宗門產業（靈田、礦脈）的背景運行、離線收益結算。
+ * V3.6.1 SectManager.js (萬象森羅 - 宗門總管大腦)
+ * 職責：精算各部門弟子的性格加成 (Traits)、處理離線收益、提供全域產能查詢接口
+ * 修正：移除舊版衝突的計時器，轉為輔助核心 (對接 core.js 的 startEconomyTick)
  * 位置：/systems/SectManager.js
  */
 
 import { Player } from '../entities/player.js';
 import { MessageCenter as Msg } from '../utils/MessageCenter.js';
+import { DATA_SECT } from '../data/data_sect.js'; // 🌟 引入性格數據庫
 
 export const SectManager = {
-    intervalId: null,
-
     init() {
-        console.log("【宗門】宗門大腦開始運轉...");
+        console.log("【宗門】總管大腦開始運轉，準備精算弟子業力...");
         if (!Player.data || !Player.data.world) return;
         
-        // 1. 遊戲啟動時，先結算離線時間的收益
+        // 遊戲啟動時，結算離線時間的收益
         this.processOfflineYield();
-        
-        // 2. 啟動每分鐘一次的掛機結算
-        this.startTick();
     },
 
     /**
-     * 結算離線收益
+     * 🌟 核心：精算特定部門的「弟子性格綜合加成」
+     * @param {string} department - 'farm', 'mine', 'alchemy', 'forge'
+     * @returns {number} 該部門的最終效率倍率 (預設 1.0)
+     */
+    calculateDepartmentMultiplier(department) {
+        if (!Player.data || !Player.data.sect || !Player.data.sect.disciples) return 1.0;
+
+        let totalMultiplier = 1.0;
+        let workerCount = 0;
+        let activeTraits = [];
+
+        // 1. 找出被指派到這個部門的所有弟子
+        const workers = Player.data.sect.disciples.filter(d => d.status === department);
+        workerCount = workers.length;
+
+        if (workerCount === 0) return 0; // 沒人工作產能就是 0
+
+        // 2. 累加性格影響
+        workers.forEach(d => {
+            if (!d.traits) return;
+
+            d.traits.forEach(traitName => {
+                const traitData = DATA_SECT.TRAITS[traitName];
+                if (!traitData || !traitData.effect) return;
+                
+                const effect = traitData.effect;
+                activeTraits.push(traitName); // 記錄下來，方便未來除錯或 UI 顯示
+
+                // --- 通用產能加成 (如：卷王之王, 好吃懶做) ---
+                if (effect.prod_mult) totalMultiplier *= effect.prod_mult;
+
+                // --- 專項產能加成 ---
+                if (department === 'farm' && effect.farm_mult) totalMultiplier *= effect.farm_mult;
+                if (department === 'mine' && effect.mine_mult) totalMultiplier *= effect.mine_mult;
+                if (department === 'alchemy' && effect.alchemy_mult) totalMultiplier *= effect.alchemy_mult;
+                if (department === 'forge' && effect.forge_mult) totalMultiplier *= effect.forge_mult;
+
+                // --- 特殊 Debuff 處理 ---
+                if (effect.lazy_chance && Math.random() < effect.lazy_chance) {
+                    totalMultiplier *= 0; // 偷懶了，這分鐘產出歸零
+                }
+            });
+        });
+
+        // 3. 處理「群體效應」性格 (如：社恐、畫餅大師)
+        workers.forEach(d => {
+            if (!d.traits) return;
+            d.traits.forEach(traitName => {
+                const effect = DATA_SECT.TRAITS[traitName]?.effect;
+                if (!effect) return;
+
+                if (effect.loner_buff && workerCount === 1) {
+                    totalMultiplier *= effect.loner_buff; // 只有自己一人時發威
+                }
+                if (effect.crowd_debuff && workerCount > 1) {
+                    totalMultiplier *= effect.crowd_debuff; // 人多就自閉
+                }
+                // 畫餅大師：自己產能歸零(上面已乘0)，但讓其他人產能提升
+                if (effect.buff_others && workerCount > 1) {
+                    totalMultiplier *= effect.buff_others;
+                }
+                // 卷王之王：吵死別人
+                if (effect.annoy_others && workerCount > 1) {
+                    totalMultiplier *= 0.8; 
+                }
+            });
+        });
+
+        // 確保倍率不會低於 0
+        return Math.max(0, totalMultiplier);
+    },
+
+    /**
+     * 結算離線收益 (對接 V3.5 資源歸一化)
      */
     processOfflineYield() {
         const wData = Player.data.world;
         const now = Date.now();
         const diffMs = now - (wData.lastCollect || now);
-        const diffMinutes = Math.floor(diffMs / 60000); // 換算經過了幾分鐘
+        const diffMinutes = Math.floor(diffMs / 60000); 
 
         if (diffMinutes > 0) {
-            this.giveYield(diffMinutes, true);
+            this.giveOfflineYield(diffMinutes);
             wData.lastCollect = now;
             Player.save();
         } else if (!wData.lastCollect) {
@@ -40,90 +110,75 @@ export const SectManager = {
     },
 
     /**
-     * 啟動背景時鐘 (每分鐘跳動一次)
-     */
-    startTick() {
-        if (this.intervalId) clearInterval(this.intervalId);
-        
-        this.intervalId = setInterval(() => {
-            if (!Player.data || !Player.data.world) return;
-            
-            // 每過 1 分鐘給予一次收益 (非離線狀態，不彈飄字)
-            this.giveYield(1, false);
-            
-            Player.data.world.lastCollect = Date.now();
-            Player.save();
-            
-            // 刷新全域 UI (比如右上角的靈石變動)
-            if (window.Core) window.Core.updateUI();
-            
-        }, 60000); // 60000 毫秒 = 1分鐘
-    },
-
-    /**
-     * 核心產出邏輯
+     * 核心離線產出邏輯 (套用性格加成)
      * @param {number} minutes - 經過的分鐘數
-     * @param {boolean} isOffline - 是否為離線結算 (用來決定要不要噴日誌)
      */
-    giveYield(minutes, isOffline) {
+    giveOfflineYield(minutes) {
         const wData = Player.data.world;
-        let gotCoin = 0;
+        let gotCoin = 0;  // 留著給財神附體用，暫時靈礦改出玄鐵
         let gotHerb = 0;
+        let gotOre = 0;
 
-        // 1. 鐵礦部產出 (靈石)
-        // 公式：每分鐘 = 人數 * 等級 * 2
-        if (wData.mine && wData.mine.level > 0 && wData.mine.assigned > 0) {
-            const mineYieldPerMin = wData.mine.assigned * wData.mine.level * 2;
-            gotCoin = mineYieldPerMin * minutes;
-            Player.data.coin += gotCoin;
-        }
-
-        // 2. 草藥部產出 (仙草)
-        // 公式：每 10 分鐘 = 人數 * 等級。我們換算成每分鐘的機率累積。
-        if (wData.farm && wData.farm.level > 0 && wData.farm.assigned > 0) {
-            const farmYieldPer10Min = wData.farm.assigned * wData.farm.level;
-            const yieldPerMin = farmYieldPer10Min / 10;
+        // --- 1. 靈礦脈 (產出玄鐵) ---
+        if (wData.mine && wData.mine.level > 0) {
+            // 基礎：每分鐘 = 等級 * 2
+            let baseYield = wData.mine.level * 2;
+            // 乘上該部門弟子的性格綜合加成
+            let mult = this.calculateDepartmentMultiplier('mine');
             
-            gotHerb = Math.floor(yieldPerMin * minutes);
-            
-            // 處理小數機率 (例如 0.5 會有 50% 機率額外多產 1 個)
-            const remainder = (yieldPerMin * minutes) - gotHerb;
-            if (Math.random() < remainder) gotHerb += 1;
-
-            if (gotHerb > 0) {
-                this.addHerbItem(gotHerb);
+            gotOre = Math.floor(baseYield * mult * minutes);
+            if (gotOre > 0) {
+                if(!Player.data.materials) Player.data.materials = { herb:0, ore:0 };
+                Player.data.materials.ore = (Player.data.materials.ore || 0) + gotOre;
             }
         }
 
-        // 只有離線結算且真的有拿到東西時，才跳出華麗的提示
-        if (isOffline && (gotCoin > 0 || gotHerb > 0)) {
-            let msgStr = `🌌 離線 ${minutes} 分鐘，宗門弟子為你產出：`;
-            if (gotCoin > 0) msgStr += ` ${gotCoin} 靈石`;
-            if (gotHerb > 0) msgStr += ` ${gotHerb} 株仙草`;
-            Msg.log(msgStr, "reward");
-        }
-    },
+        // --- 2. 仙草園 (產出仙草) ---
+        if (wData.farm && wData.farm.level > 0) {
+            // 基礎：每 10 分鐘 = 等級 (也就是每分鐘 0.1 * 等級)
+            let baseYieldPerMin = (wData.farm.level * 1) / 10;
+            let mult = this.calculateDepartmentMultiplier('farm');
+            let totalExpected = baseYieldPerMin * mult * minutes;
 
-    /**
-     * 將仙草塞入儲物袋 (支援疊加)
-     */
-    addHerbItem(count) {
-        const existing = Player.data.inventory.find(i => i.id === 'mat_herb');
-        if (existing) {
-            // 如果已經有仙草，直接疊加數量
-            existing.count = (existing.count || 1) + count;
-        } else {
-            // 否則新增一疊仙草
-            Player.data.inventory.push({
-                id: 'mat_herb',
-                uuid: `mat_${Date.now()}_${Math.floor(Math.random()*1000)}`,
-                name: '宗門仙草',
-                type: 'material',
-                count: count,
-                desc: '仙草園產出的靈草，生機盎然，可用於煉丹或交付宗門任務。',
-                rarity: 2,
-                price: 5
+            gotHerb = Math.floor(totalExpected);
+            const remainder = totalExpected - gotHerb;
+            if (Math.random() < remainder) gotHerb += 1;
+
+            if (gotHerb > 0) {
+                if(!Player.data.materials) Player.data.materials = { herb:0, ore:0 };
+                Player.data.materials.herb = (Player.data.materials.herb || 0) + gotHerb;
+            }
+        }
+
+        // --- 3. 結算財神附體 (全局被動靈石) ---
+        if (Player.data.sect && Player.data.sect.disciples) {
+            let passiveCoins = 0;
+            Player.data.sect.disciples.forEach(d => {
+                if (d.traits && d.traits.includes('財神附體')) {
+                    // 財神每分鐘給 50 靈石
+                    passiveCoins += 50 * minutes;
+                }
+                // 巨龍血脈偷錢 (每分鐘偷宗門總財產的 0.01%，離線最高結算 1440 分鐘)
+                if (d.traits && d.traits.includes('巨龍血脈')) {
+                    let capMinutes = Math.min(minutes, 1440); // 防爆
+                    let stolen = Math.floor(Player.data.coin * 0.0001 * capMinutes);
+                    Player.data.coin = Math.max(0, Player.data.coin - stolen);
+                }
             });
+            
+            if (passiveCoins > 0) {
+                gotCoin += passiveCoins;
+                Player.data.coin += gotCoin;
+            }
+        }
+
+        // 華麗提示
+        if (gotCoin > 0 || gotHerb > 0 || gotOre > 0) {
+            let msgStr = `🌌 離線 ${minutes} 分鐘，弟子為你產出：`;
+            if (gotCoin > 0) msgStr += ` ${gotCoin} 靈石`;
+            if (gotHerb > 0) msgStr += ` ${gotHerb} 仙草`;
+            if (gotOre > 0) msgStr += ` ${gotOre} 玄鐵`;
+            Msg.log(msgStr, "reward");
         }
     }
 };
