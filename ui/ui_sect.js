@@ -1,14 +1,15 @@
 /**
- * V3.0 ui_sect.js (終極樞紐瘦身版 - 完美防護)
- * 職責：管理宗門首頁六大入口，並負責將點擊分配給對應的專屬 UI 模組
+ * V3.4 ui_sect.js (終極樞紐 - 三大產業版)
+ * 職責：管理宗門首頁七大入口，並負責將點擊分配給對應的專屬 UI 模組
  * 位置：/ui/ui_sect.js
  */
 
 import { Player } from '../entities/player.js';
 import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 import { SectSystem } from '../systems/SectSystem.js';
-import { UI_Recruit } from './ui_recruit.js'; // 🟢 引入招募專屬 UI
-import { UI_Farm } from './ui_farm.js';       // 🟢 引入仙草園專屬 UI
+import { UI_Recruit } from './ui_recruit.js'; 
+import { UI_Farm } from './ui_farm.js';       
+import { UI_Alchemy } from './ui_alchemy.js'; // 🌟 引入煉丹閣專屬 UI
 
 export const UI_Sect = {
     // 宗門庫房專屬商品清單
@@ -21,21 +22,18 @@ export const UI_Sect = {
     init() {
         console.log("【UI_Sect】宗門總樞紐初始化...");
         this.renderLayout();
-        this.ensureDataState(); // 獨立抽出的數據防護
+        this.ensureDataState(); 
         
         if(SectSystem && typeof SectSystem.init === 'function') {
             SectSystem.init();
         }
     },
 
-    /**
-     * 🟢 新增：獨立的數據狀態防護，避免重複渲染畫面
-     */
     ensureDataState() {
         if (Player.data && !Player.data.world) {
             Player.data.world = {
                 arrayLevel: 1, lastCollect: Date.now(),
-                workers: 0, farm: { level: 0, assigned: 0 }, mine: { level: 0, assigned: 0 }
+                workers: 0, farm: { level: 0, assigned: 0 }, mine: { level: 0, assigned: 0 }, alchemy: { level: 0, assigned: 0 }
             };
         }
         if(Player.data && Player.data.sectPoints === undefined) {
@@ -62,6 +60,10 @@ export const UI_Sect = {
                     <div class="dept-icon">⛏️</div>
                     <div class="dept-name">鐵礦部</div>
                 </div>
+                <div class="dept-card" onclick="UI_Sect.openDept('alchemy')">
+                    <div class="dept-icon">🔥</div>
+                    <div class="dept-name">煉丹閣</div>
+                </div>
                 <div class="dept-card" onclick="UI_Sect.openDept('recruit')">
                     <div class="dept-icon">👥</div>
                     <div class="dept-name">招募堂</div>
@@ -83,33 +85,30 @@ export const UI_Sect = {
     },
 
     /**
-     * 🌟 路由核心：分配任務給各堂口
+     * 路由核心：分配任務給各堂口
      */
     openDept(deptId) {
-        // 確保點擊前數據是存在的，且不觸發畫面重繪
         this.ensureDataState();
 
-        // 🟢 徹底放權：如果是招募堂，呼叫外部模組並中斷
         if (deptId === 'recruit') {
-            if (UI_Recruit) {
-                UI_Recruit.openModal();
-            } else if (window.UI_Recruit) {
-                window.UI_Recruit.openModal();
-            } else {
-                Msg.log("❌ 招募堂大陣尚未準備完畢，請稍後再試！", "system");
-            }
+            if (UI_Recruit) UI_Recruit.openModal();
+            else if (window.UI_Recruit) window.UI_Recruit.openModal();
+            else Msg.log("❌ 招募堂大陣尚未準備完畢，請稍後再試！", "system");
             return;
         }
 
-        // 🟢 徹底放權：如果是仙草園，呼叫外部模組並中斷
         if (deptId === 'herb') {
-            if (UI_Farm) {
-                UI_Farm.openModal();
-            } else if (window.UI_Farm) {
-                window.UI_Farm.openModal();
-            } else {
-                Msg.log("❌ 仙草園大陣尚未準備完畢，請稍後再試！", "system");
-            }
+            if (UI_Farm) UI_Farm.openModal();
+            else if (window.UI_Farm) window.UI_Farm.openModal();
+            else Msg.log("❌ 仙草園大陣尚未準備完畢，請稍後再試！", "system");
+            return;
+        }
+
+        // 🌟 新增：煉丹閣的獨立路由
+        if (deptId === 'alchemy') {
+            if (UI_Alchemy) UI_Alchemy.openModal();
+            else if (window.UI_Alchemy) window.UI_Alchemy.openModal();
+            else Msg.log("❌ 煉丹閣大陣尚未準備完畢，請稍後再試！", "system");
             return;
         }
         
@@ -154,10 +153,6 @@ export const UI_Sect = {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     },
 
-    // ==========================================
-    // 未分家的舊部門 (等未來 V4.0 再分)
-    // ==========================================
-    
     renderIron() {
         const wData = Player.data.world;
         const summary = SectSystem.getSummary();
