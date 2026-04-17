@@ -1,15 +1,19 @@
 /**
- * V3.6.2 ui_sim.js (萬象森羅 - 宗門微縮視界 + 建築顯化與靈動身法版)
+ * V3.6.3 ui_sim.js (萬象森羅 - 宗門微縮視界 + 終極互動與事件版)
  * 職責：可視化弟子、漫遊AI、隨機性格飄字、實裝點擊指派微操、建築等級動態外觀、弟子轉向
+ * 新增：點擊建築升級(大興土木)、雲遊商人與妖獸入侵事件(天道無常)
  * 位置：/ui/ui_sim.js
  */
 
 import { Player } from '../entities/player.js';
 import { DATA_SECT } from '../data/data_sect.js';
+import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 
 export const UI_Sim = {
     containerId: 'page-sim',
     updateInterval: null,
+    eventInterval: null,
+    activeEvent: null, // 記錄當前場上的突發事件
 
     // 定義設施的虛擬座標 (使用百分比)
     facilityCoords: {
@@ -20,7 +24,7 @@ export const UI_Sim = {
         'forge': { x: 85, y: 85 }    // 煉器殿 (右下)
     },
 
-    // 🌟 新增：性格與狀態對應的台詞庫 (Route 1)
+    // 性格與狀態對應的台詞庫
     bubbleLines: {
         'status_mine': ["鏘！鏘！", "這石頭真硬...", "挖到靈石了？", "腰酸背痛..."],
         'status_farm': ["除草真累", "長快點啊小寶貝", "這株好像快枯了", "靈氣好充沛"],
@@ -37,13 +41,12 @@ export const UI_Sim = {
     },
 
     init() {
-        console.log("%c【UI_Sim】宗門模擬視界陣法啟動 (支援微操、機緣與建築顯化)...", "color: #38bdf8; font-weight: bold;");
-        this.injectStyles(); // 注入專屬 CSS
+        console.log("%c【UI_Sim】宗門模擬視界陣法啟動 (終極互動版)...", "color: #38bdf8; font-weight: bold;");
+        this.injectStyles(); 
         this.renderLayout();
         this.startSimulation();
     },
 
-    // 🌟 新增：注入飄字與微操 Modal 的 CSS
     injectStyles() {
         if (document.getElementById('sim-styles')) return;
         const style = document.createElement('style');
@@ -81,7 +84,6 @@ export const UI_Sim = {
                 transform: translateX(-50%) translateY(-5px);
                 opacity: 1;
             }
-            /* 設施等級浮動標籤 */
             .fac-level-badge {
                 position: absolute;
                 top: -5px;
@@ -96,6 +98,33 @@ export const UI_Sim = {
                 box-shadow: 0 2px 4px rgba(0,0,0,0.5);
                 pointer-events: none;
             }
+            /* 🌟 新增：設施點擊與升級特效 */
+            .sim-facility:hover {
+                filter: brightness(1.2) !important;
+                transform: translate(-50%, -50%) scale(1.1) !important;
+            }
+            @keyframes upgrade-flash {
+                0% { box-shadow: 0 0 0px #fbbf24; filter: brightness(1); }
+                50% { box-shadow: 0 0 50px #fbbf24; filter: brightness(2); }
+                100% { box-shadow: 0 4px 10px rgba(0,0,0,0.5); filter: brightness(1); }
+            }
+            .fac-upgrading {
+                animation: upgrade-flash 1s ease-out;
+            }
+            /* 🌟 新增：事件 NPC 特效 */
+            .sim-event-npc {
+                position: absolute;
+                font-size: 30px;
+                cursor: pointer;
+                z-index: 15;
+                animation: bounce-npc 1s infinite alternate;
+                filter: drop-shadow(0 4px 5px rgba(0,0,0,0.6));
+            }
+            .sim-event-npc:hover { transform: scale(1.2); }
+            @keyframes bounce-npc {
+                from { transform: translateY(0); }
+                to { transform: translateY(-10px); }
+            }
         `;
         document.head.appendChild(style);
     },
@@ -106,26 +135,31 @@ export const UI_Sim = {
 
         let html = `
             <div class="page-title" style="margin-bottom: 10px;">宗門微縮視界</div>
-            <div style="font-size: 12px; color: #94a3b8; text-align: center; margin-bottom: 15px;">觀察弟子百態，點擊弟子名字可【神識傳音】指派工作</div>
+            <div style="font-size: 12px; color: #94a3b8; text-align: center; margin-bottom: 15px;">
+                點擊弟子【神識傳音】 | 點擊建築【升級擴建】 | 留意突發事件
+            </div>
             
             <div id="sim-ground" style="position:relative; width:100%; height:60vh; min-height: 400px; background:radial-gradient(circle at center, #1e293b 0%, #020617 100%); border:2px solid #475569; border-radius:16px; overflow:hidden; box-shadow: inset 0 0 50px rgba(0,0,0,0.8);">
         `;
 
-        // 1. 繪製五大設施地標 (加入了 transition 讓升級變大時有動畫)
+        // 繪製五大設施地標 (🌟 新增 onclick 觸發升級面板)
         if (DATA_SECT && DATA_SECT.FACILITIES) {
             for (let key in DATA_SECT.FACILITIES) {
                 const fac = DATA_SECT.FACILITIES[key];
                 const pos = this.facilityCoords[key];
+                // 宗門廣場不可升級
+                const clickAction = key === 'idle' ? `Msg.log('宗門廣場，眾弟子休憩交流之地。', 'system')` : `UI_Sim.showFacilityModal('${key}')`;
+                
                 html += `
-                    <div id="fac-${key}" class="sim-facility" style="position:absolute; left:${pos.x}%; top:${pos.y}%; transform:translate(-50%, -50%); width:70px; height:70px; background:${fac.color}; border-radius:50%; border:3px solid rgba(255,255,255,0.15); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1; box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor:help; transition: all 0.5s ease;" title="${fac.desc}">
-                        <span style="font-size:28px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));">${fac.icon}</span>
-                        <span style="font-size:10px; color:#f8fafc; font-weight:bold; margin-top:2px; text-shadow:0 1px 2px black;">${fac.name}</span>
+                    <div id="fac-${key}" class="sim-facility" onclick="${clickAction}" style="position:absolute; left:${pos.x}%; top:${pos.y}%; transform:translate(-50%, -50%); width:70px; height:70px; background:${fac.color}; border-radius:50%; border:3px solid rgba(255,255,255,0.15); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1; box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor:pointer; transition: all 0.3s ease;" title="點擊檢視/升級">
+                        <span style="font-size:28px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); pointer-events:none;">${fac.icon}</span>
+                        <span style="font-size:10px; color:#f8fafc; font-weight:bold; margin-top:2px; text-shadow:0 1px 2px black; pointer-events:none;">${fac.name}</span>
                     </div>
                 `;
             }
         }
 
-        // 2. 建立小人活動圖層
+        html += `<div id="sim-events-layer" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:15; pointer-events:none;"></div>`;
         html += `<div id="sim-disciples-layer" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:10; pointer-events:none;"></div>`;
         html += `</div>`;
 
@@ -134,18 +168,113 @@ export const UI_Sim = {
 
     startSimulation() {
         if (this.updateInterval) clearInterval(this.updateInterval);
+        if (this.eventInterval) clearInterval(this.eventInterval);
         
-        this.updateFacilities(); // 🌟 啟動時先刷新一次建築狀態
+        this.updateFacilities(); 
         this.updateDisciples();
         
-        // 每 2 秒掃描一次
+        // 尋路與狀態掃描 (2s)
         this.updateInterval = setInterval(() => {
-            this.updateFacilities(); // 🌟 定期刷新建築，捕捉玩家剛升級的變化
+            this.updateFacilities(); 
             this.updateDisciples();
         }, 2000);
+
+        // 🌟 突發事件發生器 (每 15 秒擲骰子)
+        this.eventInterval = setInterval(() => {
+            this.triggerRandomEvent();
+        }, 15000);
     },
 
-    // 🌟 新增：建築等級顯化邏輯
+    // ==========================================
+    // 🌟 路線二：大興土木 (建築升級邏輯)
+    // ==========================================
+    showFacilityModal(facKey) {
+        if (!Player.data || !Player.data.world) return;
+        const wData = Player.data.world;
+        const facData = DATA_SECT.FACILITIES[facKey];
+        if (!facData) return;
+
+        let currentLevel = wData[facKey] ? wData[facKey].level || 0 : 0;
+        
+        // 升級消耗公式
+        let costCoin = 1000 * (currentLevel + 1);
+        let costOre = 100 * (currentLevel + 1);
+        let maxLevel = 10;
+
+        let actionHtml = '';
+        if (currentLevel >= maxLevel) {
+            actionHtml = `<div style="color:var(--exp-color); font-weight:bold; padding:10px;">已達最高境界，道法自然。</div>`;
+        } else {
+            actionHtml = `
+                <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px; text-align:left; font-size:12px; margin-bottom:15px;">
+                    <div style="color:#cbd5e1; margin-bottom:5px;">擴建所需資源：</div>
+                    <div style="color:var(--coin-color)">靈石：${costCoin.toLocaleString()}</div>
+                    <div style="color:#94a3b8">玄鐵：${costOre.toLocaleString()}</div>
+                </div>
+                <button class="btn-eco-action" style="width:100%; background:var(--exp-color); border:none; color:black; font-weight:bold; padding:10px; border-radius:8px; cursor:pointer;" 
+                        onclick="UI_Sim.upgradeFacility('${facKey}', ${costCoin}, ${costOre})">
+                    ⚒️ 注入靈氣擴建 (升至 Lv.${currentLevel + 1})
+                </button>
+            `;
+        }
+
+        const modalHtml = `
+            <div id="sim-fac-modal" class="modal-overlay" style="z-index:9999;" onclick="this.remove()">
+                <div class="detail-glass-card trade-card" onclick="event.stopPropagation()" style="text-align:center;">
+                    <div class="modal-header">
+                        <h4>${facData.icon} ${facData.name}</h4>
+                        <button class="btn-modal-close" onclick="document.getElementById('sim-fac-modal').remove()">✕</button>
+                    </div>
+                    <div style="margin: 10px 0; font-size:14px; color:#f8fafc; font-weight:bold;">
+                        當前境界：<span style="color:var(--hp-color);">Lv.${currentLevel}</span>
+                    </div>
+                    <div style="margin-bottom: 20px; font-size:12px; color:#94a3b8; line-height:1.5;">
+                        ${facData.desc}
+                    </div>
+                    ${actionHtml}
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
+
+    upgradeFacility(facKey, costCoin, costOre) {
+        if (!Player.data || !Player.data.world || !Player.data.materials) return;
+        
+        let currentCoin = Player.data.coin || 0;
+        let currentOre = Player.data.materials.ore || 0;
+
+        if (currentCoin < costCoin || currentOre < costOre) {
+            Msg.log("❌ 宗門資源不足，無法擴建陣法！", "red");
+            return;
+        }
+
+        // 扣款與升級
+        Player.data.coin -= costCoin;
+        Player.data.materials.ore -= costOre;
+        
+        if (!Player.data.world[facKey]) Player.data.world[facKey] = { level: 0, assigned: 0 };
+        Player.data.world[facKey].level += 1;
+        
+        Player.save();
+        if (window.Core) window.Core.updateUI();
+
+        // 移除 Modal
+        const modal = document.getElementById('sim-fac-modal');
+        if (modal) modal.remove();
+
+        // 🌟 觸發視覺升級特效
+        const facEl = document.getElementById(`fac-${facKey}`);
+        if (facEl) {
+            facEl.classList.remove('fac-upgrading');
+            void facEl.offsetWidth; // 觸發 reflow 重新啟動動畫
+            facEl.classList.add('fac-upgrading');
+        }
+
+        Msg.log(`🎊 擴建成功！【${DATA_SECT.FACILITIES[facKey].name}】升級至 Lv.${Player.data.world[facKey].level}`, "gold");
+        this.updateFacilities();
+    },
+
     updateFacilities() {
         if (!Player.data || !Player.data.world) return;
         const wData = Player.data.world;
@@ -159,27 +288,20 @@ export const UI_Sim = {
                 level = (wData[key] && wData[key].level !== undefined) ? wData[key].level : 0;
             }
 
-            // 0 級表示未解鎖
             if (level === 0) {
                 facEl.style.filter = 'grayscale(100%) opacity(0.4)';
-                facEl.title = "尚未建立或解鎖此設施";
             } else {
                 facEl.style.filter = 'none';
-                
-                // 根據等級放大
+                // 根據等級放大 (有加上 CSS transition 會很滑順)
                 const scale = 1 + (level - 1) * 0.05;
                 facEl.style.transform = `translate(-50%, -50%) scale(${Math.min(scale, 1.5)})`;
                 
-                // 等級 5 以上發出靈光
                 if (level >= 5) {
                     facEl.style.boxShadow = `0 0 20px ${DATA_SECT.FACILITIES[key].color}, inset 0 0 10px rgba(255,255,255,0.6)`;
                 } else {
                     facEl.style.boxShadow = `0 4px 10px rgba(0,0,0,0.5)`;
                 }
                 
-                facEl.title = `${DATA_SECT.FACILITIES[key].name} (Lv.${level})\n${DATA_SECT.FACILITIES[key].desc}`;
-                
-                // 動態添加或更新右上角 Lv 標籤
                 let badge = facEl.querySelector('.fac-level-badge');
                 if (key !== 'idle') {
                     if (!badge) {
@@ -193,6 +315,117 @@ export const UI_Sim = {
         }
     },
 
+    // ==========================================
+    // 🌟 路線三：天道無常 (隨機世界事件)
+    // ==========================================
+    triggerRandomEvent() {
+        if (this.activeEvent) return; // 場上已有事件則不觸發
+        
+        const rand = Math.random();
+        if (rand < 0.1) {
+            this.spawnMerchant();
+        } else if (rand < 0.2) {
+            this.spawnBeast();
+        }
+    },
+
+    spawnMerchant() {
+        const layer = document.getElementById('sim-events-layer');
+        if (!layer) return;
+
+        this.activeEvent = 'merchant';
+        Msg.log("🔔 一位【雲遊商人】來到了宗門廣場！", "system");
+
+        const npc = document.createElement('div');
+        npc.className = 'sim-event-npc';
+        npc.innerHTML = '💰';
+        npc.style.left = '50%';
+        npc.style.top = '50%';
+        npc.style.transform = 'translate(-50%, -50%)';
+        npc.style.pointerEvents = 'auto'; // 允許點擊
+        
+        npc.onclick = () => {
+            if (confirm("雲遊商人：嘿嘿，道友，花 500 靈石買個盲盒機緣如何？")) {
+                let coin = Player.data.coin || 0;
+                if (coin >= 500) {
+                    Player.data.coin -= 500;
+                    if (!Player.data.materials) Player.data.materials = { herb: 0, ore: 0 };
+                    
+                    // 隨機獎勵
+                    if (Math.random() > 0.5) {
+                        Player.data.materials.herb += 10;
+                        Msg.log("🎁 商人給了你一大包【仙草 x10】！", "gold");
+                    } else {
+                        Player.data.materials.ore += 10;
+                        Msg.log("🎁 商人塞給你一堆【玄鐵 x10】！", "gold");
+                    }
+                    Player.save();
+                    if (window.Core) window.Core.updateUI();
+                } else {
+                    Msg.log("商人鄙視地看了你一眼：靈石不夠啊，窮鬼。", "red");
+                }
+            }
+            npc.remove();
+            this.activeEvent = null;
+        };
+
+        layer.appendChild(npc);
+
+        // 30秒後自動離開
+        setTimeout(() => {
+            if (document.body.contains(npc)) {
+                npc.remove();
+                this.activeEvent = null;
+                Msg.log("🔔 雲遊商人離開了宗門。", "system");
+            }
+        }, 30000);
+    },
+
+    spawnBeast() {
+        const layer = document.getElementById('sim-events-layer');
+        if (!layer) return;
+
+        this.activeEvent = 'beast';
+        Msg.log("⚠️ 警告！一頭【搗亂妖獸】潛入了宗門！快點擊驅逐牠！", "red");
+
+        const npc = document.createElement('div');
+        npc.className = 'sim-event-npc';
+        npc.innerHTML = '🐺';
+        
+        // 隨機出現在礦脈或仙草園附近
+        const isFarm = Math.random() > 0.5;
+        const basePos = isFarm ? this.facilityCoords['farm'] : this.facilityCoords['mine'];
+        npc.style.left = `${basePos.x + (Math.random()*10 - 5)}%`;
+        npc.style.top = `${basePos.y + (Math.random()*10 - 5)}%`;
+        npc.style.transform = 'translate(-50%, -50%)';
+        npc.style.pointerEvents = 'auto'; 
+        
+        npc.onclick = () => {
+            if (!Player.data.materials) Player.data.materials = { herb: 0, ore: 0 };
+            Player.data.materials.ore += 5;
+            Player.data.coin += 200;
+            Player.save();
+            if (window.Core) window.Core.updateUI();
+            
+            Msg.log("⚔️ 你親自出手擊殺了妖獸！搜刮獲得 200 靈石與 玄鐵 x5", "gold");
+            npc.remove();
+            this.activeEvent = null;
+        };
+
+        layer.appendChild(npc);
+
+        setTimeout(() => {
+            if (document.body.contains(npc)) {
+                npc.remove();
+                this.activeEvent = null;
+                Msg.log("💨 妖獸吃飽喝足，大搖大擺地逃跑了...", "system");
+            }
+        }, 20000);
+    },
+
+    // ==========================================
+    // 🌟 原有漫遊尋路與微操模組
+    // ==========================================
     updateDisciples() {
         const layer = document.getElementById('sim-disciples-layer');
         if (!layer || !Player.data || !Player.data.sect || !Player.data.sect.disciples) return;
@@ -207,12 +440,12 @@ export const UI_Sim = {
         disciples.forEach(d => {
             let el = document.getElementById(`sim-d-${d.id}`);
             
-            // 🌟 A. 首次生成
+            // A. 首次生成
             if (!el) {
                 el = document.createElement('div');
                 el.id = `sim-d-${d.id}`;
                 el.className = 'sim-disciple';
-                el.dataset.lastX = gw / 2; // 🌟 記憶初始 X 座標，用於判斷轉向
+                el.dataset.lastX = gw / 2; 
                 
                 let emoji = '😐'; 
                 if (d.traits) {
@@ -224,7 +457,7 @@ export const UI_Sim = {
                     }
                 }
 
-                // 🌟 onclick 觸發微操選單
+                // onclick 觸發微操選單
                 el.innerHTML = `
                     <div class="sim-speech-bubble" id="bubble-${d.id}"></div>
                     <div class="sim-avatar-emoji" style="font-size:20px; transition: transform 0.2s; position:relative;">${emoji}</div>
@@ -245,12 +478,11 @@ export const UI_Sim = {
                 el.getBoundingClientRect();
             }
 
-            // 🌟 B. 漫遊尋路 AI 強化
+            // B. 漫遊尋路 AI 強化
             const targetKey = d.status || 'idle';
             const pos = this.facilityCoords[targetKey] || this.facilityCoords['idle'];
             const isIdle = (targetKey === 'idle');
 
-            // 🌟 如果閒置，讓他在廣場大範圍漫遊 (200px)；如果在工作，則在設施旁小範圍移動 (60px)
             const jitterRange = isIdle ? 200 : 60;
             const jitterX = (Math.random() - 0.5) * jitterRange;
             const jitterY = (Math.random() - 0.5) * jitterRange;
@@ -269,19 +501,18 @@ export const UI_Sim = {
             
             const transitionTime = Math.max(0.5, 3.0 / speedMult); 
 
-            // 🌟 執行移動
+            // 執行移動
             el.style.transition = `transform ${transitionTime}s cubic-bezier(0.4, 0, 0.2, 1)`;
             el.style.transform = `translate(${targetX}px, ${targetY}px)`;
             
-            // 🌟 靈動身法：判斷前進方向，翻轉頭像
+            // 靈動身法：轉向
             const prevX = parseFloat(el.dataset.lastX);
-            el.dataset.lastX = targetX; // 存下這次的目的地
+            el.dataset.lastX = targetX; 
             
             const avatar = el.querySelector('.sim-avatar-emoji');
             if (avatar) {
-                const direction = targetX > prevX ? -1 : 1; // 往右走為 -1 (水平翻轉)，往左為 1 (預設)
+                const direction = targetX > prevX ? -1 : 1; 
                 
-                // 加入走路時的顛簸感
                 if (Math.random() > 0.5) {
                     const tilt = (Math.random() - 0.5) * 20;
                     avatar.style.transform = `translateY(-3px) rotate(${tilt}deg) scaleX(${direction})`;
@@ -291,13 +522,13 @@ export const UI_Sim = {
                 }
             }
 
-            // 🌟 C. 天道機緣 (飄字系統 - Route 1)
-            // 每2秒有 15% 機率說話
+            // C. 飄字系統
             if (Math.random() < 0.15) {
                 this.spawnBubble(d);
             }
         });
 
+        // 移除解雇的弟子
         const existingEls = layer.querySelectorAll('.sim-disciple');
         existingEls.forEach(el => {
             const id = el.id.replace('sim-d-', '');
@@ -309,25 +540,21 @@ export const UI_Sim = {
         });
     },
 
-    // 🌟 Route 1: 飄字邏輯
     spawnBubble(disciple) {
         const bubble = document.getElementById(`bubble-${disciple.id}`);
-        if (!bubble || bubble.classList.contains('sim-bubble-show')) return; // 已經在說話就跳過
+        if (!bubble || bubble.classList.contains('sim-bubble-show')) return; 
 
         let possibleLines = [];
         
-        // 1. 加入狀態台詞
         const statusKey = `status_${disciple.status || 'idle'}`;
         if (this.bubbleLines[statusKey]) {
             possibleLines = possibleLines.concat(this.bubbleLines[statusKey]);
         }
 
-        // 2. 加入性格專屬台詞
         if (disciple.traits) {
             disciple.traits.forEach(t => {
                 const traitKey = `trait_${t}`;
                 if (this.bubbleLines[traitKey]) {
-                    // 性格台詞權重加倍 (放進去兩次)
                     possibleLines = possibleLines.concat(this.bubbleLines[traitKey]);
                     possibleLines = possibleLines.concat(this.bubbleLines[traitKey]);
                 }
@@ -340,13 +567,11 @@ export const UI_Sim = {
         bubble.innerText = text;
         bubble.classList.add('sim-bubble-show');
 
-        // 3秒後消失
         setTimeout(() => {
             if (bubble) bubble.classList.remove('sim-bubble-show');
         }, 3000);
     },
 
-    // 🌟 Route 2: 神識微操 (彈出指派選單)
     showDiscipleModal(discipleId) {
         if (!Player.data || !Player.data.sect || !Player.data.sect.disciples) return;
         const d = Player.data.sect.disciples.find(x => x.id === discipleId);
@@ -385,21 +610,17 @@ export const UI_Sim = {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     },
 
-    // 執行指派邏輯
     assignJob(discipleId, newStatus) {
         if (!Player.data || !Player.data.sect || !Player.data.sect.disciples) return;
         const d = Player.data.sect.disciples.find(x => x.id === discipleId);
         if (!d) return;
 
-        // 更新狀態
         d.status = newStatus;
         Player.save();
 
-        // 移除 Modal
         const modal = document.getElementById('sim-modal-overlay');
         if (modal) modal.remove();
 
-        // 飄字回饋
         const bubble = document.getElementById(`bubble-${discipleId}`);
         if (bubble) {
             bubble.innerText = "遵命！宗主！";
@@ -407,7 +628,6 @@ export const UI_Sim = {
             setTimeout(() => { bubble.classList.remove('sim-bubble-show'); }, 3000);
         }
 
-        // 強制立刻刷新位置與建築狀態
         this.updateFacilities();
         this.updateDisciples();
     }
