@@ -7,6 +7,7 @@
 import { Player } from '../entities/player.js';
 import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 import { UI_Bag } from './ui_bag.js'; 
+import { ShopLogic } from '../systems/shop.js'; // 🌟 強制引入大腦，不再依賴 window
 
 export const UI_Shop = {
     currentTab: 'buy', 
@@ -263,8 +264,8 @@ export const UI_Shop = {
         if (itemIndex === -1) return;
         const item = Player.data.shop.dailyItems[itemIndex];
 
-        // 🌟 完全委託 ShopLogic 大腦執行
-        if (window.ShopLogic && window.ShopLogic.buy(item)) {
+        // 🌟 核心修復：直接呼叫實體 ShopLogic，不再依賴 window
+        if (ShopLogic && ShopLogic.buy(item)) {
             // 購買成功才從架上移除
             Player.data.shop.dailyItems.splice(itemIndex, 1);
             Player.save();
@@ -280,11 +281,10 @@ export const UI_Shop = {
     },
 
     executeSell(itemUuid, event) {
-        // 🌟 完全委託 ShopLogic 大腦執行
-        if (window.ShopLogic) {
-            const success = window.ShopLogic.sell(itemUuid);
+        // 🌟 核心修復：直接呼叫實體 ShopLogic
+        if (ShopLogic) {
+            const success = ShopLogic.sell(itemUuid);
             if (success) {
-                // 為了視覺特效，找回剛剛賣出的東西的預估價 (只是為了飄字)
                 if (window.UI_Stats && event && typeof window.UI_Stats.createFloatingText === 'function') {
                     window.UI_Stats.createFloatingText(event.target.closest('.detail-glass-card'), `出售成功`);
                 }
@@ -307,8 +307,9 @@ export const UI_Shop = {
         const rarityName = select.options[select.selectedIndex].text;
 
         if (confirm(`確定要將所有未裝備的「${rarityName}」法寶與道具出售嗎？此舉不可逆！`)) {
-            if (window.ShopLogic) {
-                const success = window.ShopLogic.sellBatch(rarity);
+            // 🌟 核心修復：直接呼叫實體 ShopLogic
+            if (ShopLogic) {
+                const success = ShopLogic.sellBatch(rarity);
                 if (success) {
                     this.renderShop();
                     if (window.Core) window.Core.updateUI();
