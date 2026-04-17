@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>練功修練 - V3.5.5 「萬象森羅：煉器大殿與天道強化」</title>
+    <title>練功修練 - V3.6.0 「萬象森羅：微縮視界與宗門模擬」</title>
 
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/page_battle.css">
@@ -51,7 +51,7 @@
     <main id="game-container">
         <section id="page-battle" class="game-page active"></section>
         <section id="page-sect" class="game-page" style="display:none;"></section>
-        <section id="page-world" class="game-page" style="display:none; flex-direction:column;"></section>
+        <section id="page-sim" class="game-page" style="display:none;"></section> <section id="page-world" class="game-page" style="display:none; flex-direction:column;"></section>
         <section id="page-stats" class="game-page" style="display:none;"></section>
         <section id="page-bag" class="game-page" style="display:none;"></section>
         <section id="page-shop" class="game-page" style="display:none;"></section>
@@ -59,7 +59,7 @@
 
     <nav class="bottom-nav">
         <button class="nav-btn active" onclick="Core.switchPage('battle')">⚔️ 歷練</button>
-        <button class="nav-btn" onclick="Core.switchPage('stats')">🧘‍♂️ 修為</button>
+        <button class="nav-btn" onclick="Core.switchPage('sim')">👁️ 視察</button> <button class="nav-btn" onclick="Core.switchPage('stats')">🧘‍♂️ 修為</button>
         <button class="nav-btn" onclick="Core.switchPage('bag')">🎒 儲物</button>
         <button class="nav-btn" onclick="Core.switchPage('shop')">🏪 坊市</button>
     </nav>
@@ -94,7 +94,7 @@
         import { AlchemySystem } from './systems/AlchemySystem.js'; 
         import { BountySystem } from './systems/BountySystem.js'; 
         import { VaultSystem } from './systems/VaultSystem.js';     
-        import { ForgeSystem } from './systems/ForgeSystem.js';     // 🌟 新增：煉器大腦
+        import { ForgeSystem } from './systems/ForgeSystem.js';     
         import { TribulationSystem } from './systems/TribulationSystem.js';
         import { TaskSystem } from './systems/TaskSystem.js';
         import { SectManager } from './systems/SectManager.js';
@@ -115,7 +115,8 @@
         import { UI_Alchemy } from './ui/ui_alchemy.js'; 
         import { UI_Bounty } from './ui/ui_bounty.js';
         import { UI_Vault } from './ui/ui_vault.js';                
-        import { UI_Forge } from './ui/ui_forge.js';                // 🌟 新增：煉器 UI
+        import { UI_Forge } from './ui/ui_forge.js';                
+        import { UI_Sim } from './ui/ui_sim.js';                   // 🌟 新增：模擬介面
 
         // ==========================================
         // 4. 引入 核心與數據 (Core & Data)
@@ -125,7 +126,6 @@
 
         // ==========================================
         // 🌟 關鍵：將所有模組手動掛載至 window 🌟
-        // 確保 core.js 與 HTML onclick 能夠精準抓取
         // ==========================================
         window.MessageCenter = MessageCenter;
         window.FX = FX;
@@ -138,7 +138,7 @@
         window.AlchemySystem = AlchemySystem; 
         window.BountySystem = BountySystem; 
         window.VaultSystem = VaultSystem;     
-        window.ForgeSystem = ForgeSystem;     // 🌟 註冊煉器大腦
+        window.ForgeSystem = ForgeSystem;     
         window.TribulationSystem = TribulationSystem;
         window.TaskSystem = TaskSystem;
         window.SectManager = SectManager;
@@ -156,7 +156,8 @@
         window.UI_Alchemy = UI_Alchemy; 
         window.UI_Bounty = UI_Bounty;
         window.UI_Vault = UI_Vault;           
-        window.UI_Forge = UI_Forge;           // 🌟 註冊煉器 UI
+        window.UI_Forge = UI_Forge;           
+        window.UI_Sim = UI_Sim;                            // 🌟 註冊模擬介面
 
         window.Core = Core;
         window.DB = DB;            
@@ -166,16 +167,13 @@
         // 5. 大陣啟動邏輯
         // ==========================================
         window.onload = () => {
-            // 系統啟動日誌
-            console.log("%c【系統】V3.5.5 萬象森羅：煉器大殿與天道強化大陣啟動！", "color: #fbbf24; font-weight: bold; font-size: 14px;");
+            console.log("%c【系統】V3.6.0 萬象森羅：微縮視界與宗門模擬大陣啟動！", "color: #38bdf8; font-weight: bold; font-size: 14px;");
 
-            // 延遲初始化，確保所有 DOM 節點與全局對象已就緒
             setTimeout(() => {
                 Core.init();
             }, 100);
         };
 
-        // 開發者調試：逆轉時空
         window.DEBUG_RESET = () => {
             if (window.UI_System && window.UI_System.restartGame) {
                 window.UI_System.restartGame();
