@@ -1,5 +1,5 @@
 /**
- * V3.4 ui_sect.js (終極樞紐 - 三大產業版)
+ * V3.4 ui_sect.js (終極樞紐 - 三大產業完美路由版)
  * 職責：管理宗門首頁七大入口，並負責將點擊分配給對應的專屬 UI 模組
  * 位置：/ui/ui_sect.js
  */
@@ -9,6 +9,7 @@ import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 import { SectSystem } from '../systems/SectSystem.js';
 import { UI_Recruit } from './ui_recruit.js'; 
 import { UI_Farm } from './ui_farm.js';       
+import { UI_Mine } from './ui_mine.js';       // 🌟 修正：正式引入靈礦脈專屬 UI
 import { UI_Alchemy } from './ui_alchemy.js'; // 🌟 引入煉丹閣專屬 UI
 
 export const UI_Sect = {
@@ -20,7 +21,7 @@ export const UI_Sect = {
     ],
 
     init() {
-        console.log("【UI_Sect】宗門總樞紐初始化...");
+        console.log("【UI_Sect】宗門總樞紐初始化，產業大陣已連接...");
         this.renderLayout();
         this.ensureDataState(); 
         
@@ -85,7 +86,7 @@ export const UI_Sect = {
     },
 
     /**
-     * 路由核心：分配任務給各堂口
+     * 🌟 路由核心：徹底放權，將產業點擊導向專屬 UI 模組
      */
     openDept(deptId) {
         this.ensureDataState();
@@ -104,7 +105,14 @@ export const UI_Sect = {
             return;
         }
 
-        // 🌟 新增：煉丹閣的獨立路由
+        // 🌟 修正：將鐵礦部完美轉交給 UI_Mine，拔除舊的 renderIron
+        if (deptId === 'iron') {
+            if (UI_Mine) UI_Mine.openModal();
+            else if (window.UI_Mine) window.UI_Mine.openModal();
+            else Msg.log("❌ 靈礦脈大陣尚未準備完畢，請稍後再試！", "system");
+            return;
+        }
+
         if (deptId === 'alchemy') {
             if (UI_Alchemy) UI_Alchemy.openModal();
             else if (window.UI_Alchemy) window.UI_Alchemy.openModal();
@@ -116,10 +124,7 @@ export const UI_Sect = {
         let contentHtml = "";
 
         switch(deptId) {
-            case 'iron':
-                title = "⛏️ 鐵礦部 (靈礦脈)";
-                contentHtml = this.renderIron();
-                break;
+            // iron 已經在上面 return 掉了，所以這裡拿掉 case 'iron'
             case 'bounty':
                 title = "📜 懸賞堂";
                 contentHtml = this.renderBounty();
@@ -130,7 +135,10 @@ export const UI_Sect = {
                 break;
         }
 
-        this.showModal(title, contentHtml);
+        // 只有懸賞和庫房會走到這一步，使用共用的彈窗
+        if (contentHtml) {
+            this.showModal(title, contentHtml);
+        }
     },
 
     showModal(title, contentHtml) {
@@ -151,34 +159,6 @@ export const UI_Sect = {
             </div>
         `;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
-    },
-
-    renderIron() {
-        const wData = Player.data.world;
-        const summary = SectSystem.getSummary();
-        const mineYield = summary.mine * (wData.mine.level || 1) * 5;
-
-        return `
-            <div style="text-align:center;">
-                <p style="color:#cbd5e1; margin-bottom:10px; font-size:14px;">開採礦脈，由指派的弟子提供產能。</p>
-                <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; margin-bottom:15px;">
-                    <p style="margin:5px 0;">當前等級：<b>Lv.${wData.mine.level}</b></p>
-                    <p style="margin:5px 0;">預期產出：<b style="color:#fbbf24;">${mineYield} 靈石</b> / 分鐘</p>
-                </div>
-                ${wData.mine.level > 0 ? `
-                    <div style="margin-bottom:15px;">
-                        <span style="font-size:16px; font-weight:bold; color:white;">目前派遣弟子: <span style="color:#fbbf24;">${summary.mine}</span> 名</span>
-                    </div>
-                    <button class="btn-eco-action" style="width:100%; padding:12px; font-weight:bold;" onclick="document.getElementById('sect-modal-overlay').remove(); UI_Sect.openDept('recruit');">
-                        前往【招募堂】指派工作
-                    </button>
-                ` : `
-                    <button class="btn-eco-action btn-buy" style="width:100%; padding:12px;" onclick="UI_Sect.buildIndustry('mine'); event.stopPropagation()">
-                        花費 2000 靈石 開闢靈礦脈
-                    </button>
-                `}
-            </div>
-        `;
     },
 
     renderBounty() {
@@ -262,25 +242,6 @@ export const UI_Sect = {
         });
         html += `</div>`;
         return html;
-    },
-
-    buildIndustry(type) {
-        const cost = type === 'mine' ? 2000 : 1000;
-        const name = type === 'mine' ? '靈礦脈' : '仙草園';
-
-        if ((Player.data.coin !== undefined ? Player.data.coin : Player.data.coins) < cost) {
-            return Msg.log(`開闢【${name}】需要 ${cost} 靈石！`, "system");
-        }
-
-        if (Player.data.coin !== undefined) Player.data.coin -= cost;
-        else Player.data.coins -= cost;
-
-        Player.data.world[type].level = 1;
-        Player.save();
-        Msg.log(`轟隆！天地靈氣匯聚，成功開闢【${name}】！`, "gold");
-        
-        this.openDept(type); 
-        if(window.Core) window.Core.updateUI();
     },
 
     buyVaultItem(itemId) {
