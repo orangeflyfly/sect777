@@ -1,6 +1,7 @@
 /**
- * V3.5.5 ForgeSystem.js (煉器與強化總綱)
+ * V3.5.6 ForgeSystem.js (煉器與強化總綱 - 儲物空間修復版)
  * 職責：處理玄鐵鍛造(抽卡)、千錘百鍊保底、裝備+1~+10強化、毀損判定
+ * 修正：裝備正式存入 Player.data.equipments 專屬陣列，避免與丹藥字典衝突
  * 位置：/systems/ForgeSystem.js
  */
 
@@ -27,7 +28,7 @@ export const ForgeSystem = {
     ],
 
     init() {
-        console.log("%c【ForgeSystem】煉器大殿爐火已旺，天道強化法則建立。", "color: #fb923c; font-weight: bold;");
+        console.log("%c【ForgeSystem】煉器大殿爐火已旺，天道強化法則與獨立儲物空間建立。", "color: #fb923c; font-weight: bold;");
         window.ForgeSystem = this;
 
         if (!Player.data.forge) {
@@ -35,6 +36,10 @@ export const ForgeSystem = {
                 pityCount: 0,      // 千錘百鍊保底進度
                 totalForged: 0     // 總鍛造次數
             };
+        }
+        // 🌟 確保玩家擁有裝備專屬空間
+        if (!Player.data.equipments) {
+            Player.data.equipments = [];
         }
     },
 
@@ -56,7 +61,7 @@ export const ForgeSystem = {
         let rarity = 1; // 1:凡, 2:良, 3:優, 4:極, 5:神
         let roll = Math.random();
 
-        // 保底機制：100次必出神裝 (或隨次數提升機率)
+        // 保底機制：100次必出神裝
         if (d.forge.pityCount >= 100) {
             rarity = 5;
             d.forge.pityCount = 0;
@@ -71,11 +76,11 @@ export const ForgeSystem = {
 
         // 生成裝備
         const itemPool = {
-            1: ["精鐵劍", "生鐵甲"],
-            2: ["寒霜刃", "玄武護心鏡"],
-            3: ["赤霄劍", "流光蠶絲袍"],
-            4: ["驚雷火隕斧", "九天玄鐵鎧"],
-            5: ["斬仙屠魔大劍", "混元造化真衣"]
+            1: ["精鐵劍", "生鐵甲", "粗製指環"],
+            2: ["寒霜刃", "玄武護心鏡", "靈木簪"],
+            3: ["赤霄劍", "流光蠶絲袍", "紫金玉佩"],
+            4: ["驚雷火隕斧", "九天玄鐵鎧", "星辰護符"],
+            5: ["斬仙屠魔大劍", "混元造化真衣", "太虛神鏡"]
         };
 
         const names = itemPool[rarity];
@@ -92,13 +97,14 @@ export const ForgeSystem = {
                 atk: rarity * 50,
                 def: rarity * 30
             },
-            desc: `由煉器大殿鍛造而出的裝備，目前強化：+0`
+            desc: `由煉器大殿鍛造而出的法寶。`
         };
 
-        Player.addItem(newItem);
+        // 🌟 修正：精準存入裝備陣列，而非字典
+        if (!Player.data.equipments) Player.data.equipments = [];
+        Player.data.equipments.push(newItem);
         Player.save();
 
-        // 若是高品質，觸發全螢幕特效 (交由 UI 處理)
         return { item: newItem, isDivine: rarity === 5 };
     },
 
@@ -106,16 +112,21 @@ export const ForgeSystem = {
      * 2. 裝備強化 (加強模式)
      */
     doEnhance(itemUuid, disciple) {
-        const item = Player.data.inventory.find(i => i.uuid === itemUuid);
-        if (!item || item.plus >= 10) return { success: false, msg: "裝備已達強化極限！" };
+        // 🌟 修正：從裝備陣列中尋找
+        const item = Player.data.equipments.find(i => i.uuid === itemUuid);
+        if (!item || item.plus >= 10) return { success: false, msg: "裝備已達強化極限或不存在！" };
 
         const currentPlus = item.plus;
         const config = this.ENHANCE_TABLE[currentPlus];
         
         // 消耗靈石 (強化越貴)
         const cost = (currentPlus + 1) * 1000;
-        if (Player.data.coin < cost) return { success: false, msg: `靈石不足，需要 ${cost}` };
-        Player.data.coin -= cost;
+        let currentCoins = Player.data.coin !== undefined ? Player.data.coin : (Player.data.coins || 0);
+
+        if (currentCoins < cost) return { success: false, msg: `靈石不足，需要 ${cost.toLocaleString()} 靈石` };
+        
+        if (Player.data.coin !== undefined) Player.data.coin -= cost;
+        else Player.data.coins -= cost;
 
         // 🌟 弟子加成：匠心越高，成功率提升越高
         let bonus = (disciple ? (disciple.stats['匠心'] || 0) / 1000 : 0);
@@ -127,14 +138,13 @@ export const ForgeSystem = {
             item.plus++;
             item.stats.atk = Math.floor(item.stats.atk * 1.2);
             item.stats.def = Math.floor(item.stats.def * 1.2);
-            item.desc = `目前強化：+${item.plus}`;
             Player.save();
             return { success: true, result: 'success', level: item.plus };
         } else {
             // --- 失敗 ---
             if (config.break && Math.random() < 0.3) {
-                // 毀損：直接從背包移除
-                Player.data.inventory = Player.data.inventory.filter(i => i.uuid !== itemUuid);
+                // 毀損：從裝備陣列移除
+                Player.data.equipments = Player.data.equipments.filter(i => i.uuid !== itemUuid);
                 Player.save();
                 return { success: false, result: 'broken', msg: `💥 噗滋！器靈哀鳴，裝備在強光中崩碎了！` };
             } else if (config.lose) {
