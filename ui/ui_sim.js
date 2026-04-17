@@ -1,6 +1,6 @@
 /**
- * V3.6.1 ui_sim.js (萬象森羅 - 宗門微縮視界 + 機緣互動版)
- * 職責：可視化弟子、漫遊AI、隨機性格飄字、實裝點擊指派微操
+ * V3.6.2 ui_sim.js (萬象森羅 - 宗門微縮視界 + 建築顯化與靈動身法版)
+ * 職責：可視化弟子、漫遊AI、隨機性格飄字、實裝點擊指派微操、建築等級動態外觀、弟子轉向
  * 位置：/ui/ui_sim.js
  */
 
@@ -37,7 +37,7 @@ export const UI_Sim = {
     },
 
     init() {
-        console.log("%c【UI_Sim】宗門模擬視界陣法啟動 (支援微操與機緣)...", "color: #38bdf8; font-weight: bold;");
+        console.log("%c【UI_Sim】宗門模擬視界陣法啟動 (支援微操、機緣與建築顯化)...", "color: #38bdf8; font-weight: bold;");
         this.injectStyles(); // 注入專屬 CSS
         this.renderLayout();
         this.startSimulation();
@@ -81,6 +81,21 @@ export const UI_Sim = {
                 transform: translateX(-50%) translateY(-5px);
                 opacity: 1;
             }
+            /* 設施等級浮動標籤 */
+            .fac-level-badge {
+                position: absolute;
+                top: -5px;
+                right: -5px;
+                background: #ef4444;
+                color: white;
+                font-size: 10px;
+                padding: 2px 6px;
+                border-radius: 10px;
+                font-weight: bold;
+                border: 1px solid #7f1d1d;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+                pointer-events: none;
+            }
         `;
         document.head.appendChild(style);
     },
@@ -96,13 +111,13 @@ export const UI_Sim = {
             <div id="sim-ground" style="position:relative; width:100%; height:60vh; min-height: 400px; background:radial-gradient(circle at center, #1e293b 0%, #020617 100%); border:2px solid #475569; border-radius:16px; overflow:hidden; box-shadow: inset 0 0 50px rgba(0,0,0,0.8);">
         `;
 
-        // 1. 繪製五大設施地標
+        // 1. 繪製五大設施地標 (加入了 transition 讓升級變大時有動畫)
         if (DATA_SECT && DATA_SECT.FACILITIES) {
             for (let key in DATA_SECT.FACILITIES) {
                 const fac = DATA_SECT.FACILITIES[key];
                 const pos = this.facilityCoords[key];
                 html += `
-                    <div id="fac-${key}" class="sim-facility" style="position:absolute; left:${pos.x}%; top:${pos.y}%; transform:translate(-50%, -50%); width:70px; height:70px; background:${fac.color}; border-radius:50%; border:3px solid rgba(255,255,255,0.15); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1; box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor:help;" title="${fac.desc}">
+                    <div id="fac-${key}" class="sim-facility" style="position:absolute; left:${pos.x}%; top:${pos.y}%; transform:translate(-50%, -50%); width:70px; height:70px; background:${fac.color}; border-radius:50%; border:3px solid rgba(255,255,255,0.15); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1; box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor:help; transition: all 0.5s ease;" title="${fac.desc}">
                         <span style="font-size:28px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));">${fac.icon}</span>
                         <span style="font-size:10px; color:#f8fafc; font-weight:bold; margin-top:2px; text-shadow:0 1px 2px black;">${fac.name}</span>
                     </div>
@@ -120,12 +135,62 @@ export const UI_Sim = {
     startSimulation() {
         if (this.updateInterval) clearInterval(this.updateInterval);
         
+        this.updateFacilities(); // 🌟 啟動時先刷新一次建築狀態
         this.updateDisciples();
         
         // 每 2 秒掃描一次
         this.updateInterval = setInterval(() => {
+            this.updateFacilities(); // 🌟 定期刷新建築，捕捉玩家剛升級的變化
             this.updateDisciples();
         }, 2000);
+    },
+
+    // 🌟 新增：建築等級顯化邏輯
+    updateFacilities() {
+        if (!Player.data || !Player.data.world) return;
+        const wData = Player.data.world;
+
+        for (let key in this.facilityCoords) {
+            const facEl = document.getElementById(`fac-${key}`);
+            if (!facEl) continue;
+
+            let level = 1;
+            if (key !== 'idle') {
+                level = (wData[key] && wData[key].level !== undefined) ? wData[key].level : 0;
+            }
+
+            // 0 級表示未解鎖
+            if (level === 0) {
+                facEl.style.filter = 'grayscale(100%) opacity(0.4)';
+                facEl.title = "尚未建立或解鎖此設施";
+            } else {
+                facEl.style.filter = 'none';
+                
+                // 根據等級放大
+                const scale = 1 + (level - 1) * 0.05;
+                facEl.style.transform = `translate(-50%, -50%) scale(${Math.min(scale, 1.5)})`;
+                
+                // 等級 5 以上發出靈光
+                if (level >= 5) {
+                    facEl.style.boxShadow = `0 0 20px ${DATA_SECT.FACILITIES[key].color}, inset 0 0 10px rgba(255,255,255,0.6)`;
+                } else {
+                    facEl.style.boxShadow = `0 4px 10px rgba(0,0,0,0.5)`;
+                }
+                
+                facEl.title = `${DATA_SECT.FACILITIES[key].name} (Lv.${level})\n${DATA_SECT.FACILITIES[key].desc}`;
+                
+                // 動態添加或更新右上角 Lv 標籤
+                let badge = facEl.querySelector('.fac-level-badge');
+                if (key !== 'idle') {
+                    if (!badge) {
+                        badge = document.createElement('div');
+                        badge.className = 'fac-level-badge';
+                        facEl.appendChild(badge);
+                    }
+                    badge.innerText = `Lv.${level}`;
+                }
+            }
+        }
     },
 
     updateDisciples() {
@@ -147,6 +212,7 @@ export const UI_Sim = {
                 el = document.createElement('div');
                 el.id = `sim-d-${d.id}`;
                 el.className = 'sim-disciple';
+                el.dataset.lastX = gw / 2; // 🌟 記憶初始 X 座標，用於判斷轉向
                 
                 let emoji = '😐'; 
                 if (d.traits) {
@@ -158,7 +224,7 @@ export const UI_Sim = {
                     }
                 }
 
-                // 🌟 新增 onclick 觸發微操選單 (Route 2)
+                // 🌟 onclick 觸發微操選單
                 el.innerHTML = `
                     <div class="sim-speech-bubble" id="bubble-${d.id}"></div>
                     <div class="sim-avatar-emoji" style="font-size:20px; transition: transform 0.2s; position:relative;">${emoji}</div>
@@ -203,14 +269,26 @@ export const UI_Sim = {
             
             const transitionTime = Math.max(0.5, 3.0 / speedMult); 
 
+            // 🌟 執行移動
             el.style.transition = `transform ${transitionTime}s cubic-bezier(0.4, 0, 0.2, 1)`;
             el.style.transform = `translate(${targetX}px, ${targetY}px)`;
             
+            // 🌟 靈動身法：判斷前進方向，翻轉頭像
+            const prevX = parseFloat(el.dataset.lastX);
+            el.dataset.lastX = targetX; // 存下這次的目的地
+            
             const avatar = el.querySelector('.sim-avatar-emoji');
-            if (avatar && Math.random() > 0.5) {
-                const tilt = (Math.random() - 0.5) * 20;
-                avatar.style.transform = `translateY(-3px) rotate(${tilt}deg)`;
-                setTimeout(() => { if(avatar) avatar.style.transform = `translateY(0) rotate(0deg)`; }, 300);
+            if (avatar) {
+                const direction = targetX > prevX ? -1 : 1; // 往右走為 -1 (水平翻轉)，往左為 1 (預設)
+                
+                // 加入走路時的顛簸感
+                if (Math.random() > 0.5) {
+                    const tilt = (Math.random() - 0.5) * 20;
+                    avatar.style.transform = `translateY(-3px) rotate(${tilt}deg) scaleX(${direction})`;
+                    setTimeout(() => { if(avatar) avatar.style.transform = `translateY(0) rotate(0deg) scaleX(${direction})`; }, 300);
+                } else {
+                    avatar.style.transform = `scaleX(${direction})`;
+                }
             }
 
             // 🌟 C. 天道機緣 (飄字系統 - Route 1)
@@ -329,7 +407,8 @@ export const UI_Sim = {
             setTimeout(() => { bubble.classList.remove('sim-bubble-show'); }, 3000);
         }
 
-        // 強制立刻刷新位置
+        // 強制立刻刷新位置與建築狀態
+        this.updateFacilities();
         this.updateDisciples();
     }
 };
