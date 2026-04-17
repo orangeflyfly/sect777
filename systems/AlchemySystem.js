@@ -1,6 +1,7 @@
 /**
- * V3.4 AlchemySystem.js (萬象森羅 - 煉丹閣大腦)
+ * V3.5.1 AlchemySystem.js (萬象森羅 - 丹道屬性對接版)
  * 職責：管理煉丹師指派、消耗仙草、機率產出丹藥、處理炸爐事件
+ * 修正：將判定邏輯由 root(資質) 全面更換為 element(五行屬性)
  * 位置：/systems/AlchemySystem.js
  */
 
@@ -9,35 +10,44 @@ import { DATA_SECT } from '../data/data_sect.js';
 import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 
 export const AlchemySystem = {
-    // 🟢 煉丹專屬靈根：火生丹、木生草
-    ALLOWED_ROOTS: ['火', '木', '天', '仙'],
+    // 🌟 核心修正：煉丹閣准入五行屬性 (火生丹、木生火、天/仙為造化)
+    ALLOWED_ELEMENTS: ['火', '木', '天', '仙'],
 
-    // 🟢 丹藥配方與消耗
+    // 🟢 丹藥配方與消耗 (未來可擴充至 JSON 數據庫)
     RECIPES: {
         '修為丹': { cost: 15, expBoost: 50, desc: '增加主角修為' },
         '療傷藥': { cost: 10, heal: 100, desc: '歷練中恢復生命' }
     },
 
     init() {
-        console.log("%c【AlchemySystem】煉丹閣地火已點燃，準備開爐...", "color: #ef4444; font-weight: bold;");
+        console.log("%c【AlchemySystem】煉丹閣地火重燃，屬性共鳴陣法開啟...", "color: #ef4444; font-weight: bold;");
         window.AlchemySystem = this;
 
-        // 確保玩家有背包系統來放丹藥
-        if (!Player.data.inventory) Player.data.inventory = {};
+        // 確保玩家數據結構完整，以便存放成品
+        if (!Player.data.inventory) {
+            Player.data.inventory = {};
+        }
     },
 
     /**
      * 判定弟子是否具備煉丹資格
+     * 🌟 優化：檢查 element(五行) 欄位而非 root(資質)
      */
     canWork(disciple) {
-        if (!this.ALLOWED_ROOTS.includes(disciple.root)) return false;
+        // 若弟子尚未覺醒五行屬性(舊存檔)，由 SectSystem 自動補齊前不予指派
+        if (!disciple.element) return false;
+
+        // 只有 火、木、天、仙 屬性弟子可操控煉丹爐
+        if (!this.ALLOWED_ELEMENTS.includes(disciple.element)) return false;
         
+        // 檢查性格詞條：是否有「懶惰」或「反社會」等不參與工作的效果
         let hasRefuseTrait = disciple.traits.some(tKey => {
             let effect = DATA_SECT.TRAITS[tKey]?.effect;
             return effect && (effect.refuse_work || effect.reverse_work);
         });
 
         if (hasRefuseTrait) return false;
+        
         return true;
     },
 
@@ -50,16 +60,28 @@ export const AlchemySystem = {
         const craft = disciple.stats['匠心'] || 10;
         const luck = disciple.stats['機緣'] || 10;
 
-        // 煉丹基礎成功率：悟性決定
+        // 1. 基礎成功率：由【悟性】決定
         let successRate = 0.5 + (int / 200); 
-        let explodeRate = 0.05 - (craft / 500); // 匠心越高越不容易炸爐
+        
+        // 2. 基礎炸爐率：由【匠心】決定 (越高越穩)
+        let explodeRate = 0.05 - (craft / 500); 
         if (explodeRate < 0.01) explodeRate = 0.01;
 
-        // 天賦與詞條修正
-        if (disciple.root === '火') successRate += 0.1;
-        if (disciple.root === '天' || disciple.root === '仙') successRate += 0.2;
-
+        // 🌟 3. 五行屬性修正 (優化：不再讀取資質 root)
         let multiplier = 1.0;
+
+        if (disciple.element === '火') {
+            successRate += 0.12; // 火靈根控火更精準，成功率提升
+        }
+        if (disciple.element === '木') {
+            multiplier *= 1.15;   // 木靈根藥性親和，產能提升
+        }
+        if (disciple.element === '天' || disciple.element === '仙') {
+            successRate += 0.20; // 天級、仙級靈根全方位加成
+            multiplier *= 1.25;
+        }
+
+        // 4. 性格詞條修正
         disciple.traits.forEach(tKey => {
             let effect = DATA_SECT.TRAITS[tKey]?.effect;
             if (!effect) return;
@@ -67,47 +89,66 @@ export const AlchemySystem = {
             if (effect.explode_chance) explodeRate += effect.explode_chance;
         });
 
+        // 套用全域環境倍率 (如紫氣東來事件)
         multiplier *= externalMult;
 
-        // --- 判定開始 ---
-        // 1. 炸爐判定
+        // --- 判定流程 ---
+
+        // A. 炸爐判定 (最優先判定，炸了就直接扣料並結束)
         if (Math.random() < explodeRate) {
-            return { costHerb: 5, itemGained: null, amount: 0, log: `💥 轟隆！【${disciple.name}】火候失控，炸爐了！損失了 5 株仙草。` };
+            return { 
+                costHerb: 5, 
+                itemGained: null, 
+                amount: 0, 
+                log: `💥 轟隆！【${disciple.name}】爐溫失控，炸爐了！損失了 5 株仙草。` 
+            };
         }
 
-        // 2. 成功判定
+        // B. 成功判定
         if (Math.random() < successRate) {
-            // 隨機決定煉出修為丹還是療傷藥 (初期簡化，各 50% 機率)
+            // 目前 50/50 決定煉製種類
             const isExpPill = Math.random() < 0.5;
             const targetPill = isExpPill ? '修為丹' : '療傷藥';
             const recipe = this.RECIPES[targetPill];
 
-            // 機緣暴擊判定：一次煉出兩顆
+            // 機緣暴擊判定 (決定基礎成丹數)
             let amount = 1;
             if (Math.random() < (0.05 + luck / 1000)) amount = 2;
             
-            // 套用外部與詞條產能倍率 (這裡影響的是「節省材料」或「額外成丹」的機率，為簡化先直接乘數量)
+            // 套用最終產能乘率 (含木靈根與詞條加成)
             amount = Math.max(1, Math.floor(amount * multiplier));
 
             return { 
                 costHerb: recipe.cost, 
                 itemGained: targetPill, 
                 amount: amount, 
-                log: amount > 1 ? `✨【${disciple.name}】丹心通明，一爐煉出了 ${amount} 顆 ${targetPill}！` : null 
+                log: amount > 1 ? `✨【${disciple.name}】丹成龍虎現！一爐煉出了 ${amount} 顆 ${targetPill}！` : null 
             };
         } else {
-            // 3. 失敗判定 (變成一攤黑灰)
-            return { costHerb: 2, itemGained: null, amount: 0, log: null }; // 默默失敗，消耗少量藥材
+            // C. 失敗判定 (消耗少量藥材，變成廢渣)
+            return { 
+                costHerb: 3, 
+                itemGained: null, 
+                amount: 0, 
+                log: null 
+            }; 
         }
     },
 
     /**
-     * 天道結算：處理整個煉丹閣的產出與扣除
+     * 天道結算：處理整個煉丹閣的產出與消耗
+     * @param {number} externalMult - 全域產能倍率
      */
     processTick(externalMult = 1.0) {
+        // 基礎數據驗證
         if (!Player.data || !Player.data.sect || !Player.data.sect.disciples) return;
-        if (!Player.data.materials || Player.data.materials.herb <= 0) return; // 沒仙草就不開爐
+        
+        // 判定仙草剩餘量，若沒材料則煉丹閣自動熄火
+        if (!Player.data.materials || (Player.data.materials.herb || 0) <= 0) {
+            return; 
+        }
 
+        // 篩選正在工作中的煉丹師
         let alchemists = Player.data.sect.disciples.filter(d => d.status === 'alchemy');
         if (alchemists.length === 0) return;
 
@@ -115,25 +156,31 @@ export const AlchemySystem = {
         let gainedItems = {};
 
         alchemists.forEach(d => {
-            // 檢查材料夠不夠最低門檻
-            if (Player.data.materials.herb - totalHerbCost < 15) return; 
+            // 每次指派前二次檢查材料，若當前結算週期剩餘材料不足以開爐則跳過該弟子
+            if ((Player.data.materials.herb || 0) - totalHerbCost < 15) return; 
 
+            // 執行單人煉丹邏輯
             let result = this.craft(d, externalMult);
             totalHerbCost += result.costHerb;
 
+            // 收集產出的丹藥
             if (result.itemGained && result.amount > 0) {
                 if (!gainedItems[result.itemGained]) gainedItems[result.itemGained] = 0;
                 gainedItems[result.itemGained] += result.amount;
             }
 
+            // 播報特殊事件 (炸爐或暴擊)
             if (result.log) Msg.log(result.log, "system");
         });
 
-        // --- 結算入庫 ---
+        // --- 最終結算存檔 ---
+
+        // 1. 扣除總消耗仙草
         if (totalHerbCost > 0) {
-            Player.data.materials.herb = Math.max(0, Player.data.materials.herb - totalHerbCost);
+            Player.data.materials.herb = Math.max(0, (Player.data.materials.herb || 0) - totalHerbCost);
         }
 
+        // 2. 將成品丹藥存入玩家背包 (inventory)
         let summaryLogs = [];
         for (let item in gainedItems) {
             if (!Player.data.inventory[item]) Player.data.inventory[item] = 0;
@@ -141,12 +188,15 @@ export const AlchemySystem = {
             summaryLogs.push(`💊 ${item} +${gainedItems[item]}`);
         }
 
+        // 3. 控制台輸出詳情 (供開發者查驗)
         if (summaryLogs.length > 0) {
-            console.log(`%c[煉丹結算] 消耗仙草 -${totalHerbCost} | ${summaryLogs.join(' | ')}`, "color: #ef4444;");
+            console.log(`%c[丹道結算] 本週期消耗仙草 -${totalHerbCost} | 收穫：${summaryLogs.join(' | ')}`, "color: #ef4444; font-weight: bold;");
         }
 
+        // 4. 存檔入玉簡
         Player.save();
     }
 };
 
+// 掛載至 window
 window.AlchemySystem = AlchemySystem;
