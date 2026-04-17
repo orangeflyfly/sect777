@@ -1,6 +1,6 @@
 /**
- * V3.5.8 shop.js (萬象歸一 - 坊市交易大腦版)
- * 職責：處理坊市交易邏輯 (購買/出售)、支援裝備空間與字典空間、新增一鍵批量出售
+ * V3.5.9 shop.js (萬象歸一 - 資源對接強化版)
+ * 職責：處理坊市交易邏輯 (購買/出售)、支援裝備空間與字典空間、新增對 materials 數值資源的出售支援
  * 位置：/systems/shop.js
  */
 
@@ -37,33 +37,27 @@ export const ShopLogic = {
         }
 
         // 3. 一般物品/殘卷/法寶購買
-        // 深拷貝一份商品數據，避免修改到商店原始模板 (確保煉器爐純淨)
         const newItem = JSON.parse(JSON.stringify(shopItem));
         
-        // 生成唯一識別碼 (UUID)，確保購買的寶物能被獨立識別與出售
         newItem.uuid = 'it_' + Date.now() + Math.random().toString(36).substr(2, 5);
         newItem.count = 1;
 
         let success = false;
 
-        // 🌟 核心修正：若是裝備法寶，精準送入 equipments 陣列
         if (['weapon', 'armor', 'accessory', 'equipment'].includes(newItem.type)) {
             if (!Player.data.equipments) Player.data.equipments = [];
             Player.data.equipments.push(newItem);
             success = true;
         } else {
-            // 調用 Player 模組的添加物品功能 (存入 inventory 陣列)
             success = Player.addItem(newItem);
         }
 
         if (success) {
             if (Player.data.coin !== undefined) Player.data.coin -= shopItem.price;
             else Player.data.coins -= shopItem.price;
-            // 存檔紀錄
             Player.save();
             return true;
         } else {
-            // addItem 失敗（通常是儲物袋滿了），Player 模組內已有對應 Msg 提示
             return false;
         }
     },
@@ -104,15 +98,33 @@ export const ShopLogic = {
             }
         }
         
-        // 3. 處理字典型態的丹藥與材料 (含有 dict_ 前綴)
+        // 3. 🟢 核心強化：處理字典型態與 materials 數值資源 (支援仙草、玄鐵出售)
         if (!item && itemUuid.startsWith('dict_')) {
             const key = itemUuid.replace('dict_', '');
+            
+            // A. 優先檢查是否為 materials 中的數值資源 (仙草、玄鐵)
+            if (Player.data.materials && Player.data.materials[key] !== undefined) {
+                if (Player.data.materials[key] > 0) {
+                    Player.data.materials[key]--;
+                    
+                    let sellPrice = 10; // 基礎材料回收價
+                    if (key === 'herb' || key === '仙草') sellPrice = 10;
+                    if (key === 'ore' || key === '玄鐵') sellPrice = 10;
+                    
+                    if (Player.data.coin !== undefined) Player.data.coin += sellPrice;
+                    else Player.data.coins += sellPrice;
+                    
+                    Msg.log(`出售【${key === 'herb' ? '仙草' : (key === 'ore' ? '玄鐵' : key)}】，獲得 🪙 ${sellPrice}`, "system");
+                    Player.save();
+                    return true;
+                }
+            }
+            
+            // B. 檢查是否為 inventory 中的字典物品 (如特定丹藥)
             if (Player.data.inventory && Player.data.inventory[key] > 0) {
                 Player.data.inventory[key]--;
                 
-                // 定義材料與丹藥的回收價
                 let sellPrice = 50; 
-                if (key === '仙草' || key === '玄鐵') sellPrice = 10;
                 if (key.includes('造化')) sellPrice = 500;
                 
                 if (Player.data.coin !== undefined) Player.data.coin += sellPrice;
@@ -127,10 +139,8 @@ export const ShopLogic = {
 
         // 4. 正式結算陣列物品
         if (item && foundArray) {
-            // 計算回收價 (五折回收或基礎價值)
             let sellPrice = item.price ? Math.floor(item.price * 0.5) : ((item.rarity || 1) * 20);
             
-            // 🌟 強化過的裝備回收價大幅提升
             if (item.plus) {
                 sellPrice += item.plus * 200; 
             }
@@ -138,11 +148,10 @@ export const ShopLogic = {
             if (Player.data.coin !== undefined) Player.data.coin += sellPrice;
             else Player.data.coins += sellPrice;
             
-            // 如果是堆疊物品則扣除數量
             if (item.count > 1) {
                 item.count--;
             } else {
-                foundArray.splice(index, 1); // 徹底移除
+                foundArray.splice(index, 1); 
             }
             
             Msg.log(`出售【${item.name}】，獲得 🪙 ${sellPrice.toLocaleString()}`, "system");
@@ -155,7 +164,7 @@ export const ShopLogic = {
     },
 
     /**
-     * 🌟 新增：批量出售功能 (支援下拉選單指定的稀有度)
+     * 批量出售功能
      * @param {number} targetRarity - 目標稀有度 (1:凡, 2:良, 3:優, 4:極, 5:神)
      */
     sellBatch(targetRarity) {
@@ -166,14 +175,11 @@ export const ShopLogic = {
 
         const eqp = Player.data.equipped || {};
 
-        // 1. 批量賣裝備 (equipments 陣列)
         if (Array.isArray(Player.data.equipments)) {
-            // 倒序遍歷以安全刪除陣列元素
             for (let i = Player.data.equipments.length - 1; i >= 0; i--) {
                 const item = Player.data.equipments[i];
                 const isEquipped = (eqp.weapon === item.uuid || eqp.armor === item.uuid || eqp.accessory === item.uuid);
                 
-                // 條件：稀有度相符，且未裝備
                 if (item.rarity === targetRarity && !isEquipped) {
                     let sellPrice = item.price ? Math.floor(item.price * 0.5) : (item.rarity * 20);
                     if (item.plus) sellPrice += item.plus * 200;
@@ -185,7 +191,6 @@ export const ShopLogic = {
             }
         }
 
-        // 2. 批量賣背包陣列物品 (inventory 陣列，例如殘卷)
         if (Array.isArray(Player.data.inventory)) {
             for (let i = Player.data.inventory.length - 1; i >= 0; i--) {
                 const item = Player.data.inventory[i];
@@ -219,11 +224,4 @@ export const ShopLogic = {
     }
 };
 
-/**
- * --- 全域對接鎖 ---
- * 確保 UI_Shop 裡面的 onclick="UI_Shop.executeBuy" 
- * 呼叫到 ShopLogic 時能正確對接
- */
 window.ShopLogic = ShopLogic;
-
-console.log("%c【系統】坊市律令 V3.5.8 模組化完成，支援萬象空間與批量交易。", "color: #fbbf24; font-weight: bold;");
