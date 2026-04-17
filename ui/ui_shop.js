@@ -1,6 +1,6 @@
 /**
- * V3.5.8 ui_shop.js (萬物樓 - 終極對接批量版)
- * 職責：坊市交易介面渲染、對接 ShopLogic 大腦、新增下拉選單批量出售、保留殘卷智能出售
+ * V3.5.9 ui_shop.js (萬物樓 - 物資顯化與終極對接版)
+ * 職責：坊市交易介面渲染、對接 ShopLogic 大腦、新增對 materials 數值資源的出售顯示
  * 位置：/ui/ui_shop.js
  */
 
@@ -151,8 +151,33 @@ export const UI_Shop = {
     },
 
     renderSellList() {
-        // 🌟 改為讀取歸一化陣列，將法寶、丹藥、材料全數顯示
-        const inv = window.UI_Bag ? window.UI_Bag.getNormalizedItems() : [];
+        // 🌟 核心改進：讀取歸一化陣列
+        let inv = window.UI_Bag ? window.UI_Bag.getNormalizedItems() : [];
+
+        // 🌟 空間顯化：將隱藏在 Player.data.materials 裡的數值資源強制轉化為顯示物件
+        if (Player.data && Player.data.materials) {
+            if (Player.data.materials.herb > 0) {
+                inv.push({
+                    uuid: 'dict_herb', // 給予特殊前綴，對接 ShopLogic
+                    name: '仙草',
+                    displayName: '仙草 (宗門資源)',
+                    count: Player.data.materials.herb,
+                    type: 'material',
+                    rarity: 2
+                });
+            }
+            if (Player.data.materials.ore > 0) {
+                inv.push({
+                    uuid: 'dict_ore',
+                    name: '玄鐵',
+                    displayName: '玄鐵 (宗門資源)',
+                    count: Player.data.materials.ore,
+                    type: 'material',
+                    rarity: 2
+                });
+            }
+        }
+
         if (inv.length === 0) return `<div class="empty-msg">儲物袋空空如也，無物可換靈石...</div>`;
 
         let html = `
@@ -178,7 +203,6 @@ export const UI_Shop = {
         `;
 
         html += inv.map((item) => {
-            // 終極防呆：如果舊物品沒有 UUID，立刻賦予一個
             if (!item.uuid) {
                 item.uuid = 'item_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
             }
@@ -219,9 +243,20 @@ export const UI_Shop = {
             btnColor = "var(--exp-color)";
             actionCall = `UI_Shop.executeBuy('${uuidOrUid}', event)`;
         } else {
-            // 🌟 修正：從歸一化陣列尋找，這樣就能找到法寶與丹藥
-            const allItems = window.UI_Bag ? window.UI_Bag.getNormalizedItems() : [];
+            // 🌟 修正：先從歸一化陣列尋找，如果找不到再檢查是否為虛擬資源
+            let allItems = window.UI_Bag ? window.UI_Bag.getNormalizedItems() : [];
             item = allItems.find(i => i.uuid === uuidOrUid);
+
+            // 如果是虛擬資源物件
+            if (!item && uuidOrUid.startsWith('dict_')) {
+                const key = uuidOrUid.replace('dict_', '');
+                const nameMap = { 'herb': '仙草', 'ore': '玄鐵' };
+                item = {
+                    uuid: uuidOrUid,
+                    name: nameMap[key] || key,
+                    count: Player.data.materials[key] || 0
+                };
+            }
             
             if(!item) {
                 Msg.log("❌ 空間波動，找不到該物品！", "system");
@@ -264,9 +299,7 @@ export const UI_Shop = {
         if (itemIndex === -1) return;
         const item = Player.data.shop.dailyItems[itemIndex];
 
-        // 🌟 核心修復：直接呼叫實體 ShopLogic，不再依賴 window
         if (ShopLogic && ShopLogic.buy(item)) {
-            // 購買成功才從架上移除
             Player.data.shop.dailyItems.splice(itemIndex, 1);
             Player.save();
 
@@ -281,7 +314,6 @@ export const UI_Shop = {
     },
 
     executeSell(itemUuid, event) {
-        // 🌟 核心修復：直接呼叫實體 ShopLogic
         if (ShopLogic) {
             const success = ShopLogic.sell(itemUuid);
             if (success) {
@@ -296,9 +328,6 @@ export const UI_Shop = {
         }
     },
 
-    /**
-     * 🌟 執行批量出售 (讀取下拉選單)
-     */
     executeBatchSell() {
         const select = document.getElementById('batch-rarity-select');
         if (!select) return;
@@ -307,7 +336,6 @@ export const UI_Shop = {
         const rarityName = select.options[select.selectedIndex].text;
 
         if (confirm(`確定要將所有未裝備的「${rarityName}」法寶與道具出售嗎？此舉不可逆！`)) {
-            // 🌟 核心修復：直接呼叫實體 ShopLogic
             if (ShopLogic) {
                 const success = ShopLogic.sellBatch(rarity);
                 if (success) {
@@ -318,9 +346,6 @@ export const UI_Shop = {
         }
     },
 
-    /**
-     * 保留原始智能出售殘卷功能
-     */
     quickSellDuplicateFragments() {
         if (!Player.data || !Player.data.inventory || Player.data.inventory.length === 0) return;
 
