@@ -1,6 +1,7 @@
 /**
- * V3.5.5 ui_forge.js (煉器大殿面板)
- * 職責：顯示鍛造、強化分頁，保底進度條，弟子指派
+ * V3.5.6 ui_forge.js (煉器大殿面板 - 儲物空間修復版)
+ * 職責：顯示鍛造、強化分頁，保底進度條
+ * 修正：強化分頁正確讀取 Player.data.equipments 陣列
  * 位置：/ui/ui_forge.js
  */
 
@@ -34,8 +35,8 @@ export const UI_Forge = {
                         <button class="btn-modal-close" onclick="document.getElementById('forge-modal-overlay').remove()">✕</button>
                     </div>
                     <div style="display:flex; margin-top:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-                        <button style="flex:1; padding:10px; background:none; border:none; color:${this.tab==='create'?'#fb923c':'#94a3b8'}; border-bottom:2px solid ${this.tab==='create'?'#fb923c':'transparent'}; cursor:pointer;" onclick="UI_Forge.switchTab('create')">神兵鍛造</button>
-                        <button style="flex:1; padding:10px; background:none; border:none; color:${this.tab==='enhance'?'#fb923c':'#94a3b8'}; border-bottom:2px solid ${this.tab==='enhance'?'#fb923c':'transparent'}; cursor:pointer;" onclick="UI_Forge.switchTab('enhance')">法寶強化</button>
+                        <button style="flex:1; padding:10px; background:none; border:none; color:${this.tab==='create'?'#fb923c':'#94a3b8'}; border-bottom:2px solid ${this.tab==='create'?'#fb923c':'transparent'}; cursor:pointer; font-weight:bold;" onclick="UI_Forge.switchTab('create')">神兵鍛造</button>
+                        <button style="flex:1; padding:10px; background:none; border:none; color:${this.tab==='enhance'?'#fb923c':'#94a3b8'}; border-bottom:2px solid ${this.tab==='enhance'?'#fb923c':'transparent'}; cursor:pointer; font-weight:bold;" onclick="UI_Forge.switchTab('enhance')">法寶強化</button>
                     </div>
                     <div class="modal-body" id="forge-modal-body" style="padding: 15px 0 0 0;">
                         ${contentHtml}
@@ -48,6 +49,7 @@ export const UI_Forge = {
 
     switchTab(t) {
         this.tab = t;
+        this.selectedItemUuid = null; // 切換分頁時清空選擇
         this.openModal();
     },
 
@@ -56,13 +58,10 @@ export const UI_Forge = {
         return this.renderEnhance();
     },
 
-    /**
-     * 1. 渲染鍛造分頁
-     */
     renderCreate() {
         const d = Player.data;
-        const pity = d.forge.pityCount;
-        const ore = d.materials.ore || 0;
+        const pity = d.forge ? d.forge.pityCount : 0;
+        const ore = (d.materials && d.materials.ore) ? d.materials.ore : 0;
 
         return `
             <div style="text-align:center;">
@@ -89,43 +88,54 @@ export const UI_Forge = {
         `;
     },
 
-    /**
-     * 2. 渲染強化分頁
-     */
     renderEnhance() {
-        const inventory = Player.data.inventory.filter(i => i.type === 'equipment');
+        // 🌟 修正：正確讀取 Player.data.equipments 陣列
+        const gears = Player.data.equipments || [];
         
         let html = `<div style="padding:0 5px;">`;
-        html += `<p style="font-size:12px; color:#94a3b8; margin-bottom:10px;">選擇要強化的裝備 (+8以上有毀損風險)：</p>`;
+        html += `<p style="font-size:12px; color:#94a3b8; margin-bottom:10px;">選擇要強化的法寶 (+8以上有毀損風險)：</p>`;
+        html += `<div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">`;
         
-        if (inventory.length === 0) {
-            html += `<div style="text-align:center; padding:30px; color:#475569;">背包內尚無可強化的裝備</div>`;
+        if (gears.length === 0) {
+            html += `<div style="text-align:center; padding:30px; color:#475569;">儲物袋內尚無任何法寶</div>`;
         } else {
-            inventory.forEach(item => {
+            // 反轉陣列，讓新打到的裝備在最上面
+            [...gears].reverse().forEach(item => {
                 const isSelected = this.selectedItemUuid === item.uuid;
                 const rarityColors = ['#fff', '#4ade80', '#60a5fa', '#a855f7', '#fbbf24'];
-                const color = rarityColors[item.rarity-1];
+                const color = rarityColors[item.rarity-1] || '#fff';
 
                 html += `
                     <div onclick="UI_Forge.selectItem('${item.uuid}')" style="background:${isSelected?'#fb923c22':'rgba(255,255,255,0.05)'}; border:1px solid ${isSelected?'#fb923c':'rgba(255,255,255,0.1)'}; border-radius:6px; padding:10px; margin-bottom:8px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
                         <div>
                             <div style="color:${color}; font-weight:bold;">${item.name} <span style="color:#fbbf24;">+${item.plus}</span></div>
-                            <div style="font-size:11px; color:#64748b;">ATK:${item.stats.atk} | DEF:${item.stats.def}</div>
+                            <div style="font-size:11px; color:#64748b;">攻擊:${item.stats.atk} | 防禦:${item.stats.def}</div>
                         </div>
-                        ${isSelected ? '<span style="color:#fb923c;">🎯</span>' : ''}
+                        ${isSelected ? '<span style="color:#fb923c; font-size:18px;">🎯</span>' : ''}
                     </div>
                 `;
             });
         }
+        html += `</div>`; // 結束滾動區域
 
         if (this.selectedItemUuid) {
-            html += `
-                <div style="border-top:1px solid rgba(255,255,255,0.1); margin-top:15px; padding-top:15px; text-align:center;">
-                    <button onclick="UI_Forge.doEnhanceAction()" style="width:100%; padding:12px; background:#fb923c; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">
-                        ⚡ 靈力強化
-                    </button>
-                </div>
-            `;
+            const selectedGear = gears.find(i => i.uuid === this.selectedItemUuid);
+            if (selectedGear && selectedGear.plus < 10) {
+                const cost = (selectedGear.plus + 1) * 1000;
+                html += `
+                    <div style="border-top:1px solid rgba(255,255,255,0.1); margin-top:15px; padding-top:15px; text-align:center;">
+                        <button onclick="UI_Forge.doEnhanceAction()" style="width:100%; padding:12px; background:linear-gradient(180deg, #fb923c, #ea580c); color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">
+                            ⚡ 消耗 ${cost.toLocaleString()} 靈石強化
+                        </button>
+                    </div>
+                `;
+            } else if (selectedGear && selectedGear.plus >= 10) {
+                html += `
+                    <div style="border-top:1px solid rgba(255,255,255,0.1); margin-top:15px; padding-top:15px; text-align:center; color:#fbbf24; font-weight:bold;">
+                        此法寶已達強化極限 (登峰造極)
+                    </div>
+                `;
+            }
         }
 
         html += `</div>`;
@@ -156,7 +166,7 @@ export const UI_Forge = {
             Msg.log(`✨ 強化成功！裝備升級至 +${res.level}`, "reward");
         } else {
             Msg.log(res.msg, res.result === 'broken' ? 'monster-atk' : 'system');
-            if (res.result === 'broken') this.selectedItemUuid = null;
+            if (res.result === 'broken') this.selectedItemUuid = null; // 碎了就清空選擇
         }
         this.openModal();
     },
@@ -167,7 +177,7 @@ export const UI_Forge = {
                 <div style="font-size:24px; color:#fbbf24; margin-bottom:20px; text-shadow:0 0 20px #fbbf24;">🌅 萬丈金光 🌅</div>
                 <h1 style="font-size:42px; color:white; text-shadow:0 0 30px #fbbf24; animation: scaleUp 0.8s infinite alternate;">【${name}】</h1>
                 <p style="color:#fbbf24; margin-top:40px; font-weight:bold;">神兵降世，天下共鳴！</p>
-                <button onclick="document.getElementById('divine-fx').remove()" style="margin-top:50px; padding:10px 30px; background:#fbbf24; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">收納入庫</button>
+                <button onclick="document.getElementById('divine-fx').remove()" style="margin-top:50px; padding:10px 30px; background:linear-gradient(180deg, #facc15, #eab308); border:none; border-radius:5px; font-weight:bold; cursor:pointer; color:black;">收納入庫</button>
             </div>
             <style>
                 @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
