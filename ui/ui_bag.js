@@ -1,7 +1,6 @@
 /**
- * V3.5.6 ui_bag.js (儲物袋 - 萬物歸一純淨版)
- * 職責：儲物袋渲染、分類篩選、裝備穿戴與道具使用
- * 修正：整合 Array(庫房法寶/煉器裝備) 與 Dictionary(丹藥/材料) 的空間法則衝突
+ * V3.5.8 ui_bag.js (儲物袋 - 萬物歸一裝備連動版)
+ * 職責：整合顯示丹藥(字典)與神兵(陣列)、實作真實的裝備穿脫與戰力加成系統
  * 位置：/ui/ui_bag.js
  */
 
@@ -9,21 +8,22 @@ import { Player } from '../entities/player.js';
 import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 
 const ATTR_MAP = {
-    'str': '力量',
-    'con': '體質',
-    'dex': '敏捷',
-    'int': '悟性',
     'hp': '血量',
     'atk': '攻擊',
-    'def': '防禦',
-    'speed': '速度'
+    'def': '防禦'
 };
 
 export const UI_Bag = {
     currentFilter: 'all',
 
     init() {
-        console.log("【UI_Bag】啟動儲物袋純淨陣法，空間法則已重組...");
+        console.log("【UI_Bag】儲物袋空間法則已重組，神兵裝備系統正式連線...");
+        
+        // 🌟 確保玩家擁有「裝備欄位」的數據結構
+        if (Player.data && !Player.data.equipped) {
+            Player.data.equipped = { weapon: null, armor: null, accessory: null };
+        }
+        
         this.renderLayout();
         this.renderFilters();
         this.renderBag();
@@ -35,8 +35,8 @@ export const UI_Bag = {
 
         container.innerHTML = `
             <div class="page-title">個人儲物袋</div>
-            <div id="bag-filters" class="bag-filters"></div>
-            <div id="bag-content" class="bag-grid"></div>
+            <div id="bag-filters" class="bag-filters" style="margin-bottom:10px;"></div>
+            <div id="bag-content" style="padding:0 15px 20px 15px; overflow-y:auto; height:calc(100vh - 150px);"></div>
         `;
     },
 
@@ -49,8 +49,7 @@ export const UI_Bag = {
             { id: 'weapon', name: '武器' },
             { id: 'armor', name: '護甲' },
             { id: 'accessory', name: '飾品' },
-            { id: 'fragment', name: '殘卷' },
-            { id: 'consumable', name: '丹藥' }, // 🌟 新增丹藥分類
+            { id: 'consumable', name: '丹藥' },
             { id: 'material', name: '材料' }
         ];
 
@@ -69,6 +68,15 @@ export const UI_Bag = {
     },
 
     /**
+     * 🌟 自動判斷法寶部位
+     */
+    getEquipSlot(name) {
+        if (name.includes('甲') || name.includes('袍') || name.includes('鎧') || name.includes('衣')) return 'armor';
+        if (name.includes('鏡') || name.includes('簪') || name.includes('佩') || name.includes('符') || name.includes('環')) return 'accessory';
+        return 'weapon'; // 劍、斧、刃 等皆歸類為武器
+    },
+
+    /**
      * 🌟 核心修正：將各方散落的數據整合為統一的渲染陣列
      */
     getNormalizedItems() {
@@ -76,56 +84,46 @@ export const UI_Bag = {
         const d = Player.data;
         if (!d) return allItems;
 
-        // 1. 處理陣列型態的背包物品 (宗門庫房兌換的殘卷、鑰匙等，帶有 uuid)
-        if (Array.isArray(d.inventory)) {
-            d.inventory.forEach(item => {
-                if (typeof item === 'object' && item !== null && item.uuid) {
-                    allItems.push(item);
+        // 1. 處理煉器大殿的神兵法寶 (扣除已裝備在身上的)
+        if (Array.isArray(d.equipments)) {
+            d.equipments.forEach(eq => {
+                const slot = this.getEquipSlot(eq.name);
+                const isEquipped = (d.equipped.weapon === eq.uuid || d.equipped.armor === eq.uuid || d.equipped.accessory === eq.uuid);
+                
+                if (!isEquipped) {
+                    allItems.push({
+                        ...eq,
+                        type: slot, // 賦予正確的分類 (weapon / armor / accessory)
+                        displayName: `${eq.name} +${eq.plus || 0}`
+                    });
                 }
             });
         }
 
-        // 2. 處理字典型態的丹藥 (煉丹閣產出，附加在陣列上的 string key)
+        // 2. 處理字典型態的丹藥與材料
         if (d.inventory) {
             Object.keys(d.inventory).forEach(key => {
-                // 過濾掉陣列原生的數字 index，只抓取自訂的文字 key
                 if (isNaN(key) && typeof d.inventory[key] === 'number' && d.inventory[key] > 0) {
                     allItems.push({
-                        uuid: 'dict_' + key, // 賦予虛擬 UUID 以便點擊使用
-                        isDict: true,
+                        uuid: 'dict_' + key, 
                         name: key,
-                        type: 'consumable',
+                        displayName: key,
+                        type: key.includes('鑰匙') || key.includes('卷') ? 'special' : 'consumable',
                         count: d.inventory[key],
-                        rarity: key.includes('修為') ? 4 : 3,
+                        rarity: key.includes('造化') || key.includes('修為') ? 4 : 3,
                         statTexts: [key === '修為丹' ? '蘊含天地靈氣，大幅提升修為。' : '療傷聖藥，迅速恢復氣血。']
                     });
                 }
             });
         }
 
-        // 3. 處理煉器大殿的神兵法寶 (存在獨立的 equipments 陣列)
-        if (Array.isArray(d.equipments)) {
-            d.equipments.forEach(eq => {
-                // 自動分類：根據名稱判斷是武器、護甲還是飾品，以適應 V3.2 的篩選器
-                let subType = 'weapon';
-                if (eq.name.includes('甲') || eq.name.includes('袍') || eq.name.includes('鎧') || eq.name.includes('衣')) subType = 'armor';
-                if (eq.name.includes('鏡') || eq.name.includes('簪') || eq.name.includes('佩') || eq.name.includes('符') || eq.name.includes('環')) subType = 'accessory';
-                
-                allItems.push({
-                    ...eq,
-                    type: subType, // 覆寫原本的 'equipment' 標籤
-                    name: `${eq.name} +${eq.plus || 0}` // 將強化等級直接顯示在名字上
-                });
-            });
-        }
-
-        // 4. 處理基礎材料 (草、鐵)
+        // 3. 處理基礎天地靈材
         if (d.materials) {
             if (d.materials.herb > 0) {
-                allItems.push({ uuid: 'dict_herb', isDict: true, name: '仙草', type: 'material', count: d.materials.herb, rarity: 2, statTexts: ['煉丹閣的基礎材料。'] });
+                allItems.push({ uuid: 'dict_herb', name: '仙草', displayName: '仙草', type: 'material', count: d.materials.herb, rarity: 2, statTexts: ['煉丹閣的基礎材料。'] });
             }
             if (d.materials.ore > 0) {
-                allItems.push({ uuid: 'dict_ore', isDict: true, name: '玄鐵', type: 'material', count: d.materials.ore, rarity: 2, statTexts: ['煉器大殿的基礎材料。'] });
+                allItems.push({ uuid: 'dict_ore', name: '玄鐵', displayName: '玄鐵', type: 'material', count: d.materials.ore, rarity: 2, statTexts: ['煉器大殿的基礎材料。'] });
             }
         }
 
@@ -134,146 +132,185 @@ export const UI_Bag = {
 
     renderBag() {
         const bagGrid = document.getElementById('bag-content');
-        if (!bagGrid) return;
+        if (!bagGrid || !Player.data) return;
 
+        const d = Player.data;
+
+        // --- 🌟 頂部：目前裝備面板 ---
+        let equippedHtml = `
+            <div style="background:rgba(0,0,0,0.4); border-radius:8px; padding:15px; margin-bottom:20px; border:1px solid rgba(251,191,36,0.3);">
+                <h4 style="color:#fbbf24; margin:0 0 10px 0; border-bottom:1px solid rgba(251,191,36,0.3); padding-bottom:5px;">⚔️ 當前裝備法寶</h4>
+                <div style="display:flex; gap:10px; flex-direction:column;">
+        `;
+
+        const slots = [
+            { id: 'weapon', name: '武器', icon: '⚔️' },
+            { id: 'armor', name: '護甲', icon: '👕' },
+            { id: 'accessory', name: '飾品', icon: '💍' }
+        ];
+
+        slots.forEach(s => {
+            const uuid = d.equipped[s.id];
+            if (uuid && Array.isArray(d.equipments)) {
+                const item = d.equipments.find(i => i.uuid === uuid);
+                if (item) {
+                    const rarityColors = ['#fff', '#4ade80', '#60a5fa', '#a855f7', '#fbbf24'];
+                    const color = rarityColors[item.rarity - 1] || '#fff';
+                    equippedHtml += `
+                        <div style="background:rgba(255,255,255,0.05); border-left:3px solid ${color}; padding:8px 12px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="color:${color}; font-weight:bold; font-size:14px;">${s.icon} ${item.name} <span style="color:#fbbf24;">+${item.plus}</span></div>
+                                <div style="font-size:11px; color:#94a3b8; margin-top:3px;">攻擊 +${item.stats.atk} | 防禦 +${item.stats.def}</div>
+                            </div>
+                            <button onclick="UI_Bag.unequip('${s.id}')" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">卸下</button>
+                        </div>
+                    `;
+                }
+            } else {
+                // 空欄位顯示
+                equippedHtml += `
+                    <div style="background:rgba(255,255,255,0.02); border:1px dashed rgba(255,255,255,0.1); padding:10px 12px; border-radius:6px; display:flex; align-items:center; color:#64748b; font-size:13px;">
+                        ${s.icon} 尚無${s.name}
+                    </div>
+                `;
+            }
+        });
+        equippedHtml += `</div></div>`;
+
+        // --- 🌟 底部：儲物袋物品列表 ---
         const allItems = this.getNormalizedItems();
-
-        if (allItems.length === 0) {
-            bagGrid.innerHTML = '<div class="empty-msg">儲物袋封印中，感應不到氣息...</div>';
-            return;
-        }
-
         const filteredItems = allItems.filter(item => {
             if (this.currentFilter === 'all') return true;
             return item.type === this.currentFilter;
         });
 
+        let itemsHtml = `<div style="margin-bottom:10px; color:#cbd5e1; font-size:14px; font-weight:bold;">📦 儲物袋物品</div>`;
+
         if (filteredItems.length === 0) {
-            bagGrid.innerHTML = '<div class="empty-msg">此分類尚無寶物。</div>';
-            return;
+            itemsHtml += '<div class="empty-msg" style="text-align:center; color:#64748b; padding:20px;">此分類尚無寶物。</div>';
+        } else {
+            itemsHtml += filteredItems.map(item => {
+                let statsDesc = '無特殊加成';
+                if (item.statTexts && item.statTexts.length > 0) {
+                    statsDesc = item.statTexts.join(' ');
+                } else if (item.stats) {
+                    statsDesc = Object.entries(item.stats).map(([k, v]) => `${ATTR_MAP[k] || k} +${v}`).join(' ');
+                }
+                
+                const rarity = item.rarity || 1;
+                const count = item.count || 1;
+                
+                let actionBtn = '';
+                if (['weapon', 'armor', 'accessory'].includes(item.type)) {
+                    actionBtn = `<button class="btn-eco-action btn-equip" onclick="UI_Bag.equip('${item.uuid}')" style="background:#3b82f6; color:white; border:none; padding:6px 15px; border-radius:4px; font-weight:bold; cursor:pointer;">裝備</button>`;
+                } else if (item.type === 'consumable') {
+                    actionBtn = `<button class="btn-eco-action btn-use" onclick="UI_Bag.useConsumable('${item.name}')" style="background:#10b981; color:white; border:none; padding:6px 15px; border-radius:4px; font-weight:bold; cursor:pointer;">服用</button>`;
+                }
+
+                return `
+                    <div class="eco-list-card r-${rarity}" style="margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.4); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div class="eco-icon-box r-bg-${rarity}" style="font-size:24px;">${this.getItemIcon(item.type)}</div>
+                            <div>
+                                <div class="eco-item-name r-txt-${rarity}" style="font-weight:bold; font-size:14px;">${item.displayName} ${count > 1 ? `<span style="color:#fcd34d; font-size:12px;">x${count.toLocaleString()}</span>` : ''}</div>
+                                <div class="eco-item-desc" style="font-size:11px; color:#94a3b8; margin-top:3px;">${statsDesc}</div>
+                            </div>
+                        </div>
+                        <div>
+                            ${actionBtn}
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
-        bagGrid.innerHTML = filteredItems.map(item => {
-            let statsDesc = '無特殊加成';
-            if (item.statTexts && item.statTexts.length > 0) {
-                statsDesc = item.statTexts.join(' ');
-            } else if (item.stats) {
-                statsDesc = Object.entries(item.stats).map(([k, v]) => `${ATTR_MAP[k] || k} +${v}`).join(' ');
-            }
-            
-            const rarity = item.rarity || 1;
-            const count = item.count || 1;
-            
-            let actionBtn = '';
-            if (['weapon', 'armor', 'accessory'].includes(item.type)) {
-                actionBtn = `<button class="btn-eco-action btn-equip" onclick="UI_Bag.useItem('${item.uuid}', event)">裝備</button>`;
-            } else if (item.type === 'fragment' || item.type === 'special' || item.type === 'consumable') {
-                actionBtn = `<button class="btn-eco-action btn-use" onclick="UI_Bag.useItem('${item.uuid}', event)">服用</button>`;
-            }
-
-            return `
-                <div class="eco-list-card r-${rarity}">
-                    <div class="eco-card-left">
-                        <div class="eco-icon-box r-bg-${rarity}">${this.getItemIcon(item.type)}</div>
-                        ${count > 1 ? `<div class="eco-item-count">x${count.toLocaleString()}</div>` : ''}
-                    </div>
-                    <div class="eco-card-mid">
-                        <div class="eco-item-name r-txt-${rarity}">${item.name}</div>
-                        <div class="eco-item-desc">${statsDesc}</div>
-                    </div>
-                    <div class="eco-card-right">
-                        ${actionBtn}
-                    </div>
-                </div>
-            `;
-        }).join('');
+        bagGrid.innerHTML = equippedHtml + itemsHtml;
     },
 
     getItemIcon(type) {
         const icons = { 
             weapon: '⚔️', armor: '👕', accessory: '💍', 
-            fragment: '📜', material: '💎', special: '🎁', consumable: '💊'
+            fragment: '📜', material: '💎', special: '🗝️', consumable: '💊'
         };
         return icons[type] || '📦';
     },
 
     /**
-     * 處理物品使用與裝備邏輯
+     * 🌟 實作真實的裝備穿脫邏輯 (直接增加主角基礎屬性)
      */
-    useItem(uuid, event) {
-        let success = false;
+    equip(uuid) {
+        const d = Player.data;
+        const item = d.equipments.find(i => i.uuid === uuid);
+        if (!item) return;
 
-        // 🌟 1. 處理字典型態的消耗品 (丹藥、材料)
-        if (uuid.startsWith('dict_')) {
-            const key = uuid.replace('dict_', '');
-            
-            if (key === 'herb' || key === 'ore') {
-                Msg.log("❌ 基礎材料無法直接服用，請至煉丹閣或煉器大殿加工！", "system");
-                return;
-            }
+        const slot = this.getEquipSlot(item.name);
 
-            if (Player.data.inventory && Player.data.inventory[key] > 0) {
-                Player.data.inventory[key]--;
-                
-                // 實作丹藥效果
-                if (key === '修為丹') {
-                    if (typeof Player.gainExp === 'function') {
-                        Player.gainExp(50);
-                    } else {
-                        Player.data.exp += 50;
-                    }
-                    Msg.log("💊 吞服【修為丹】，藥力化開，修為大增！", "reward");
-                } else if (key === '療傷藥') {
-                    if (typeof Player.heal === 'function') {
-                        Player.heal(100);
-                    } else {
-                        Player.data.hp = Math.min(Player.data.maxHp || 100, (Player.data.hp || 0) + 100);
-                    }
-                    Msg.log("💊 敷上【療傷藥】，氣血迅速恢復！", "reward");
-                }
-                
-                Player.save();
-                success = true;
-            }
-        } 
-        // 🌟 2. 處理常規 UUID 物品與裝備 (呼叫 Player.js 邏輯)
-        else {
-            // 先嘗試從一般 inventory 找
-            let item = null;
-            if (Array.isArray(Player.data.inventory)) {
-                item = Player.data.inventory.find(i => i.uuid === uuid);
-            }
-            // 若找不到，從 equipments 找
-            if (!item && Array.isArray(Player.data.equipments)) {
-                item = Player.data.equipments.find(i => i.uuid === uuid);
-            }
-
-            if (!item) return;
-
-            if (['weapon', 'armor', 'accessory'].includes(item.type) || item.type === 'equipment') {
-                if (typeof Player.equipItem === 'function') {
-                    success = Player.equipItem(uuid);
-                    if (success) Msg.log(`👕 你穿上了 【${item.name}】`, "reward");
-                } else {
-                    Msg.log("裝備系統尚未完全連結。", "system");
-                }
-            } else {
-                if (typeof Player.consumeItem === 'function') {
-                    success = Player.consumeItem(uuid);
-                }
-            }
+        // 1. 若有舊裝備，先卸下並扣除舊屬性
+        const oldUuid = d.equipped[slot];
+        if (oldUuid) {
+            this.unequip(slot, true); // 靜默卸下
         }
 
-        // 🌟 3. 處理 UI 視覺反饋
-        if (success) {
-            if (window.FX && event) {
-                window.FX.spawnPopText("吸收", 'player', '#4ade80');
-            }
+        // 2. 裝備新法寶
+        d.equipped[slot] = item.uuid;
+        
+        // 3. 增加真實戰力屬性
+        d.atk = (d.atk || 10) + (item.stats.atk || 0);
+        d.def = (d.def || 5) + (item.stats.def || 0);
+
+        Player.save();
+        Msg.log(`👕 裝備成功！你穿上了【${item.name} +${item.plus || 0}】，戰力大增！`, "reward");
+        
+        if (window.FX) window.FX.spawnPopText("戰力提升", 'player', '#fbbf24');
+        this.renderBag();
+        if (window.Core) window.Core.updateUI();
+    },
+
+    unequip(slot, silent = false) {
+        const d = Player.data;
+        const uuid = d.equipped[slot];
+        if (!uuid) return;
+
+        const item = d.equipments.find(i => i.uuid === uuid);
+        if (item) {
+            // 扣除裝備賦予的屬性，確保主角基礎數值不跌破底線
+            d.atk = Math.max(10, (d.atk || 10) - (item.stats.atk || 0));
+            d.def = Math.max(5,  (d.def || 5) - (item.stats.def || 0));
+        }
+
+        d.equipped[slot] = null;
+        Player.save();
+        
+        if (!silent) {
+            Msg.log(`🛡️ 卸下了裝備。`, "system");
             this.renderBag();
-            if (window.Core && window.Core.updateUI) {
-                window.Core.updateUI();
-            }
+            if (window.Core) window.Core.updateUI();
         }
+    },
+
+    /**
+     * 🌟 實作真實的丹藥服用邏輯
+     */
+    useConsumable(key) {
+        if (!Player.data.inventory || Player.data.inventory[key] <= 0) return;
+        
+        Player.data.inventory[key]--;
+        
+        if (key === '修為丹') {
+            if (typeof Player.gainExp === 'function') Player.gainExp(50);
+            else Player.data.exp += 50;
+            Msg.log("💊 吞服【修為丹】，藥力化開，修為大增 +50！", "reward");
+            if (window.FX) window.FX.spawnPopText("修為大增", 'player', '#60a5fa');
+        } else if (key === '療傷藥') {
+            if (typeof Player.heal === 'function') Player.heal(100);
+            else Player.data.hp = Math.min(Player.data.maxHp || 100, (Player.data.hp || 0) + 100);
+            Msg.log("💊 敷上【療傷藥】，氣血迅速恢復 +100！", "reward");
+            if (window.FX) window.FX.spawnPopText("恢復", 'player', '#4ade80');
+        }
+
+        Player.save();
+        this.renderBag();
+        if (window.Core) window.Core.updateUI();
     }
 };
 
