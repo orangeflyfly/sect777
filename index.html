@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>練功修練 - V3.3.9 「萬象森羅：天道循環與五行戰鬥」</title>
+    <title>練功修練 - V3.4.0 「萬象森羅：煉丹閣與天道循環」</title>
     
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/page_battle.css">
@@ -91,6 +91,7 @@
         import { SectSystem } from './systems/SectSystem.js';
         import { FarmSystem } from './systems/FarmSystem.js';
         import { MineSystem } from './systems/MineSystem.js';
+        import { AlchemySystem } from './systems/AlchemySystem.js'; // 🌟 新增：煉丹閣大腦
         import { TribulationSystem } from './systems/TribulationSystem.js';
         import { TaskSystem } from './systems/TaskSystem.js';
         import { SectManager } from './systems/SectManager.js';
@@ -108,6 +109,7 @@
         import { UI_Recruit } from './ui/ui_recruit.js';
         import { UI_Farm } from './ui/ui_farm.js';
         import { UI_Mine } from './ui/ui_mine.js';
+        import { UI_Alchemy } from './ui/ui_alchemy.js'; // 🌟 新增：煉丹閣 UI
 
         // ==========================================
         // 4. 引入 核心與數據 (Core & Data)
@@ -127,6 +129,7 @@
         window.SectSystem = SectSystem;
         window.FarmSystem = FarmSystem;
         window.MineSystem = MineSystem;
+        window.AlchemySystem = AlchemySystem; // 🌟 註冊煉丹閣大腦
         window.TribulationSystem = TribulationSystem;
         window.TaskSystem = TaskSystem;
         window.SectManager = SectManager;
@@ -141,6 +144,7 @@
         window.UI_Recruit = UI_Recruit;
         window.UI_Farm = UI_Farm;
         window.UI_Mine = UI_Mine;
+        window.UI_Alchemy = UI_Alchemy; // 🌟 註冊煉丹閣 UI
 
         window.Core = Core;
         window.DB = DB;            
@@ -151,7 +155,7 @@
         // ==========================================
         window.onload = () => {
             // 系統啟動日誌
-            console.log("%c【系統】V3.3.9 萬象森羅：全模組共鳴啟動！", "color: #fbbf24; font-weight: bold; font-size: 14px;");
+            console.log("%c【系統】V3.4.0 萬象森羅：三大產業鏈與天道共鳴啟動！", "color: #fbbf24; font-weight: bold; font-size: 14px;");
             
             // 延遲初始化，確保所有 DOM 節點與全局對象已就緒
             setTimeout(() => {
