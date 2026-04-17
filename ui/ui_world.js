@@ -1,6 +1,6 @@
 /**
- * V3.2 ui_world.js (聚靈陣飛升與系統接軌版)
- * 職責：洞府渲染、掛機收益、產業多級升級、陣眼駐守機制、資源真實連動
+ * V3.4 ui_world.js (萬象森羅 - 真實數據連動版)
+ * 職責：洞府渲染、聚靈陣掛機收益、對接真實產能預估、統一升級物價
  * 位置：/ui/ui_world.js
  */
 
@@ -9,26 +9,20 @@ import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 import { SectSystem } from '../systems/SectSystem.js';
 
 export const UI_World = {
-    // 1. 初始化與數據結構加固
     init() {
-        console.log("【UI_World】洞府法陣啟動，對接宗門大腦...");
+        console.log("【UI_World】洞府法陣啟動，對接宗門大腦與真實產能...");
         this.renderLayout();
         
         if (Player.data && !Player.data.world) {
-            Player.data.world = {
-                arrayLevel: 1,
-                lastCollect: Date.now()
-            };
+            Player.data.world = { arrayLevel: 1, lastCollect: Date.now() };
         }
         
         const w = Player.data.world;
-        // 確保新屬性存在
-        if (w.durability === undefined) w.durability = 100; // 聚靈陣耐久度
-        if (w.arrayGuard === undefined) w.arrayGuard = null; // 陣眼駐守弟子 ID
+        if (w.durability === undefined) w.durability = 100; 
+        if (w.arrayGuard === undefined) w.arrayGuard = null; 
         if (!w.farm) w.farm = { level: 0, assigned: 0 };
         if (!w.mine) w.mine = { level: 0, assigned: 0 };
 
-        // 🟢 刪除舊版的 w.workers，全面改用 SectSystem
         if (w.workers !== undefined) delete w.workers;
 
         Player.save();
@@ -36,7 +30,6 @@ export const UI_World = {
         this.renderWorld();
     },
 
-    // 2. 注入 HTML 骨架
     renderLayout() {
         const container = document.getElementById('page-world');
         if (!container) return;
@@ -47,7 +40,6 @@ export const UI_World = {
         `;
     },
 
-    // 3. 渲染動態產出面板
     renderWorld() {
         const container = document.getElementById('world-content');
         if (!container || !Player.data) return;
@@ -56,12 +48,11 @@ export const UI_World = {
         const now = Date.now();
         let elapsedSeconds = Math.floor((now - wData.lastCollect) / 1000);
         
-        // --- 🟢 宗門數據連動 ---
         const sectSum = window.SectSystem ? window.SectSystem.getSummary() : { total: 0, idle: 0, farm: 0, mine: 0 };
         wData.farm.assigned = sectSum.farm;
         wData.mine.assigned = sectSum.mine;
 
-        // --- 🟢 陣眼駐守邏輯 ---
+        // --- 陣眼駐守邏輯 ---
         let guardName = "無人駐守";
         let guardBonus = 1.0;
         let isGuardActive = false;
@@ -72,33 +63,45 @@ export const UI_World = {
                 guardName = guard.name;
                 isGuardActive = true;
                 if (guard.traits && guard.traits.includes('聚靈體質')) {
-                    guardBonus = 2.0; // 聚靈體質雙倍加成
+                    guardBonus = 2.0; 
                     guardName += ' ✨(聚靈)';
                 } else {
-                    guardBonus = 1.2; // 普通人駐守給 1.2 倍
+                    guardBonus = 1.2; 
                 }
             } else {
-                wData.arrayGuard = null; // 找不到人代表被遣散了
+                wData.arrayGuard = null; 
             }
         }
 
-        // --- 聚靈陣邏輯：計算進度與效率 (受耐久度與駐守影響) ---
-        const maxTimeMap = { 1: 300, 2: 1800, 3: 28800 }; // 5分, 30分, 8時
+        // --- 聚靈陣邏輯 ---
+        const maxTimeMap = { 1: 300, 2: 1800, 3: 28800 }; 
         const maxSeconds = maxTimeMap[wData.arrayLevel] || 300;
         const isFull = elapsedSeconds >= maxSeconds;
         if (isFull) elapsedSeconds = maxSeconds;
         
-        // 效率計算：耐久度低於 50% 減半，再乘上陣眼駐守加成
         const baseEfficiency = wData.durability < 50 ? 0.5 : 1.0;
         const finalEfficiency = baseEfficiency * guardBonus;
         const pendingExp = Math.floor((elapsedSeconds / 10) * finalEfficiency);
         const progressPercent = Math.min(100, (elapsedSeconds / maxSeconds) * 100);
 
-        // --- 產業產出預覽 (僅為預估展示，真實產出由各 System 的 processTick 決定) ---
-        const mineYieldEst = sectSum.mine * wData.mine.level * 2; 
-        const farmYieldEst = sectSum.farm * wData.farm.level * 1.5; 
+        // 🌟 修正盲點二：真實產能連動 (向 System 大腦要真實數據)
+        let mineYieldEst = 0;
+        let farmYieldEst = 0;
+        
+        if (window.MineSystem && Player.data.sect) {
+            const miners = Player.data.sect.disciples.filter(d => d.status === 'mine');
+            miners.forEach(w => mineYieldEst += window.MineSystem.getDiscipleYield(w).yield);
+        }
+        if (window.FarmSystem && Player.data.sect) {
+            const farmers = Player.data.sect.disciples.filter(d => d.status === 'farm');
+            // 簡化團隊光環傳遞，抓取基礎個人產能總和作為預估
+            farmers.forEach(w => farmYieldEst += window.FarmSystem.getDiscipleYield(w, {workerCount: farmers.length, buffOthersMult: 1, annoyOthersMult: 1}).yield);
+        }
 
-        // --- 渲染資源看板 ---
+        // 🌟 修正升級費用顯示 (統一與 ui_mine.js 同步，或設定為開闢費用)
+        const farmCost = wData.farm.level === 0 ? 1000 : wData.farm.level * 1500;
+        const mineCost = wData.mine.level === 0 ? 2000 : wData.mine.level * 1500;
+
         this.updateResourceBar(sectSum);
 
         // --- 主內容渲染 ---
@@ -156,11 +159,11 @@ export const UI_World = {
 
                 <div class="management-card">
                     <h4>⛏️ 靈礦脈 (Lv.${wData.mine.level})</h4>
-                    <p>預估產能：<b>${mineYieldEst}</b> 玄鐵/分</p>
+                    <p>真實產能：<b style="color:#4ade80;">+${mineYieldEst}</b> <span style="font-size:10px; color:#94a3b8;">/次</span></p>
                     <p>駐守礦工：<b style="color:#fbbf24;">${sectSum.mine}</b> 人</p>
                     <div style="display:flex; gap:5px; margin-top:10px;">
                         <button class="btn-upgrade-mini" style="flex:1;" onclick="UI_World.upgradeIndustry('mine')">
-                            ${wData.mine.level === 0 ? '✨ 開闢 (2000)' : `🔼 升級 (${wData.mine.level * 5000})`}
+                            ${wData.mine.level === 0 ? `✨ 開闢 (${mineCost})` : `🔼 升級 (${mineCost})`}
                         </button>
                         ${wData.mine.level > 0 ? `<button class="btn-eco-trade" style="flex:1; background:#ca8a04; color:white; border:none; border-radius:4px; cursor:pointer;" onclick="if(window.UI_Mine) UI_Mine.openModal()">入礦</button>` : ''}
                     </div>
@@ -168,11 +171,11 @@ export const UI_World = {
 
                 <div class="management-card">
                     <h4>🌿 仙草園 (Lv.${wData.farm.level})</h4>
-                    <p>預估產能：<b>${farmYieldEst}</b> 仙草/分</p>
+                    <p>真實產能：<b style="color:#4ade80;">+${farmYieldEst}</b> <span style="font-size:10px; color:#94a3b8;">/次</span></p>
                     <p>駐守藥農：<b style="color:#4ade80;">${sectSum.farm}</b> 人</p>
                     <div style="display:flex; gap:5px; margin-top:10px;">
                         <button class="btn-upgrade-mini" style="flex:1;" onclick="UI_World.upgradeIndustry('farm')">
-                            ${wData.farm.level === 0 ? '✨ 開闢 (1000)' : `🔼 升級 (${wData.farm.level * 3000})`}
+                            ${wData.farm.level === 0 ? `✨ 開闢 (${farmCost})` : `🔼 升級 (${farmCost})`}
                         </button>
                         ${wData.farm.level > 0 ? `<button class="btn-eco-trade" style="flex:1; background:#16a34a; color:white; border:none; border-radius:4px; cursor:pointer;" onclick="if(window.UI_Farm) UI_Farm.openModal(); else Msg.log('仙草園管理介面建置中...','system')">入園</button>` : ''}
                     </div>
@@ -181,7 +184,6 @@ export const UI_World = {
         `;
     },
 
-    // 🟢 精準讀取材料庫
     updateResourceBar(sectSum) {
         const bar = document.getElementById('world-resource-bar');
         if (!bar || !Player.data.materials) return;
@@ -190,8 +192,8 @@ export const UI_World = {
         const oreCount = Player.data.materials.ore || 0;
 
         bar.innerHTML = `
-            <div class="res-item">🌿 仙草: <span style="color:#4ade80; font-weight:bold;">${herbCount}</span></div>
-            <div class="res-item">⛏️ 玄鐵: <span style="color:#fbbf24; font-weight:bold;">${oreCount}</span></div>
+            <div class="res-item">🌿 仙草: <span style="color:#4ade80; font-weight:bold;">${herbCount.toLocaleString()}</span></div>
+            <div class="res-item">⛏️ 玄鐵: <span style="color:#fbbf24; font-weight:bold;">${oreCount.toLocaleString()}</span></div>
             <div class="res-item">👥 弟子: <span>${sectSum.total}/${SectSystem.MAX_DISCIPLES}</span></div>
         `;
         bar.style.cssText = "display:flex; justify-content:space-around; background:rgba(0,0,0,0.5); padding:10px; border-radius:8px; margin-bottom:15px; font-size:13px; border:1px solid rgba(255,255,255,0.1); box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);";
@@ -207,26 +209,26 @@ export const UI_World = {
         if (window.Core) window.Core.updateUI();
     },
 
+    // 🌟 修正盲點一：統一升級物價邏輯
     upgradeIndustry(type) {
         const wData = Player.data.world;
         const currentLv = wData[type].level;
         const name = type === 'mine' ? '靈礦脈' : '仙草園';
         
         const baseCost = type === 'mine' ? 2000 : 1000;
-        const upgradeCost = currentLv === 0 ? baseCost : currentLv * (type === 'mine' ? 5000 : 3000);
+        const upgradeCost = currentLv === 0 ? baseCost : currentLv * 1500; // 統一後續升級費用為 Lv * 1500
 
-        if (Player.data.coin < upgradeCost) return Msg.log(`靈石不足！升級需要 ${upgradeCost} 靈石`, "system");
+        if (Player.data.coin < upgradeCost) return Msg.log(`靈石不足！${currentLv === 0 ? '開闢' : '升級'}需要 ${upgradeCost} 靈石`, "system");
 
         Player.data.coin -= upgradeCost;
         wData[type].level += 1;
         
-        Msg.log(`🎊 【${name}】晉升至 Lv.${wData[type].level}！`, "gold");
+        Msg.log(`🎊 【${name}】${currentLv === 0 ? '開闢成功' : '晉升至 Lv.' + wData[type].level}！`, "gold");
         Player.save();
         this.renderWorld();
         if (window.Core) window.Core.updateUI();
     },
 
-    // 🟢 替換舊派工邏輯：選擇陣眼駐守
     selectArrayGuard() {
         if (!Player.data.sect || Player.data.sect.disciples.length === 0) {
             return Msg.log("宗門尚無弟子，無法派人駐守！", "system");
@@ -295,7 +297,6 @@ export const UI_World = {
         this.renderWorld();
     },
 
-    // 🟢 收益收取邏輯 (僅收取聚靈陣 EXP，因為材料是由系統背景每分鐘結算)
     collectGains() {
         const wData = Player.data.world;
         const now = Date.now();
@@ -305,7 +306,6 @@ export const UI_World = {
         const maxSeconds = maxTimeMap[wData.arrayLevel] || 300;
         const effectiveSeconds = Math.min(elapsedSeconds, maxSeconds);
 
-        // 效率受耐久與駐守影響
         const baseEfficiency = wData.durability < 50 ? 0.5 : 1.0;
         let guardBonus = 1.0;
         if (wData.arrayGuard && Player.data.sect) {
@@ -318,17 +318,12 @@ export const UI_World = {
         
         const gainedExp = Math.floor((effectiveSeconds / 10) * finalEfficiency);
 
-        // V3.0 更新：不再這裡結算材料與靈石，那些交由 FarmSystem 和 MineSystem 每分鐘背景結算
-        // 這裡只負責結算主角/宗門的純粹「靈氣經驗」
-
         if (gainedExp <= 0) {
             Msg.log("靈氣稀薄，再等等吧。", "system");
             return;
         }
 
-        // 每次領取會損耗 1~3 點耐久
         wData.durability = Math.max(0, wData.durability - (Math.floor(Math.random() * 3) + 1));
-
         Player.gainExp(gainedExp);
 
         Msg.log(`🌟 吸收陣眼靈氣：修為大增 +${gainedExp} EXP`, "reward");
@@ -344,8 +339,6 @@ export const UI_World = {
         const elapsed = Math.floor((Date.now() - wData.lastCollect) / 1000);
         if (isLogin && elapsed > 60) {
             Msg.log(`閉關結束，積累了 ${this.formatTime(elapsed)} 的天地靈氣。`, "gold");
-            // 注意：我們可以在這裡呼叫 FarmSystem / MineSystem 來一次性結算離線產出
-            // 由於這需要撰寫額外演算法，建議未來實作「離線結算專用函數」
         }
     },
 
