@@ -1,6 +1,6 @@
 /**
- * V3.6.0 CombatEngine.js (萬象因果 - 專屬掉落與資源歸一版 + 跑步機視覺連動)
- * 職責：處理主動/被動技能、冷卻計時、境界壓制、特效對接、修正妖獸專屬掉落因果、控制視覺狀態
+ * V3.6.1 CombatEngine.js (萬象因果 - 專屬掉落與資源歸一版 + 跑步機視覺連動 + 極限防呆)
+ * 職責：處理主動/被動技能、冷卻計時、境界壓制、特效對接、修正妖獸專屬掉落因果、控制視覺狀態、確保掛機不卡死
  * 位置：/systems/CombatEngine.js
  */
 
@@ -309,87 +309,110 @@ export const CombatEngine = {
         this.renderBuffsUI();
     },
 
+    /**
+     * 🌟 核心修正：加入極限防呆與錯誤捕捉，確保掛機循環永不中斷
+     */
     handleVictory() {
-        const m = this.currentMonster;
-        Msg.log(`${m.name} 已被擊敗！`, "system");
+        try {
+            const m = this.currentMonster;
+            Msg.log(`${m.name} 已被擊敗！`, "system");
 
-        const exp = Player.gainExp(m.exp);
-        Player.data.coin += (m.gold || 0);
-        Msg.log(`獲得修為 ${exp}，靈石 ${m.gold || 0}`, "reward");
+            const exp = Player.gainExp ? Player.gainExp(m.exp) : 0;
+            if (Player.data) {
+                Player.data.coin = (Player.data.coin || 0) + (m.gold || 0);
+            }
+            Msg.log(`獲得修為 ${exp}，靈石 ${m.gold || 0}`, "reward");
 
-        if (exp > 0) FX.spawnPopText(`+${exp} EXP`, 'player', '#2ecc71');
-        if (m.gold > 0) {
-            setTimeout(() => FX.spawnPopText(`+${m.gold} 靈石`, 'player', '#fbbf24'), 250);
-        }
+            if (exp > 0) FX.spawnPopText(`+${exp} EXP`, 'player', '#2ecc71');
+            if (m.gold > 0) {
+                setTimeout(() => FX.spawnPopText(`+${m.gold} 靈石`, 'player', '#fbbf24'), 250);
+            }
 
-        if (m.drops && Array.isArray(m.drops)) {
-            m.drops.forEach(drop => {
-                if (Math.random() < drop.chance) {
-                    if (drop.type === 'resource') {
-                        const amount = Array.isArray(drop.amount) 
-                            ? Math.floor(Math.random() * (drop.amount[1] - drop.amount[0] + 1)) + drop.amount[0]
-                            : (drop.amount || 1);
-                        
-                        if (drop.id === 'herb') Player.data.materials.herb += amount;
-                        if (drop.id === 'ore') Player.data.materials.ore += amount;
-                        
-                        Msg.log(`📦 收集到：【${drop.name}】x${amount}`, "reward");
-                    } else if (drop.type === 'item') {
-                        const material = {
-                            uuid: 'it_mat_' + Date.now() + Math.random().toString(36).substr(2, 5),
-                            name: drop.name, 
-                            type: 'material', 
-                            rarity: drop.rarity || 1, 
-                            count: 1,
-                            desc: `從${m.name}身上採集的珍稀素材。`,
-                            price: 50 
-                        };
-                        Player.addItem(material);
-                        Msg.log(`📦 採集到素材：【${drop.name}】`, "reward");
+            // --- 1. 處理妖獸專屬掉落表 ---
+            if (m.drops && Array.isArray(m.drops)) {
+                m.drops.forEach(drop => {
+                    if (Math.random() < drop.chance) {
+                        if (drop.type === 'resource') {
+                            const amount = Array.isArray(drop.amount) 
+                                ? Math.floor(Math.random() * (drop.amount[1] - drop.amount[0] + 1)) + drop.amount[0]
+                                : (drop.amount || 1);
+                            
+                            // 🛡️ 防呆：如果存檔沒有 materials 物件，立刻初始化，防止報錯卡機
+                            if (!Player.data.materials) Player.data.materials = { herb: 0, ore: 0 };
+                            
+                            if (drop.id === 'herb') Player.data.materials.herb = (Player.data.materials.herb || 0) + amount;
+                            if (drop.id === 'ore') Player.data.materials.ore = (Player.data.materials.ore || 0) + amount;
+                            
+                            Msg.log(`📦 收集到：【${drop.name}】x${amount}`, "reward");
+                        } else if (drop.type === 'item') {
+                            const material = {
+                                uuid: 'it_mat_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                                name: drop.name, 
+                                type: 'material', 
+                                rarity: drop.rarity || 1, 
+                                count: 1,
+                                desc: `從${m.name}身上採集的珍稀素材。`,
+                                price: 50 
+                            };
+                            if (Player.addItem) Player.addItem(material);
+                            Msg.log(`📦 採集到素材：【${drop.name}】`, "reward");
+                        }
+                    }
+                });
+            }
+
+            // --- 2. 隨機裝備掉落 ---
+            if (Math.random() < 0.1) {
+                if (ItemFactory && ItemFactory.createEquipment) {
+                    const item = ItemFactory.createEquipment(Player.data.level); 
+                    if (item && Player.addItem) {
+                        Player.addItem(item);
+                        Msg.log(`🎊 獲得：【${item.name}】！`, "reward");
                     }
                 }
-            });
-        }
-
-        if (Math.random() < 0.1) {
-            const item = ItemFactory.createEquipment(Player.data.level); 
-            if (item) {
-                Player.addItem(item);
-                Msg.log(`🎊 獲得：【${item.name}】！`, "reward");
             }
+
+            // --- 3. 隨機功法殘卷掉落 ---
+            if (Math.random() < 0.15) {
+                const skillList = ["烈焰斬", "回春術", "青元劍訣", "破軍劍擊", "天雷正法"];
+                const skillName = skillList[Math.floor(Math.random() * skillList.length)];
+                const volNum = Math.floor(Math.random() * 5) + 1; 
+                const volMap = {1:"一", 2:"二", 3:"三", 4:"四", 5:"五"};
+
+                const fragment = {
+                    uuid: 'frag_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                    name: `殘卷：${skillName}(卷${volMap[volNum]})`,
+                    type: 'fragment', skillName: skillName, volume: volNum, rarity: 3, count: 1,
+                    desc: `記載著部分心法的殘卷。`,
+                    price: 150
+                };
+                if (Player.addItem) Player.addItem(fragment);
+                Msg.log(`📜 發現殘卷：【${fragment.name}】！`, "gold");
+            }
+
+            Player.data.buffs = [];
+            this.renderBuffsUI();
+            if (window.Core && window.Core.updateUI) window.Core.updateUI();
+
+            // 🌟 視覺清空：把卡片字樣切換回「搜尋妖氣中...」
+            if (window.UI_Battle && typeof window.UI_Battle.updateMonster === 'function') {
+                window.UI_Battle.updateMonster(null);
+            }
+
+        } catch (e) {
+            console.error("【引擎警告】結算戰利品時發生異常，但已強制攔截:", e);
+        } finally {
+            // 🌟 絕對執行區：不論前面掉寶有沒有出錯，最後一定會釋放狀態、繼續走路並生成下一隻怪
+            this.currentMonster = null;
+            if (window.UI_Battle && typeof window.UI_Battle.setWalkingState === 'function') {
+                window.UI_Battle.setWalkingState();
+            }
+
+            setTimeout(() => { 
+                this.isProcessing = false; 
+                this.spawnMonster(this.currentMapId); 
+            }, 1500);
         }
-
-        if (Math.random() < 0.15) {
-            const skillList = ["烈焰斬", "回春術", "青元劍訣", "破軍劍擊", "天雷正法"];
-            const skillName = skillList[Math.floor(Math.random() * skillList.length)];
-            const volNum = Math.floor(Math.random() * 5) + 1; 
-            const volMap = {1:"一", 2:"二", 3:"三", 4:"四", 5:"五"};
-
-            const fragment = {
-                uuid: 'frag_' + Date.now() + Math.random().toString(36).substr(2, 5),
-                name: `殘卷：${skillName}(卷${volMap[volNum]})`,
-                type: 'fragment', skillName: skillName, volume: volNum, rarity: 3, count: 1,
-                desc: `記載著部分心法的殘卷。`,
-                price: 150
-            };
-            Player.addItem(fragment);
-            Msg.log(`📜 發現殘卷：【${fragment.name}】！`, "gold");
-        }
-
-        Player.data.buffs = [];
-        this.renderBuffsUI();
-        if (window.Core) window.Core.updateUI();
-        this.currentMonster = null;
-
-        // 🌟 新增：戰鬥結算完畢，切換為「走路尋怪」狀態 (隱藏怪物，背景開始捲動)
-        if (window.UI_Battle && typeof window.UI_Battle.setWalkingState === 'function') {
-            window.UI_Battle.setWalkingState();
-        }
-
-        setTimeout(() => { 
-            this.isProcessing = false; 
-            this.spawnMonster(this.currentMapId); 
-        }, 1500);
     },
 
     handleDefeat() {
