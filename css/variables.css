@@ -1,27 +1,20 @@
 /* css/variables.css - 雲境青瓷：仙氣飄渺版 */
 :root {
-    /* 🖋️ 仙氣核心色譜 */
-    --accent-glow: rgba(45, 212, 191, 0.4); /* 靈力青發光 */
-    --gold-bright: #fde047;                /* 仙品金 */
-    --jade-soft: #2dd4bf;                  /* 溫潤翡翠 */
-    --cloud-white: #f8fafc;                /* 雲霧白 */
-    --ink-deep: #0f172a;                   /* 基底墨色 */
+    --accent-glow: rgba(45, 212, 191, 0.3); /* 靈氣青 */
+    --gold-bright: #fde047;                /* 仙金 */
+    --jade-soft: #2dd4bf;                  /* 翡翠 */
+    --cloud-white: rgba(248, 250, 252, 0.9);
     
-    /* 容器質感：從厚重墨玉轉向輕盈薄瓷 */
-    --card-bg: rgba(30, 41, 59, 0.7);      /* 提高透明度 */
-    --card-border: rgba(45, 212, 191, 0.3); /* 青色邊框 */
-    --inner-glow: inset 0 0 15px rgba(45, 212, 191, 0.1); 
+    /* 容器質感：半透明磨砂 */
+    --card-bg: rgba(15, 23, 42, 0.6);      
+    --card-border: rgba(45, 212, 191, 0.2); 
     
-    --modal-overlay: rgba(15, 23, 42, 0.85); 
-    --glass-dark: rgba(15, 23, 42, 0.9);   
-
-    /* 🔮 稀有度色彩 (天道五行 - 仙化版) */
-    --r1-common: #94a3b8;    /* 凡 */
-    --r2-rare: #2dd4bf;      /* 靈 */
-    --r3-epic: #3b82f6;      /* 寶 */
-    --r4-legendary: #a855f7; /* 珍 */
-    --r5-mythic: #fbbf24;    /* 仙 */
-
+    --r1-common: #94a3b8;
+    --r2-rare: #2dd4bf;
+    --r3-epic: #3b82f6;
+    --r4-legendary: #a855f7;
+    --r5-mythic: #fbbf24;
+}
     /* 📱 UI 常數：讓線條更細緻 */
     --btn-radius: 2px;       
     --card-radius: 4px;      
