@@ -1,60 +1,114 @@
-/* css/components/monster-card.css */
+/* css/components/monster-card.css - 萬象森羅：古風手遊重塑版 */
 
-/* 2. 中央：敵我對峙區 (妖獸卡片) */
-.monster-card {
-    background: linear-gradient(180deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95));
-    border: 1px solid rgba(239, 68, 68, 0.2); 
-    border-radius: 16px;
-    padding: 30px 20px;
+/* 1. 基礎實體卡片重塑 (整合自 treadmill 邏輯) */
+.entity-card {
+    background: var(--card-bg);
+    /* 🌟 新增：手遊感必備的厚重雙線邊框 */
+    border: 1px solid var(--gold-dull);
+    outline: 3px solid rgba(0, 0, 0, 0.5); /* 增加外輪廓線，讓卡片更立體 */
+    position: absolute;
+    width: 140px; /* 稍微加寬增加份量感 */
+    padding: 15px 10px;
     text-align: center;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(239, 68, 68, 0.05);
-    position: relative;
-    margin-bottom: 15px;
-    overflow: hidden;
+    border-radius: 4px; /* 縮小圓角，更顯古風穩重 */
+    box-shadow: 
+        var(--shadow-heavy),
+        inset 0 0 20px rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    backdrop-filter: blur(8px);
 }
 
-/* 妖獸呼吸律動動畫 */
-@keyframes monsterBreathe {
-    0% { transform: scale(1) translateY(0); filter: drop-shadow(0 0 10px rgba(239,68,68,0.2)); }
-    100% { transform: scale(1.05) translateY(-5px); filter: drop-shadow(0 0 25px rgba(239,68,68,0.6)); }
+/* 🌟 新增：卡片裝飾角 (古風精髓) */
+.entity-card::before {
+    content: "";
+    position: absolute;
+    top: -2px; left: -2px; width: 10px; height: 10px;
+    border-top: 2px solid var(--gold-bright);
+    border-left: 2px solid var(--gold-bright);
+}
+
+.entity-card::after {
+    content: "";
+    position: absolute;
+    bottom: -2px; right: -2px; width: 10px; height: 10px;
+    border-bottom: 2px solid var(--gold-bright);
+    border-right: 2px solid var(--gold-bright);
+}
+
+/* 2. 妖獸律動特效優化 (改為更有靈氣感的發光) */
+@keyframes spiritBreathe {
+    0% { 
+        transform: scale(1); 
+        filter: drop-shadow(0 0 5px var(--accent-glow)); 
+    }
+    100% { 
+        transform: scale(1.08) translateY(-3px); 
+        filter: drop-shadow(0 0 20px var(--accent-glow)); 
+    }
 }
 
 .monster-avatar {
-    font-size: 64px;
-    margin-bottom: 15px;
+    font-size: 56px; /* 略微縮小以適應手遊佈局 */
+    margin-bottom: 10px;
     display: inline-block;
-    animation: monsterBreathe 3s infinite alternate ease-in-out;
+    filter: drop-shadow(0 5px 15px rgba(0,0,0,0.5));
+    animation: spiritBreathe 2.5s infinite alternate ease-in-out;
 }
 
-#monster-name {
-    font-size: 20px;
+/* 3. 名字標籤化 (手遊 UI 風格) */
+#monster-name, .player-entity h3 {
+    font-size: 15px;
     font-weight: bold;
-    color: var(--text-main);
-    margin-bottom: 15px;
-    letter-spacing: 2px;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    color: var(--gold-bright);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+    background: rgba(0, 0, 0, 0.4);
+    padding: 2px 8px;
+    border-bottom: 1px solid var(--gold-dull);
+    width: 100%;
 }
 
-.monster-hp {
-    height: 18px;
-    background: rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 10px;
+/* 4. 血條優化 (鑲嵌玉石感) */
+.monster-hp, .bar-container.hp {
+    height: 14px;
+    background: #000;
+    border: 1px solid var(--gold-dull);
+    border-radius: 2px;
     position: relative;
     overflow: hidden;
-    width: 80%;
-    margin: 0 auto;
+    width: 90%;
+    margin: 5px auto;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
 }
 
-.monster-hp .fill-hp {
-    background: linear-gradient(90deg, #991b1b, #ef4444);
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+.fill-hp {
+    background: linear-gradient(180deg, #ef4444 0%, #7f1d1d 100%) !important;
+    box-shadow: inset 0 2px 4px rgba(255,255,255,0.2);
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.monster-hp .bar-text {
-    font-size: 11px;
-    font-weight: bold;
-    text-shadow: 0 1px 2px rgba(0,0,0,1);
-    letter-spacing: 1px;
+/* 5. 專屬：玩家與怪物的微小差異 */
+.player-entity {
+    border-color: #3b82f6; /* 靈力藍邊 */
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+.monster-entity {
+    border-color: #ef4444; /* 妖氣紅邊 */
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+}
+
+/* 狀態：受擊震動特效強化 */
+.hit-shake {
+    animation: hitEffect 0.2s ease-in-out infinite;
+}
+
+@keyframes hitEffect {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-5px) rotate(-2deg); }
+    75% { transform: translateX(5px) rotate(2deg); }
+    100% { transform: translateX(0); }
 }
