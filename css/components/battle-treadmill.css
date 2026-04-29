@@ -1,0 +1,98 @@
+/* css/components/battle-treadmill.css */
+
+/* 戰鬥區塊外框 */
+.battle-scene {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    background-color: #0f172a;
+    background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, 0.03),
+        rgba(255, 255, 255, 0.03) 20px,
+        transparent 20px,
+        transparent 40px
+    );
+    border-radius: 12px;
+    border: 1px solid #334155;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+}
+
+/* 狀態一：走路模式 */
+.battle-scene.walking {
+    animation: scrollGround 1.5s linear infinite;
+}
+.battle-scene.walking .player-entity {
+    animation: bobbing 0.5s alternate infinite ease-in-out;
+}
+
+/* 狀態二：戰鬥模式 */
+.battle-scene.fighting {
+    animation-play-state: paused;
+}
+.battle-scene.fighting .player-entity {
+    animation: none;
+}
+
+@keyframes scrollGround {
+    from { background-position: 0 0; }
+    to { background-position: -56.5px 0; }
+}
+
+@keyframes bobbing {
+    from { transform: translateY(0px); }
+    to { transform: translateY(-6px); }
+}
+
+/* 實體卡片定位 */
+.entity-card {
+    position: absolute;
+    width: 130px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    backdrop-filter: blur(4px);
+    transition: right 0.4s ease-out, opacity 0.3s ease;
+}
+
+.player-entity {
+    left: 20px;
+    border-color: #3b82f6;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+    z-index: 2;
+}
+
+.monster-entity {
+    right: 20px;
+    border-color: #ef4444;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+    z-index: 1;
+}
+
+.monster-entity.hidden {
+    right: -150px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.entity-info {
+    width: 100%;
+    margin-top: 8px;
+}
+.buff-container {
+    min-height: 25px;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 5px;
+}
