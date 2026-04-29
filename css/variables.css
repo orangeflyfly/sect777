@@ -1,21 +1,28 @@
 /* css/variables.css - 雲境青瓷：仙氣飄渺版 */
 :root {
-    --accent-glow: rgba(45, 212, 191, 0.3); /* 靈氣青 */
-    --gold-bright: #fde047;                /* 仙金 */
-    --jade-soft: #2dd4bf;                  /* 翡翠 */
+    /* 🖋️ 仙氣核心色譜 */
+    --accent-glow: rgba(45, 212, 191, 0.3); /* 靈氣青發光 */
+    --gold-bright: #fde047;                /* 仙品金 */
+    --jade-soft: #2dd4bf;                  /* 溫潤翡翠 */
     --cloud-white: rgba(248, 250, 252, 0.9);
+    --ink-deep: #0f172a;                   /* 基底墨色 */
     
-    /* 容器質感：半透明磨砂 */
-    --card-bg: rgba(15, 23, 42, 0.6);      
-    --card-border: rgba(45, 212, 191, 0.2); 
+    /* 容器質感：半透明磨砂與玉石邊框 */
+    --card-bg: rgba(15, 23, 42, 0.6);      /* 增加透明度，減少沉重感 */
+    --card-border: rgba(45, 212, 191, 0.2); /* 靈青色細邊 */
+    --inner-glow: inset 0 0 15px rgba(45, 212, 191, 0.05); 
     
+    --modal-overlay: rgba(15, 23, 42, 0.85); 
+    --glass-dark: rgba(15, 23, 42, 0.9);   
+
+    /* 🔮 稀有度色彩 (仙化版) */
     --r1-common: #94a3b8;
     --r2-rare: #2dd4bf;
     --r3-epic: #3b82f6;
     --r4-legendary: #a855f7;
     --r5-mythic: #fbbf24;
-}
-    /* 📱 UI 常數：讓線條更細緻 */
+
+    /* 📱 UI 常數：線條精細化 */
     --btn-radius: 2px;       
     --card-radius: 4px;      
     --anim-speed: 0.3s;      
