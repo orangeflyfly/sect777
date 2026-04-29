@@ -409,8 +409,11 @@ export const CombatEngine = {
             }
 
             setTimeout(() => { 
+            this.spawnMonster(this.currentMapId); 
+            // 🌟 修正：先產生怪物，等 0.5 秒滑入畫面後，才解除攻擊鎖定
+            setTimeout(() => { 
                 this.isProcessing = false; 
-                this.spawnMonster(this.currentMapId); 
+               }, 500);
             }, 1500);
         }
     },
@@ -431,8 +434,11 @@ export const CombatEngine = {
             Msg.log(`神魂歸位，你已回到宗門救治。`, "system");
             if (window.UI_Battle) window.UI_Battle.updateMonster(null);
             if (window.Core) window.Core.updateUI();
-            this.isProcessing = false;
             this.spawnMonster(this.currentMapId);
+            // 🌟 修正：同樣給予 0.5 秒進場時間
+            setTimeout(() => { 
+                this.isProcessing = false; 
+            }, 500);
         }, 2000);
     },
 
