@@ -1,25 +1,23 @@
-:root {
-    --bg-dark: #0f172a;
-    --bg-card: #1e293b;
-    --border-color: #334155;
-    --text-main: #f8fafc;
-    --text-dim: #94a3b8;
-    --accent: #6366f1;
-    --hp-color: #ef4444;
-    --exp-color: #10b981;
-    --coin-color: #fbbf24;
-}
+/* css/base.css - 萬象森羅：古風手遊重塑版 */
+
+/* 1. 引用天地變數 (確保 variables.css 已更新為墨染流金版) */
+@import "./variables.css";
 
 * {
     margin: 0; padding: 0;
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
+    /* 讓字體更有古風質感 */
+    font-family: "PingFang TC", "Microsoft JhengHei", "STKaiti", serif;
 }
 
 body {
-    font-family: -apple-system, "Microsoft JhengHei", sans-serif;
-    background-color: var(--bg-dark);
-    color: var(--text-main);
+    background-color: var(--ink-black);
+    /* 🌟 新增：全局紙質紋理感 */
+    background-image: 
+        radial-gradient(circle at 50% 50%, rgba(251, 191, 36, 0.02) 0%, transparent 80%),
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+    color: #e2e8f0;
     line-height: 1.6;
     height: 100vh;
     display: flex;
@@ -27,67 +25,80 @@ body {
     overflow: hidden;
 }
 
-/* --- 頂部資訊區 --- */
+/* --- 頂部資訊區 (手遊頂欄化) --- */
 .header-info {
-    padding: 10px 15px;
-    background: rgba(30, 41, 59, 0.8);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border-color);
+    padding: 12px 15px;
+    background: var(--glass-dark);
+    /* 🌟 新增：手遊常見的頂部金邊裝飾 */
+    border-bottom: 2px solid var(--gold-dull);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
     display: flex;
     justify-content: space-between;
     align-items: center;
     z-index: 100;
     width: 100%;
-    max-width: 500px;
+    max-width: 800px; /* 配合你 HTML 的完美居中配置 */
     margin: 0 auto;
 }
 
-/* 玩家主狀態容器 (包含境界與條狀圖) */
 .player-main-stats {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     flex: 1;
 }
 
 .realm-title {
-    font-weight: bold; color: var(--accent);
-    background: rgba(99, 102, 241, 0.1);
-    padding: 4px 8px; border-radius: 4px; font-size: 13px;
+    font-weight: bold; 
+    color: var(--gold-bright);
+    /* 🌟 新增：卷軸標籤感 */
+    background: linear-gradient(135deg, #451a03 0%, #1e1b4b 100%);
+    border: 1px solid var(--gold-dull);
+    padding: 2px 10px; 
+    border-radius: var(--btn-radius); 
+    font-size: 13px;
     white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
-/* 狀態條堆疊區 */
 .bars-stack {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
     flex: 1;
-    max-width: 150px; /* 避免條狀圖過長擠壓介面 */
+    max-width: 180px;
 }
 
-/* 條狀圖容器 */
+/* 條狀圖容器 (內嵌式珠寶質感) */
 .bar-container {
     width: 100%;
-    height: 10px; /* 必須設定高度，否則會消失 */
-    background: rgba(0, 0, 0, 0.4);
-    border-radius: 5px;
+    height: 12px;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 2px; /* 縮小圓角，更顯方正 */
     position: relative;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    /* 🌟 新增：內凹陰影增加立體感 */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.8);
 }
 
-/* 填充條 */
 .fill {
     height: 100%;
     width: 0%;
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    /* 🌟 新增：填充條閃光特效 */
+    position: relative;
+}
+.fill::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(rgba(255,255,255,0.2), transparent);
 }
 
-.fill-hp { background: linear-gradient(90deg, #991b1b, var(--hp-color)); }
-.fill-exp { background: linear-gradient(90deg, #065f46, var(--exp-color)); }
+.fill-hp { background: linear-gradient(90deg, #7f1d1d, #ef4444); }
+.fill-exp { background: linear-gradient(90deg, #064e3b, var(--jade-green)); }
 
-/* 條內數值文字 */
 .bar-text {
     position: absolute;
     width: 100%;
@@ -95,53 +106,55 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 8px;
+    font-size: 9px;
     font-weight: bold;
     color: #fff;
-    text-shadow: 1px 1px 1px rgba(0,0,0,0.8);
+    text-shadow: 1px 1px 2px rgba(0,0,0,1);
     z-index: 5;
     pointer-events: none;
+    letter-spacing: 1px;
 }
 
-/* 靈石顯示 */
 .currency-display {
-    font-size: 13px;
-    color: var(--coin-color);
+    font-size: 14px;
+    color: var(--gold-bright);
     font-weight: bold;
     margin-left: 10px;
     white-space: nowrap;
+    text-shadow: 0 0 5px rgba(251, 191, 36, 0.3);
 }
 
-/* --- 底部導覽 --- */
+/* --- 底部導覽 (側邊欄/底欄適配) --- */
 .bottom-nav {
-    position: fixed; bottom: 0; height: 65px;
-    background: var(--bg-card); display: flex;
-    border-top: 1px solid var(--border-color); z-index: 1000;
-    width: 100%;
-    max-width: 500px;
-    left: 50%;
-    transform: translateX(-50%);
+    background: var(--glass-dark) !important;
+    border-right: 2px solid var(--gold-dull) !important;
+    box-shadow: 4px 0 15px rgba(0,0,0,0.5) !important;
 }
 
 .nav-btn {
-    flex: 1; border: none; background: none; color: var(--text-dim);
-    display: flex; flex-direction: column; align-items: center;
-    justify-content: center; font-size: 12px; gap: 4px; cursor: pointer;
+    color: #94a3b8 !important;
+    font-weight: 500;
+    transition: all var(--anim-speed) ease !important;
 }
 
-.nav-btn.active { color: var(--accent); background: rgba(99, 102, 241, 0.05); }
-
-/* --- 公用區域 --- */
-.modal {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.8); display: flex;
-    align-items: center; justify-content: center; z-index: 2000;
-    backdrop-filter: blur(4px);
+.nav-btn.active { 
+    color: var(--gold-bright) !important;
+    background: rgba(251, 191, 36, 0.1) !important;
+    border: 1px solid var(--gold-dull) !important;
 }
 
+/* --- 公用區域 (手遊彈窗化) --- */
 .modal-box {
-    width: 90%; max-width: 400px; background: var(--bg-card);
-    border-radius: 16px; overflow: hidden; border: 1px solid var(--border-color);
+    background: var(--glass-dark);
+    border-radius: var(--card-radius);
+    border: 2px solid var(--gold-dull);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+    /* 🌟 新增：彈窗裝飾角 */
+    background-image: 
+        linear-gradient(to right, var(--gold-dull) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--gold-dull) 1px, transparent 1px);
+    background-size: 20px 20px;
+    background-repeat: no-repeat;
 }
 
 #game-container {
@@ -150,30 +163,28 @@ body {
     padding: 15px;
     padding-bottom: 80px;
     width: 100%;
-    max-width: 500px;
+    max-width: 800px;
     margin: 0 auto;
 }
 
-.game-page {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
-
+/* 按鈕質感強化 */
 button {
-    outline: none;
-    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 1px solid transparent;
 }
 
 button:active {
-    transform: scale(0.95);
-    opacity: 0.8;
+    transform: scale(0.96);
+    filter: brightness(1.2);
 }
 
-/* --- 稀有度通用樣式 --- */
-.r-1 { border-left: 3px solid #94a3b8; }
-.r-2 { border-left: 3px solid #10b981; }
-.r-3 { border-left: 3px solid #6366f1; }
-.r-4 { border-left: 3px solid #a78bfa; }
-.r-5 { border-left: 3px solid #fbbf24; box-shadow: 0 0 10px rgba(251, 191, 36, 0.3); }
+/* --- 稀有度通用樣式 (天道五行) --- */
+.r-1 { border: 1px solid var(--r1-common); background: rgba(148, 163, 184, 0.05); }
+.r-2 { border: 1px solid var(--r2-rare); background: rgba(52, 211, 153, 0.05); }
+.r-3 { border: 1px solid var(--r3-epic); background: rgba(59, 130, 246, 0.05); }
+.r-4 { border: 1px solid var(--r4-legendary); background: rgba(168, 85, 247, 0.05); }
+.r-5 { 
+    border: 1px solid var(--r5-mythic); 
+    background: rgba(245, 158, 11, 0.1); 
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.2), inset 0 0 10px rgba(245, 158, 11, 0.1);
+}
