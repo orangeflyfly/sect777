@@ -1,6 +1,6 @@
 /**
- * V2.7.1 ui_battle.js
- * 職責：歷練介面渲染、自動歷練、日誌過濾、地圖選擇修復、CD視覺修復、圖示同步
+ * V2.7.2 ui_battle.js
+ * 職責：歷練介面渲染、自動歷練、日誌過濾、地圖選擇修復、CD視覺修復、圖示同步、跑步機狀態切換
  * 位置：/ui/ui_battle.js
  */
 
@@ -13,7 +13,7 @@ export const UI_Battle = {
     autoInterval: null,
     isAuto: false,
     currentLogTab: 'all',
-    cdReqId: null, // 用於控制 CD 迴圈，防止重疊與失效
+    cdReqId: null,
 
     init() {
         console.log("【UI_Battle】啟動渲染...");
@@ -29,7 +29,7 @@ export const UI_Battle = {
         }
     },
 
- renderLayout() {
+    renderLayout() {
         const container = document.getElementById('page-battle');
         if (!container) return;
 
@@ -162,6 +162,32 @@ export const UI_Battle = {
         }
     },
 
+    // 🌟 新增：切換為「走路尋怪」狀態
+    setWalkingState() {
+        const scene = document.getElementById('battle-scene-container');
+        const monsterCard = document.getElementById('monster-display');
+        if (scene) {
+            scene.classList.add('walking');
+            scene.classList.remove('fighting');
+        }
+        if (monsterCard) {
+            monsterCard.classList.add('hidden');
+        }
+    },
+
+    // 🌟 新增：切換為「戰鬥」狀態
+    setFightingState() {
+        const scene = document.getElementById('battle-scene-container');
+        const monsterCard = document.getElementById('monster-display');
+        if (scene) {
+            scene.classList.remove('walking');
+            scene.classList.add('fighting');
+        }
+        if (monsterCard) {
+            monsterCard.classList.remove('hidden');
+        }
+    },
+
     log(msg, type = 'system') {
         const logContainer = document.getElementById('battle-log');
         if (!logContainer) return;
@@ -214,7 +240,6 @@ export const UI_Battle = {
                 const skillDef = dataSrc.SKILLS[skill.name];
                 if (!skillDef || skillDef.isPassive) return; 
 
-                // 🟢 修正：與 CombatEngine 同步圖示邏輯，不再寫死 ✨
                 const icon = skillDef.icon || (skillDef.type === 'heal' ? "✨" : "🔥");
 
                 const sBtn = document.createElement('button');
@@ -233,12 +258,10 @@ export const UI_Battle = {
             });
         }
 
-        // 啟動 CD 永動監控
         this.updateCooldownDisplay();
     },
 
     updateCooldownDisplay() {
-        // 🟢 永動符：確保迴圈不受分頁顯示影響，且防止重複呼叫
         if (this.cdReqId) cancelAnimationFrame(this.cdReqId);
         this.cdReqId = requestAnimationFrame(() => this.updateCooldownDisplay());
 
