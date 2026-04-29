@@ -110,7 +110,7 @@ export const UI_Battle = {
                     }
                     CombatEngine.playerAttack();
                 }
-            }, 1600);
+            }, 2000);
         } else {
             btn.innerText = '🤖 自動: 關';
             btn.style.background = '#475569';
