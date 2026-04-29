@@ -1,5 +1,5 @@
 /**
- * V2.7 ui_stats.js
+ * V2.8 ui_stats.js (雲境青瓷 - 仙氣重塑版)
  * 職責：管理修為介面、注入 HTML 結構、屬性加點、雷劫觸發、裝備卸載、對接系統存檔/重置
  * 位置：/ui/ui_stats.js
  */
@@ -8,7 +8,6 @@ import { Player } from '../entities/player.js';
 import { Formula } from '../utils/Formula.js';
 import { MessageCenter as Msg } from '../utils/MessageCenter.js';
 
-// 屬性翻譯映射陣法 (天工爐與明鏡共用)
 const ATTR_MAP = {
     'str': '力量',
     'con': '體質',
@@ -21,45 +20,45 @@ const ATTR_MAP = {
 };
 
 export const UI_Stats = {
-    // 1. 初始化
     init() {
-        console.log("【UI_Stats】修士明鏡初始化，注入修為場景...");
-        
-        // 🟢 注入原始 HTML 片段
+        console.log("【UI_Stats】修士明鏡初始化，注入仙氣場景...");
         this.renderLayout();
         this.renderStats();
     },
 
-    // 🟢 瘦身核心：整合系統功能按鈕
+    // 🌟 優化：將笨重的色塊按鈕改為優雅的邊框按鈕
     renderLayout() {
         const container = document.getElementById('page-stats');
         if (!container) return;
 
-        // 🟢 修復重點：將 onclick 事件對接到 UI_System
         container.innerHTML = `
-            <div class="page-title">修為與境界</div>
+            <div class="page-title">修士明鏡</div>
 
-            <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 20px;">
-                <button onclick="UI_System.manualSave()" class="btn-eco-action" style="background: var(--exp-color); padding: 8px 15px; border-radius: 8px; border: none; color: white; cursor: pointer; font-weight: bold; flex: 1; max-width: 150px;">
-                    💾 手動存檔
+            <!-- 系統操作區：改為靈氣感透明按鈕 -->
+            <div class="system-actions-row" style="display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; padding: 0 10px;">
+                <button onclick="UI_System.manualSave()" class="btn-celestial-save" style="background: rgba(45, 212, 191, 0.1); border: 1px solid var(--jade-soft); padding: 8px 0; border-radius: 4px; color: var(--aura-cyan); cursor: pointer; font-weight: bold; flex: 1; font-size: 13px;">
+                    💾 凝神存檔
                 </button>
-                <button onclick="UI_System.restartGame()" class="btn-eco-action" style="background: #ef4444; padding: 8px 15px; border-radius: 8px; border: none; color: white; cursor: pointer; font-weight: bold; flex: 1; max-width: 150px;">
-                    💀 重新開始
+                <button onclick="UI_System.restartGame()" class="btn-celestial-reset" style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 0; border-radius: 4px; color: #f87171; cursor: pointer; font-weight: bold; flex: 1; font-size: 13px;">
+                    💀 兵解重來
                 </button>
             </div>
 
-            <div class="equipped-section">
+            <!-- 當前裝備區 -->
+            <div class="equipped-section celestial-panel">
                 <div class="section-label">🧥 當前披掛</div>
-                <div id="equipped-list" class="equip-grid">
-                    <div class="equip-slot empty">載入中...</div>
-                </div>
+                <div id="equipped-list" class="equip-grid"></div>
             </div>
 
-            <div id="breakthrough-area" style="display:none; text-align:center; padding: 15px;">
+            <div id="breakthrough-area" style="display:none; text-align:center; padding: 15px; margin: 10px 0;">
                 <button id="btn-breakthrough" class="btn-special">應劫突破</button>
             </div>
 
-            <h2 id="stat-realm-title" style="text-align:center; color:var(--accent); margin-bottom:20px;"></h2>
+            <!-- 境界標題：增加發光層次 -->
+            <div class="realm-badge-container" style="text-align:center; margin-bottom:20px;">
+                <h2 id="stat-realm-title" style="display: inline-block; color:var(--gold-bright); text-shadow: 0 0 10px rgba(251,191,36,0.3); letter-spacing: 4px; font-family:'STKaiti',serif;"></h2>
+            </div>
+
             <div id="stats-content" class="stats-grid"></div>
         `;
     },
@@ -78,20 +77,16 @@ export const UI_Stats = {
         }
 
         this.ensureStatsStructure();
-        this.renderEquipped(); // 渲染裝備 (含卸載按鈕)
+        this.renderEquipped(); 
         this.handleBreakthroughUI();
 
-        // 基礎屬性更新 (對接 ATTR_MAP)
         this.updateValue('stat-str', d.stats.str);
         this.updateValue('stat-con', d.stats.con);
         this.updateValue('stat-dex', d.stats.dex);
         this.updateValue('stat-int', d.stats.int);
         this.updateValue('stat-points', d.statPoints);
 
-        // 戰鬥指標更新
         const bStats = Player.getBattleStats();
-        
-        // 🟢 檢查公式模組是否存在
         const critRate = (Formula && Formula.calculateCritRate) ? Formula.calculateCritRate(d.stats.str, d.stats.dex) : 0;
         const dodgeRate = (Formula && Formula.calculateEvasionRate) ? Formula.calculateEvasionRate(d.stats.dex) : 0;
 
@@ -123,7 +118,7 @@ export const UI_Stats = {
 
         statsConfig.forEach(s => {
             html += `
-                <div class="stat-card-mini">
+                <div class="stat-card stat-card-mini">
                     <div class="stat-card-top">
                         <span class="stat-icon">${s.icon}</span>
                         <span id="stat-${s.id}" class="stat-val-bold">0</span>
@@ -138,15 +133,15 @@ export const UI_Stats = {
 
         html += `
             </div>
-            <div class="battle-master-card">
+            <div class="battle-master-card stat-card" style="margin-top: 20px;">
                 <div class="card-header">
                     <span>核心戰鬥指標</span>
-                    <button class="btn-detail-lens" onclick="UI_Stats.showDetailModal()">詳細數據 🔍</button>
+                    <button class="btn-detail-lens" onclick="UI_Stats.showDetailModal()">詳細 🔍</button>
                 </div>
                 <div class="battle-grid-3x2">
                     <div class="b-item"><em>${ATTR_MAP.hp}</em><span id="stat-hp-preview">0</span></div>
                     <div class="b-item"><em>${ATTR_MAP.atk}</em><span id="stat-atk-preview">0</span></div>
-                    <div class="b-item"><em>${ATTR_MAP.def}</em><span id="stat-def-preview">0</span></div>
+                    <div class="b-item)<em>${ATTR_MAP.def}</em><span id="stat-def-preview">0</span></div>
                     <div class="b-item"><em>${ATTR_MAP.speed}</em><span id="stat-spd-preview">0</span></div>
                     <div class="b-item"><em>暴擊</em><span id="stat-crit-preview">0%</span></div>
                     <div class="b-item"><em>閃避</em><span id="stat-dodge-preview">0%</span></div>
@@ -161,7 +156,7 @@ export const UI_Stats = {
     },
 
     /**
-     * 渲染裝備槽位 (新增：卸載法陣)
+     * 🌟 修正：徹底解決 undefined 問題並美化裝備顯示
      */
     renderEquipped() {
         const listContainer = document.getElementById('equipped-list');
@@ -174,22 +169,32 @@ export const UI_Stats = {
         ];
 
         listContainer.innerHTML = slots.map(slot => {
-            const item = Player.data.equipped[slot.id];
-            if (!item) {
+            const item = Player.data.equipped ? Player.data.equipped[slot.id] : null;
+            
+            // 🛡️ 防呆：如果沒有 item 或 item 內部名稱為空
+            if (!item || !item.name) {
                 return `
-                    <div class="equip-slot empty">
-                        <span class="slot-icon">${slot.icon}</span>
-                        <span class="slot-label">${slot.label}</span>
+                    <div class="equip-slot empty" style="border: 1px dashed rgba(255,255,255,0.1); opacity: 0.5;">
+                        <span class="slot-icon" style="filter: grayscale(1);">${slot.icon}</span>
+                        <span class="slot-label" style="font-size: 11px;">空位</span>
                     </div>`;
             }
-            // 點擊裝備格觸發卸下
+
+            // ✅ 修正：使用 item.name || '未知' 確保不出現 undefined
+            const itemName = item.name || "靈寶";
+            const rarityClass = `r-${item.rarity || 1}`;
+
             return `
-                <div class="equip-slot r-${item.rarity || 1}" onclick="UI_Stats.unequipItem('${slot.id}')">
-                    <span class="slot-icon">${item.icon || slot.icon}</span>
-                    <div class="slot-info">
-                        <span class="slot-name">${item.name}</span>
-                        <small class="c-green">點擊脫下</small>
+                <div class="equip-slot ${rarityClass}" onclick="UI_Stats.unequipItem('${slot.id}')" style="cursor: pointer; position: relative; border-radius: 4px; overflow: hidden; background: rgba(0,0,0,0.2);">
+                    <div class="slot-visual" style="padding: 5px;">
+                        <span class="slot-icon">${item.icon || slot.icon}</span>
+                        <div class="slot-info">
+                            <span class="slot-name" style="color: var(--r${item.rarity || 1}); font-weight: bold; font-size: 12px; display: block;">${itemName}</span>
+                            <small style="color: rgba(255,255,255,0.4); font-size: 9px;">點擊卸載</small>
+                        </div>
                     </div>
+                    <!-- 仙氣裝飾角 -->
+                    <div style="position:absolute; top:0; right:0; width:0; height:0; border-style:solid; border-width:0 10px 10px 0; border-color:transparent var(--card-border) transparent transparent;"></div>
                 </div>`;
         }).join('');
     },
@@ -216,23 +221,23 @@ export const UI_Stats = {
     showDetailModal() {
         const d = Player.data;
         const bStats = Player.getBattleStats();
-        const reduction = Formula.calculateDamageReduction(bStats.def);
-        const efficiency = (Formula.calculateExpBonus(d.stats.int) * 100).toFixed(0);
-        const critMult = Formula.calculateCritMultiplier(d.stats.str);
+        const reduction = Formula.calculateDamageReduction ? Formula.calculateDamageReduction(bStats.def) : 0;
+        const efficiency = (Formula.calculateExpBonus ? Formula.calculateExpBonus(d.stats.int) : 1 * 100).toFixed(0);
+        const critMult = Formula.calculateCritMultiplier ? Formula.calculateCritMultiplier(d.stats.str) : 1.5;
 
         const modalHtml = `
-            <div id="detail-modal-overlay" class="modal-overlay" onclick="this.remove()">
-                <div class="detail-glass-card" onclick="event.stopPropagation()">
-                    <div class="modal-header">
-                        <h4>詳細修為數據</h4>
+            <div id="detail-modal-overlay" class="modal-overlay" onclick="this.remove()" style="z-index: 10001;">
+                <div class="modal-box stat-card" onclick="event.stopPropagation()" style="padding: 20px; border: 1px solid var(--gold-dull);">
+                    <div class="modal-header" style="border-bottom: 1px solid var(--card-border); padding-bottom: 10px; margin-bottom: 15px;">
+                        <h4 style="color: var(--gold-bright);">詳細修為數據</h4>
                         <button class="btn-modal-close" onclick="document.getElementById('detail-modal-overlay').remove()">✕</button>
                     </div>
-                    <div class="detail-list">
-                        <div class="detail-row"><span>修煉效率</span><b class="c-green">${efficiency}%</b></div>
-                        <div class="detail-row"><span>物理減傷</span><b class="c-blue">${reduction}%</b></div>
-                        <div class="detail-row"><span>暴擊倍率</span><b class="c-gold">${critMult.toFixed(2)}x</b></div>
-                        <div class="detail-row"><span>${ATTR_MAP.hp}上限</span><b>${Math.ceil(bStats.maxHp)}</b></div>
-                        <div class="detail-row"><span>${ATTR_MAP.atk}總值</span><b>${Math.ceil(bStats.atk)}</b></div>
+                    <div class="detail-list" style="line-height: 2.2;">
+                        <div class="detail-row" style="display:flex; justify-content:space-between;"><span>修煉效率</span><b style="color: var(--jade-green);">${efficiency}%</b></div>
+                        <div class="detail-row" style="display:flex; justify-content:space-between;"><span>物理減傷</span><b style="color: var(--sky-blue);">${reduction}%</b></div>
+                        <div class="detail-row" style="display:flex; justify-content:space-between;"><span>暴擊倍率</span><b style="color: var(--gold-bright);">${critMult.toFixed(2)}x</b></div>
+                        <div class="detail-row" style="display:flex; justify-content:space-between;"><span>血量上限</span><b>${Math.ceil(bStats.maxHp)}</b></div>
+                        <div class="detail-row" style="display:flex; justify-content:space-between;"><span>攻擊總值</span><b>${Math.ceil(bStats.atk)}</b></div>
                     </div>
                 </div>
             </div>
@@ -282,8 +287,12 @@ export const UI_Stats = {
         const floatText = document.createElement('div');
         floatText.className = 'float-up-text';
         floatText.innerText = text;
+        floatText.style.position = 'fixed';
         floatText.style.left = `${rect.left + rect.width / 2}px`;
         floatText.style.top = `${rect.top}px`;
+        floatText.style.color = 'var(--gold-bright)';
+        floatText.style.pointerEvents = 'none';
+        floatText.style.zIndex = '9999';
         document.body.appendChild(floatText);
         setTimeout(() => floatText.remove(), 800);
     },
@@ -293,16 +302,16 @@ export const UI_Stats = {
         if (!skillContainer) return;
         const skills = Player.data.skills;
         if (!skills || skills.length === 0) {
-            skillContainer.innerHTML = `<div class="empty-msg">尚未領悟任何神通...</div>`;
+            skillContainer.innerHTML = `<div class="empty-msg" style="padding: 20px; opacity: 0.5;">尚未領悟任何神通...</div>`;
             return;
         }
         skillContainer.innerHTML = skills.map(s => `
-            <div class="skill-card">
-                <div class="skill-info">
-                    <span class="skill-name">${s.name}</span>
-                    <span class="skill-level">Lv.${s.level || 1}</span>
+            <div class="skill-card stat-card" style="margin-bottom: 10px; padding: 12px;">
+                <div class="skill-info" style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; margin-bottom: 5px;">
+                    <span class="skill-name" style="color: var(--aura-cyan); font-weight: bold;">${s.name}</span>
+                    <span class="skill-level" style="font-size: 11px; opacity: 0.7;">等級 ${s.level || 1}</span>
                 </div>
-                <div class="skill-desc">${s.desc || '修復中...'}</div>
+                <div class="skill-desc" style="font-size: 12px; color: rgba(255,255,255,0.6); line-height: 1.4;">${s.desc || '神識傳承中...'}</div>
             </div>`).join('');
     },
 
