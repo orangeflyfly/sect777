@@ -1,26 +1,79 @@
 /* css/page_stats.css */
 
-/* 1. 先載入全局變數 */
+/* 1. 載入全局變數 */
 @import "./variables.css";
 
-/* 2. 按順序導入各個法陣組件 */
+/* 2. 導入組件 */
 @import "./components/stats-layout.css";
 @import "./components/equipment.css";
 @import "./components/battle-master-card.css";
 @import "./components/skills.css";
 @import "./components/modals.css";
 
-/* 3. 頁面專屬的剩餘微調 */
+/* 3. 頁面專屬修正：針對截圖中的「醜感」進行精確整容 */
+
+/* 🌟 修正側邊導覽：縮窄寬度，去除大面積死色，改為靈氣感條狀 */
+.bottom-nav {
+    width: 65px !important; /* 縮窄側邊欄，讓主畫面空間加大[cite: 1] */
+    background: rgba(15, 23, 42, 0.95) !important;
+    border-right: 1px solid var(--card-border) !important;
+}
+
+.bottom-nav .nav-btn {
+    border-radius: 0 !important;
+    margin: 10px 0 !important;
+    background: transparent !important;
+    border: none !important;
+    border-left: 2px solid transparent !important;
+    color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.bottom-nav .nav-btn.active {
+    color: var(--jade-soft) !important;
+    border-left: 2px solid var(--jade-soft) !important;
+    background: linear-gradient(90deg, rgba(45, 212, 191, 0.1), transparent) !important;
+}
+
+/* 🌟 特別修正截圖中的「重新開始」紅色區塊 */
+.bottom-nav .nav-btn[onclick*="DEBUG_RESET"] {
+    background: transparent !important;
+    color: #f87171 !important;
+    border-left: 2px solid #ef4444 !important;
+    opacity: 0.6;
+}
+
+/* 🌟 裝備欄位調整：增加仙氣發光與防呆樣式 */
+.equip-slot {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: 1px dashed var(--card-border) !important;
+    position: relative;
+}
+
+/* 處理 undefined 或空值的文字質感 */
+.equip-name {
+    font-size: 11px;
+    margin-top: 4px;
+    color: rgba(255, 255, 255, 0.2); /* 預設淡色，等有裝備再被 JS 染色 */
+}
+
+/* 🌟 屬性面板卡片：玻璃擬態 */
+.stat-card {
+    background: var(--card-bg) !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--card-border) !important;
+    box-shadow: var(--inner-glow);
+}
+
 #breakthrough-area {
     width: 100%;
     display: flex;
     justify-content: center;
-    margin: 10px 0;
+    margin: 15px 0;
 }
 
 .stat-group-header .highlight {
-    color: var(--r5-mythic); /* 這裡已換成我們 variables.css 裡的變數 */
+    color: var(--r5-mythic);
     font-weight: bold;
     font-size: 16px; 
-    text-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
+    text-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
 }
