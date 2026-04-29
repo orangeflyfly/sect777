@@ -1,6 +1,6 @@
 /**
- * V3.5.9 CombatEngine.js (萬象因果 - 專屬掉落與資源歸一版)
- * 職責：處理主動/被動技能、冷卻計時、境界壓制、特效對接、修正妖獸專屬掉落因果
+ * V3.6.0 CombatEngine.js (萬象因果 - 專屬掉落與資源歸一版 + 跑步機視覺連動)
+ * 職責：處理主動/被動技能、冷卻計時、境界壓制、特效對接、修正妖獸專屬掉落因果、控制視覺狀態
  * 位置：/systems/CombatEngine.js
  */
 
@@ -31,6 +31,11 @@ export const CombatEngine = {
         }
 
         this.startHeartbeat();
+
+        // 🌟 新增：確保剛進入戰鬥時，狀態是走路尋怪中
+        if (window.UI_Battle && typeof window.UI_Battle.setWalkingState === 'function') {
+            window.UI_Battle.setWalkingState();
+        }
 
         setTimeout(() => {
             this.spawnMonster(targetMap);
@@ -65,8 +70,14 @@ export const CombatEngine = {
             maxHp: template.hp 
         };
 
-        if (window.UI_Battle && typeof window.UI_Battle.updateMonster === 'function') {
-            window.UI_Battle.updateMonster(this.currentMonster);
+        if (window.UI_Battle) {
+            if (typeof window.UI_Battle.updateMonster === 'function') {
+                window.UI_Battle.updateMonster(this.currentMonster);
+            }
+            // 🌟 新增：遇到怪物，切換為「戰鬥狀態」(暫停背景捲動，顯示怪物)
+            if (typeof window.UI_Battle.setFightingState === 'function') {
+                window.UI_Battle.setFightingState();
+            }
         }
 
         Msg.log(`【歷練】遇到 ${template.name}！`, "system"); 
@@ -298,19 +309,6 @@ export const CombatEngine = {
         this.renderBuffsUI();
     },
 
-    renderBuffsUI() {
-        const buffContainer = document.getElementById('player-buffs');
-        if (!buffContainer) return;
-        if (!Player.data.buffs || Player.data.buffs.length === 0) { buffContainer.innerHTML = ''; return; }
-        buffContainer.innerHTML = Player.data.buffs.map(b => {
-            const color = b.effect === 'poison' ? '#22c55e' : '#eab308';
-            return `<span style="background:${color}; color:white; padding:2px 6px; border-radius:4px; font-size:11px; margin-right:4px;">${b.name}(${b.duration})</span>`;
-        }).join('');
-    },
-
-    /**
-     * 🌟 核心修正：根據妖獸專屬掉落表結算戰利品
-     */
     handleVictory() {
         const m = this.currentMonster;
         Msg.log(`${m.name} 已被擊敗！`, "system");
@@ -324,12 +322,10 @@ export const CombatEngine = {
             setTimeout(() => FX.spawnPopText(`+${m.gold} 靈石`, 'player', '#fbbf24'), 250);
         }
 
-        // --- 1. 處理妖獸專屬掉落表 (V3.5.9 新增) ---
         if (m.drops && Array.isArray(m.drops)) {
             m.drops.forEach(drop => {
                 if (Math.random() < drop.chance) {
                     if (drop.type === 'resource') {
-                        // 🌟 資源歸一：直接增加數值，不再產生 ghost item
                         const amount = Array.isArray(drop.amount) 
                             ? Math.floor(Math.random() * (drop.amount[1] - drop.amount[0] + 1)) + drop.amount[0]
                             : (drop.amount || 1);
@@ -339,7 +335,6 @@ export const CombatEngine = {
                         
                         Msg.log(`📦 收集到：【${drop.name}】x${amount}`, "reward");
                     } else if (drop.type === 'item') {
-                        // 🌟 實體材料：進入 inventory 陣列，可以在商店賣錢
                         const material = {
                             uuid: 'it_mat_' + Date.now() + Math.random().toString(36).substr(2, 5),
                             name: drop.name, 
@@ -347,7 +342,7 @@ export const CombatEngine = {
                             rarity: drop.rarity || 1, 
                             count: 1,
                             desc: `從${m.name}身上採集的珍稀素材。`,
-                            price: 50 // 基礎價值，商店回收用
+                            price: 50 
                         };
                         Player.addItem(material);
                         Msg.log(`📦 採集到素材：【${drop.name}】`, "reward");
@@ -356,7 +351,6 @@ export const CombatEngine = {
             });
         }
 
-        // --- 2. 隨機裝備掉落 (保留原本 ItemFactory 邏輯) ---
         if (Math.random() < 0.1) {
             const item = ItemFactory.createEquipment(Player.data.level); 
             if (item) {
@@ -365,7 +359,6 @@ export const CombatEngine = {
             }
         }
 
-        // --- 3. 隨機功法殘卷掉落 (保留原本隨機邏輯) ---
         if (Math.random() < 0.15) {
             const skillList = ["烈焰斬", "回春術", "青元劍訣", "破軍劍擊", "天雷正法"];
             const skillName = skillList[Math.floor(Math.random() * skillList.length)];
@@ -388,6 +381,11 @@ export const CombatEngine = {
         if (window.Core) window.Core.updateUI();
         this.currentMonster = null;
 
+        // 🌟 新增：戰鬥結算完畢，切換為「走路尋怪」狀態 (隱藏怪物，背景開始捲動)
+        if (window.UI_Battle && typeof window.UI_Battle.setWalkingState === 'function') {
+            window.UI_Battle.setWalkingState();
+        }
+
         setTimeout(() => { 
             this.isProcessing = false; 
             this.spawnMonster(this.currentMapId); 
@@ -400,6 +398,12 @@ export const CombatEngine = {
         Player.data.buffs = [];
         this.renderBuffsUI();
         Player.data.hp = Player.getBattleStats().maxHp; 
+
+        // 🌟 新增：玩家戰敗，切換回「走路尋怪」狀態 (讓舊怪物消失)
+        if (window.UI_Battle && typeof window.UI_Battle.setWalkingState === 'function') {
+            window.UI_Battle.setWalkingState();
+        }
+
         setTimeout(() => {
             Msg.log(`神魂歸位，你已回到宗門救治。`, "system");
             if (window.UI_Battle) window.UI_Battle.updateMonster(null);
