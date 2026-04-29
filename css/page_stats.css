@@ -3,77 +3,128 @@
 /* 1. 載入全局變數 */
 @import "./variables.css";
 
-/* 2. 導入組件 */
+/* 2. 導入組件 (保留你原始的結構資產) */
 @import "./components/stats-layout.css";
 @import "./components/equipment.css";
 @import "./components/battle-master-card.css";
 @import "./components/skills.css";
 @import "./components/modals.css";
 
-/* 3. 頁面專屬修正：針對截圖中的「醜感」進行精確整容 */
+/* 3. 頁面專屬修正：徹底消除「醜感」與佈局崩壞 */
 
-/* 🌟 修正側邊導覽：縮窄寬度，去除大面積死色，改為靈氣感條狀 */
+/* 🌟 主容器：確保兵解能被推到底部 */
+.stats-scroll-wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    padding: 20px 15px;
+}
+
+/* 🌟 徹底修正「地獄紅條」：側邊導覽與按鈕約束 */
 .bottom-nav {
-    width: 65px !important; /* 縮窄側邊欄，讓主畫面空間加大[cite: 1] */
-    background: rgba(15, 23, 42, 0.95) !important;
+    width: 65px !important;
+    background: var(--glass-dark) !important;
     border-right: 1px solid var(--card-border) !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 20px;
 }
 
 .bottom-nav .nav-btn {
-    border-radius: 0 !important;
-    margin: 10px 0 !important;
+    width: 45px !important;
+    height: 45px !important; /* 🌟 關鍵：固定高度，嚴禁垂直拉伸 */
+    margin: 12px 0 !important;
+    border-radius: var(--btn-radius) !important;
     background: transparent !important;
     border: none !important;
-    border-left: 2px solid transparent !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: rgba(255, 255, 255, 0.3) !important;
+    transition: all var(--anim-speed);
 }
 
 .bottom-nav .nav-btn.active {
     color: var(--jade-soft) !important;
+    background: var(--accent-glow) !important;
     border-left: 2px solid var(--jade-soft) !important;
-    background: linear-gradient(90deg, rgba(45, 212, 191, 0.1), transparent) !important;
+    box-shadow: 0 0 15px rgba(45, 212, 191, 0.2);
 }
 
-/* 🌟 特別修正截圖中的「重新開始」紅色區塊 */
-.bottom-nav .nav-btn[onclick*="DEBUG_RESET"] {
-    background: transparent !important;
+/* 🌟 兵解按鈕：移至底部，消除紅色大色塊 */
+.footer-system-actions {
+    margin-top: auto; /* 將按鈕推至容器最下方 */
+    padding: 40px 10px 20px;
+    text-align: center;
+}
+
+.btn-celestial-reset {
+    width: 100%;
+    height: 38px;
+    background: rgba(239, 68, 68, 0.05) !important;
+    border: 1px solid rgba(239, 68, 68, 0.2) !important;
     color: #f87171 !important;
-    border-left: 2px solid #ef4444 !important;
-    opacity: 0.6;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    border-radius: var(--btn-radius);
+    cursor: pointer;
+    transition: all 0.3s;
 }
 
-/* 🌟 裝備欄位調整：增加仙氣發光與防呆樣式 */
+.btn-celestial-reset:hover {
+    background: rgba(239, 68, 68, 0.15) !important;
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+}
+
+/* 🌟 裝備欄位：仙氣化樣式修正 */
+.equip-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 15px;
+}
+
 .equip-slot {
-    background: rgba(0, 0, 0, 0.3) !important;
-    border: 1px dashed var(--card-border) !important;
-    position: relative;
-}
-
-/* 處理 undefined 或空值的文字質感 */
-.equip-name {
-    font-size: 11px;
-    margin-top: 4px;
-    color: rgba(255, 255, 255, 0.2); /* 預設淡色，等有裝備再被 JS 染色 */
-}
-
-/* 🌟 屬性面板卡片：玻璃擬態 */
-.stat-card {
+    aspect-ratio: 1 / 1;
     background: var(--card-bg) !important;
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--card-border) !important;
+    border-radius: var(--card-radius);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.equip-slot.empty {
+    border: 1px dashed rgba(255, 255, 255, 0.1) !important;
+    opacity: 0.5;
+}
+
+.equip-slot .slot-name {
+    font-size: 11px;
+    margin-top: 5px;
+    text-align: center;
+}
+
+/* 🌟 屬性面板卡片：玻璃擬態與發光 */
+.celestial-panel, .stat-card {
+    background: var(--card-bg) !important;
+    backdrop-filter: blur(12px);
     border: 1px solid var(--card-border) !important;
     box-shadow: var(--inner-glow);
-}
-
-#breakthrough-area {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    margin: 15px 0;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: var(--card-radius);
 }
 
 .stat-group-header .highlight {
     color: var(--r5-mythic);
     font-weight: bold;
     font-size: 16px; 
-    text-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
+    text-shadow: 0 0 12px rgba(251, 191, 36, 0.5);
 }
