@@ -1,78 +1,109 @@
-/* css/components/battle-log.css */
+/* css/components/battle-log.css - 萬象森羅：古風手遊重塑版 */
 
-/* 4. 戰鬥日誌面板 */
+/* 4. 戰鬥日誌面板 (卷軸邊框化) */
 .log-panel {
-    background: rgba(15, 23, 42, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    background: var(--card-bg);
+    /* 🌟 新增：手遊感的實體邊框，配合 variables 定義的墨色 */
+    border: 1px solid var(--gold-dull);
+    border-radius: var(--card-radius);
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+    /* 🌟 新增：內發光模擬靈力籠罩感 */
+    box-shadow: 
+        var(--shadow-heavy),
+        inset 0 0 25px rgba(0, 0, 0, 0.9);
     margin-bottom: 20px; 
+    position: relative;
 }
 
 .log-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    font-size: 13px;
-    color: var(--text-main);
+    padding: 10px 14px;
+    /* 🌟 改動：採用暗金色漸層，增加頂部質感 */
+    background: linear-gradient(90deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+    border-bottom: 2px solid var(--gold-dull);
+    font-size: 14px;
+    color: var(--gold-bright);
     font-weight: bold;
+    letter-spacing: 2px;
 }
 
-/* 日誌分頁按鈕 */
+/* 🌟 日誌分頁按鈕 (標籤化設計) */
 #log-tabs {
     display: flex;
-    gap: 5px;
+    gap: 8px;
 }
 
 .log-tab-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-dim);
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid #475569;
+    color: #94a3b8;
     font-size: 11px;
-    padding: 4px 8px;
-    border-radius: 4px;
+    padding: 3px 10px;
+    border-radius: 2px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all var(--anim-speed);
 }
 
 .log-tab-btn:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-main);
+    border-color: var(--gold-bright);
+    color: #fff;
 }
 
 .log-tab-btn.active {
-    background: rgba(99, 102, 241, 0.3);
-    color: var(--accent);
-    font-weight: bold;
+    background: var(--gold-dull);
+    border-color: var(--gold-bright);
+    color: #fff;
+    box-shadow: 0 0 8px rgba(251, 191, 36, 0.2);
 }
 
+/* 🌟 日誌內容區 (宣紙/古籍感) */
 #battle-log {
-    height: 160px; /* 固定高度，確保佈局穩定 */
-    padding: 12px;
+    height: 180px; /* 稍微加高，讓閱讀更有餘裕 */
+    padding: 14px;
     overflow-y: auto;
-    font-family: 'Consolas', monospace;
-    font-size: 13px;
-    line-height: 1.6;
+    /* 🌟 改動：捨棄 Consolas，改用襯線或楷體增加古風感 */
+    font-family: "STKaiti", "Kaiti", "Serif", serif;
+    font-size: 14px;
+    line-height: 1.8;
 }
 
-/* 捲軸美化 (Webkit 內核) */
+/* 捲軸美化 (古風細木質地) */
 #battle-log::-webkit-scrollbar { width: 4px; }
-#battle-log::-webkit-scrollbar-track { background: transparent; }
-#battle-log::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 10px; }
-#battle-log::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+#battle-log::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+#battle-log::-webkit-scrollbar-thumb { background: var(--gold-dull); border-radius: 2px; }
+#battle-log::-webkit-scrollbar-thumb:hover { background: var(--gold-bright); }
 
-/* 日誌顏色映射：根據訊息類型賦予靈力色彩 */
-.log-item { margin-bottom: 4px; }
-.log-bullet { opacity: 0.4; font-size: 10px; margin-right: 6px; }
+/* 🌟 日誌顏色映射：天道色彩重調 (針對墨色背景優化對比) */
+.log-item { 
+    margin-bottom: 6px; 
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+    padding-bottom: 2px;
+}
 
-.log-type-player-atk { color: #a78bfa; text-shadow: 0 0 5px rgba(167,139,250,0.3); }
-.log-type-monster-atk { color: #ef4444; }
-.log-type-reward { color: #34d399; font-weight: bold; }
-.log-type-gold { color: #fbbf24; }
-.log-type-system { color: #94a3b8; font-style: italic; }
+.log-type-player-atk { 
+    color: #818cf8; /* 靈藍：修士攻擊 */
+}
+
+.log-type-monster-atk { 
+    color: #f87171; /* 妖紅：怪物攻擊 */
+}
+
+.log-type-reward { 
+    color: #fbbf24; /* 仙金：獲得獎勵 */
+    font-weight: bold;
+    /* 🌟 新增：獎勵文字微光 */
+    text-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
+}
+
+.log-type-gold { 
+    color: var(--gold-bright); /* 流金：靈石獲得 */
+}
+
+.log-type-system { 
+    color: #94a3b8; /* 石青：系統提示 */
+    font-size: 13px;
+}
