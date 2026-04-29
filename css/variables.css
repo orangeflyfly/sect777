@@ -1,30 +1,30 @@
-/* css/variables.css - 雲境青瓷：仙氣飄渺版 */
+/* css/variables.css - 雲境青瓷：深邃墨染版 */
 :root {
     /* 🖋️ 仙氣核心色譜 */
-    --accent-glow: rgba(45, 212, 191, 0.3); /* 靈氣青發光 */
-    --gold-bright: #fde047;                /* 仙品金 */
-    --jade-soft: #2dd4bf;                  /* 溫潤翡翠 */
+    --accent-glow: rgba(45, 212, 191, 0.15); /* 降低發光係數，減少霧感 */
+    --gold-bright: #fde047;                
+    --jade-soft: #2dd4bf;                  
     --cloud-white: rgba(248, 250, 252, 0.9);
-    --ink-deep: #0f172a;                   /* 基底墨色 */
+    --ink-deep: #0f172a;                   /* 這是我們所有層次的根基 */
     
-    /* 容器質感：半透明磨砂與玉石邊框 */
-    --card-bg: rgba(15, 23, 42, 0.6);      /* 增加透明度，減少沉重感 */
-    --card-border: rgba(45, 212, 191, 0.2); /* 靈青色細邊 */
+    /* 容器質感：加強濃度，徹底解決發白問題 */
+    --card-bg: rgba(15, 23, 42, 0.9);      /* 🌟 提高不透明度，讓質感變沉穩 */
+    --card-border: rgba(45, 212, 191, 0.2); 
     --inner-glow: inset 0 0 15px rgba(45, 212, 191, 0.05); 
     
-    --modal-overlay: rgba(15, 23, 42, 0.85); 
-    --glass-dark: rgba(15, 23, 42, 0.9);   
+    --modal-overlay: rgba(10, 15, 26, 0.9);  /* 加深遮罩 */
+    --glass-dark: rgba(15, 23, 42, 0.95);    
 
-    /* 🔮 稀有度色彩 (仙化版) */
+    /* 🔮 稀有度色彩 (不變，保留資產) */
     --r1-common: #94a3b8;
     --r2-rare: #2dd4bf;
     --r3-epic: #3b82f6;
     --r4-legendary: #a855f7;
     --r5-mythic: #fbbf24;
 
-    /* 📱 UI 常數：線條精細化 */
+    /* 📱 UI 常數 */
     --btn-radius: 2px;       
     --card-radius: 4px;      
     --anim-speed: 0.3s;      
-    --shadow-light: 0 4px 15px rgba(0, 0, 0, 0.4);
+    --shadow-light: 0 4px 20px rgba(0, 0, 0, 0.6); /* 加深陰影層次 */
 }
