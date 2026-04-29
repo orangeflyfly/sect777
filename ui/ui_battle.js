@@ -29,7 +29,7 @@ export const UI_Battle = {
         }
     },
 
-    renderLayout() {
+ renderLayout() {
         const container = document.getElementById('page-battle');
         if (!container) return;
 
@@ -39,23 +39,30 @@ export const UI_Battle = {
                 <button onclick="UI_Battle.showMapSelect()" class="btn-travel">🗺️ 尋找歷練地</button>
             </div>
             
-            <div id="combat-area" style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 20px;">
-                <div id="player-display" class="monster-card" style="flex:1; border-color: #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); transition: transform 0.1s;">
+            <!-- 🌟 新增：跑步機背景與戰鬥場景容器 -->
+            <div id="battle-scene-container" class="battle-scene walking">
+                
+                <!-- 玩家區塊 (絕對定位) -->
+                <div id="player-display" class="entity-card player-entity">
                     <div id="player-icon" class="monster-avatar">🧘‍♂️</div>
-                    <h3 style="color: #60a5fa; font-size: 16px;">修士 (你)</h3>
-                    <div id="player-buffs" style="min-height: 25px; display: flex; justify-content: center; flex-wrap: wrap; gap: 4px; margin-top: 5px;"></div>
-                </div>
-
-                <div style="font-size: 18px; font-weight: bold; color: #ef4444; text-shadow: 0 0 5px rgba(239, 68, 68, 0.5);">VS</div>
-
-                <div id="monster-display" class="monster-card" style="flex:1; transition: transform 0.1s;">
-                    <div id="monster-icon" class="monster-avatar">❓</div>
-                    <h3 id="monster-name" style="font-size: 16px;">搜尋妖氣中...</h3>
-                    <div class="bar-container monster-hp">
-                        <div id="monster-hp-fill" class="fill fill-hp" style="width: 100%;"></div>
-                        <div class="bar-text" id="monster-hp-val">0 / 0</div>
+                    <div class="entity-info">
+                        <h3 style="color: #60a5fa; font-size: 16px; margin: 0;">修士 (你)</h3>
+                        <div id="player-buffs" class="buff-container"></div>
                     </div>
                 </div>
+
+                <!-- 怪物區塊 (絕對定位，預設隱藏或移出畫面外) -->
+                <div id="monster-display" class="entity-card monster-entity hidden">
+                    <div id="monster-icon" class="monster-avatar">❓</div>
+                    <div class="entity-info">
+                        <h3 id="monster-name" style="font-size: 16px; margin: 0;">搜尋妖氣中...</h3>
+                        <div class="bar-container monster-hp" style="margin-top: 5px;">
+                            <div id="monster-hp-fill" class="fill fill-hp" style="width: 100%;"></div>
+                            <div class="bar-text" id="monster-hp-val">0 / 0</div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <div id="battle-actions" class="actions-container"></div>
