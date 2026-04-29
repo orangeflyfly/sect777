@@ -9,6 +9,7 @@
 @import "./components/battle-actions.css";
 @import "./components/battle-log.css";
 @import "./components/map-modal.css";
+@import "./components/battle-treadmill.css";
 
 /* 3. 頁面容器基礎微調 */
 #page-battle {
